@@ -1,0 +1,3 @@
+[submodule "bazel-embedded"]
+	path = bazel-embedded
+	url = git@github.com:SpoolFirmware/bazel-embedded.git

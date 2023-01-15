@@ -1,0 +1,23 @@
+package(default_visibility = ["//visibility:public"])
+
+alias(
+    name = "config",
+    actual = select(
+        {
+            "//spool/platforms/STM32F401_MINI:platform": "//spool/platforms/STM32F401_MINI:spool_config",
+            "//spool/platforms/SKR_PRO_1_2:platform": "//spool/platforms/SKR_PRO_1_2:spool_config",
+        },
+        no_match_error = "No matching configuration found",
+    ),
+)
+
+alias(
+    name = "linker.ld",
+    actual = select(
+        {
+            "//spool/platforms/STM32F401_MINI:platform": "//spool/platforms/STM32F401_MINI:linker.ld",
+            "//spool/platforms/SKR_PRO_1_2:platform": "//spool/platforms/SKR_PRO_1_2:linker.ld",
+        },
+        no_match_error = "No matching configuration found",
+    ),
+)
