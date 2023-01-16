@@ -14,7 +14,7 @@ platform(
 cc_library(
     name = "spool_config",
     hdrs = ["spool_config.h"],
-    include_prefix = "config",
+    include_prefix = ".",
 )
 
 exports_files(["linker.ld"])
