@@ -1,14 +1,14 @@
 package(default_visibility = ["//visibility:public"])
 
+constraint_value(
+    name = "platform",
+    constraint_setting = "//spool:platform",
+)
+
 platform(
     name = "skr_pro_1_2",
     constraint_values = ["platform"],
     parents = ["@bazel_embedded//platforms:cortex_m4"],
-)
-
-constraint_value(
-    name = "platform",
-    constraint_setting = "//spool:platform",
 )
 
 cc_library(
