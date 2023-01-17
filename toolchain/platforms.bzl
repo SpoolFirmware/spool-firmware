@@ -83,8 +83,8 @@ def cc_binary_with_platforms(name, platforms, visibility=None, **kwargs):
     native.genrule(
         name = bin_target,
         visibility = ["//visibility:private"],
-        srcs = [elf_name],
-        outs = [bin_name],
+        srcs = [elf_name,],
+        outs = [bin_name,],
         toolchains = ["@bazel_tools//tools/cpp:current_cc_toolchain"],
         cmd = "$(OBJCOPY) -O binary $< $@",
     )

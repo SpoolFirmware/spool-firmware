@@ -23,7 +23,8 @@
  */
 
 #define _FROM_ASM_
-#include "cmparams.h"
+
+#define CORTEX_NUM_VECTORS 240
 
 #if (CORTEX_NUM_VECTORS % 8) != 0
 #error "the constant CORTEX_NUM_VECTORS must be a multiple of 8"

@@ -6,7 +6,7 @@
 
 void aaa();
 
-void entry()
+void main()
 {
     aaa();
     for(;;)

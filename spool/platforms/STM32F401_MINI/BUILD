@@ -13,6 +13,10 @@ platform(
 
 cc_library(
     name = "spool_config",
+    srcs = [
+        "startup/crt0.s",
+        "startup/vectors.s",
+    ],
     hdrs = ["spool_config.h"],
     include_prefix = ".",
 )
