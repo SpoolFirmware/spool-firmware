@@ -1,21 +1,21 @@
+load("@hedron_compile_commands//:refresh_compile_commands.bzl", "refresh_compile_commands")
+
 alias(
     name = "spool",
     actual = "//spool:spool",
 )
 
-## Replace workspace_name and dir_path as per your setup.
-load("@com_grail_bazel_compdb//:defs.bzl", "compilation_database")
-load("@com_grail_bazel_output_base_util//:defs.bzl", "OUTPUT_BASE")
+refresh_compile_commands(
+    name = "refresh_compile_commands",
 
-compilation_database(
-    name = "compdb",
-    # OUTPUT_BASE is a dynamic value that will vary for each user workspace.
-    # If you would like your build outputs to be the same across users, then
-    # skip supplying this value, and substitute the default constant value
-    # "__OUTPUT_BASE__" through an external tool like `sed` or `jq` (see
-    # below shell commands for usage).
-    output_base = OUTPUT_BASE,
-    targets = [
-        "//:spool",
-    ],
+    # Specify the targets of interest.
+    # For example, specify a dict of targets and any flags required to build.
+    targets = {
+        "//spool:stm32f401_mini": "",
+    },
+    # No need to add flags already in .bazelrc. They're automatically picked up.
+    # If you don't need flags, a list of targets is also okay, as is a single target string.
+    # Wildcard patterns, like //... for everything, *are* allowed here, just like a build.
+      # As are additional targets (+) and subtractions (-), like in bazel query https://docs.bazel.build/versions/main/query.html#expressions
+    # And if you're working on a header-only library, specify a test or binary target that compiles it.
 )

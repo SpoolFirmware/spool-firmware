@@ -1,21 +1,9 @@
 workspace(name = "spool_firmware")
 
-load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
-
 local_repository(
     name = "bazel_embedded",
     path = "bazel-embedded",
 )
-
-http_archive(
-    name = "com_grail_bazel_compdb",
-    strip_prefix = "bazel-compilation-database-0.5.2",
-    urls = ["https://github.com/grailbio/bazel-compilation-database/archive/0.5.2.tar.gz"],
-)
-
-load("@com_grail_bazel_compdb//:deps.bzl", "bazel_compdb_deps")
-
-bazel_compdb_deps()
 
 load("@bazel_embedded//:bazel_embedded_deps.bzl", "bazel_embedded_deps")
 
@@ -35,3 +23,19 @@ gcc_arm_none_compiler()
 load("@bazel_embedded//toolchains/gcc_arm_none_eabi:gcc_arm_none_toolchain.bzl", "register_gcc_arm_none_toolchain")
 
 register_gcc_arm_none_toolchain()
+
+load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
+
+# Hedron's Compile Commands Extractor for Bazel
+# https://github.com/hedronvision/bazel-compile-commands-extractor
+# https://github.com/SpoolFirmware/bazel-compile-commands-extractor with -mfpu=auto removal
+http_archive(
+    name = "hedron_compile_commands",
+
+    # Replace the commit hash in both places (below) with the latest
+    url = "https://github.com/SpoolFirmware/bazel-compile-commands-extractor/archive/efefb12d54cfeedc0d6b705f2346496c69955fd5.tar.gz",
+    strip_prefix = "bazel-compile-commands-extractor-efefb12d54cfeedc0d6b705f2346496c69955fd5",
+    # When you first run this tool, it'll recommend a sha256 hash to put here with a message like: "DEBUG: Rule 'hedron_compile_commands' indicated that a canonical reproducible form can be obtained by modifying arguments sha256 = ..."
+)
+load("@hedron_compile_commands//:workspace_setup.bzl", "hedron_compile_commands_setup")
+hedron_compile_commands_setup()
