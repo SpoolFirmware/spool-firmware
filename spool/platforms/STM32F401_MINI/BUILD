@@ -17,6 +17,7 @@ cc_library(
         "startup/crt0.s",
         "startup/vectors.s",
     ],
+    deps = ["//spool/lib/chip_hal/STM32/STM32F4:stm32f401"],
     hdrs = ["spool_config.h"],
     include_prefix = ".",
 )
