@@ -27,11 +27,13 @@ def _impl(ctx):
         copy = copy_bash
 
     output_files = []
+    copy_pairs = []
     for f in ctx.files.srcs:
         src_name = f.path.split("/")[-1]
         output_file = ctx.actions.declare_file(ctx.label.name + "/" + src_name)
         output_files.append(output_file)
-        copy(ctx, f, output_file)
+        copy_pairs.append((f, output_file))
+    copy(ctx, copy_pairs)
 
     runfiles = ctx.runfiles(files = output_files)
 

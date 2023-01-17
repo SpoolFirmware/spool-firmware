@@ -27,7 +27,7 @@ COPY_EXECUTION_REQUIREMENTS = {
     "no-cache": "1",
 }
 
-def copy_cmd(ctx, src, dst):
+def copy_cmd(ctx, pairs):
     # Most Windows binaries built with MSVC use a certain argument quoting
     # scheme. Bazel uses that scheme too to quote arguments. However,
     # cmd.exe uses different semantics, so Bazel's quoting is wrong here.
@@ -38,16 +38,18 @@ def copy_cmd(ctx, src, dst):
         output = bat,
         # Do not use lib/shell.bzl's shell.quote() method, because that uses
         # Bash quoting syntax, which is different from cmd.exe's syntax.
-        content = "@copy /Y \"%s\" \"%s\" >NUL" % (
+        content = "\n".join(["@copy /Y \"%s\" \"%s\" >NUL" % (
             src.path.replace("/", "\\"),
             dst.path.replace("/", "\\"),
-        ),
+        ) for (src,dst) in pairs]),
         is_executable = True,
     )
+    srcs = [src for (src, _) in pairs]
+    dsts = [dst for (_, dst) in pairs]
     ctx.actions.run(
-        inputs = [src],
+        inputs = srcs,
         tools = [bat],
-        outputs = [dst],
+        outputs = dsts,
         executable = "cmd.exe",
         arguments = ["/C", bat.path.replace("/", "\\")],
         mnemonic = "CopyFile",
@@ -56,14 +58,15 @@ def copy_cmd(ctx, src, dst):
         execution_requirements = COPY_EXECUTION_REQUIREMENTS,
     )
 
-def copy_bash(ctx, src, dst):
-    ctx.actions.run_shell(
-        tools = [src],
-        outputs = [dst],
-        command = "cp -f \"$1\" \"$2\"",
-        arguments = [src.path, dst.path],
-        mnemonic = "CopyFile",
-        progress_message = "Copying files",
-        use_default_shell_env = True,
-        execution_requirements = COPY_EXECUTION_REQUIREMENTS,
-    )
+def copy_bash(ctx, pairs):
+    for (src, dst) in pairs:
+        ctx.actions.run_shell(
+            tools = [src],
+            outputs = [dst],
+            command = "cp -f \"$1\" \"$2\"",
+            arguments = [src.path, dst.path],
+            mnemonic = "CopyFile",
+            progress_message = "Copying files",
+            use_default_shell_env = True,
+            execution_requirements = COPY_EXECUTION_REQUIREMENTS,
+        )
