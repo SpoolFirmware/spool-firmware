@@ -13,5 +13,6 @@ def generate_drf(name, devices, include_prefix='manual', visibility=None):
             name = d,
             hdrs = [d+".h"],
             include_prefix=include_prefix,
+            deps = [name + "_" + d + "_header"],
             visibility=visibility
         )

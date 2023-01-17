@@ -36,7 +36,7 @@ def _generate(input_file: str, output_file: str):
                 block_size = peripheral._address_blocks[0].size
                 writer.write_right_align(
                     f'#define {peripheral_name}', 
-                    f'0x{peripheral._base_address}:0x{block_size}')
+                    f'0x{peripheral._base_address:08X}:0x{peripheral._base_address+block_size-1:08X}')
             reg: SVDRegister
             for reg in peripheral.registers:
                 reg_description = ' '.join(reg.description.split())

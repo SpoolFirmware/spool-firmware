@@ -3,13 +3,15 @@
 //
 
 #include "chip_hal/hal.h"
+#include "chip_hal/stm32f401/gpio.h"
 #include "spool_config.h"
 #include <stdint.h>
 
 
 void main()
 {
-    // ioline_t ledLine = 
+    struct IOLine led = chipHalGpioLineConstruct(GPIOA, 1);
+    chipHalGpioSet(led);
     // chipHalGpioSet();
     for(;;)
     {}

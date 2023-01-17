@@ -22,3 +22,4 @@ cc_binary_with_platforms(
         "//spool/platforms:linker.ld",
     ],
 )
+
