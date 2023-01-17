@@ -15,7 +15,6 @@
 #
 from xml.etree import ElementTree as ET
 
-import six
 import itertools
 
 from cmsis_svd.model import SVDDevice
