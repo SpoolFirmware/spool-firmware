@@ -8,3 +8,5 @@ bazel-bin
 bazel-out
 bazel-spool-firmware
 bazel-testlogs
+
+.cache/
