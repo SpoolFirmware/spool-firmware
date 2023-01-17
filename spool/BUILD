@@ -10,11 +10,10 @@ cc_binary_with_platforms(
     platforms = {
         # targets are called :spool_$platform, e.g. spool_stm32f401_mini
         "stm32f401_mini": "//spool/platforms/STM32F401_MINI:stm32f401_mini",
-        "skr_pro_1_2": "//spool/platforms/SKR_PRO_1_2:skr_pro_1_2",
+        # "skr_pro_1_2": "//spool/platforms/SKR_PRO_1_2:skr_pro_1_2",
     },
     srcs = [
         "spool.c",
-        "test.S",
     ],
     linkopts = ["-T $(execpath //spool/platforms:linker.ld)"],
     visibility = ["//visibility:public"],
