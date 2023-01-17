@@ -49,6 +49,7 @@
 #if !defined(__DOXYGEN__)
 
         .syntax unified
+        .cpu cortex-m4
         .thumb
 
         .section    .vectors, "ax"
@@ -254,7 +255,7 @@ _vectors:
 
         .align      2
         .thumb_func
-        .weak       Reset_Handler
+        .globl Reset_Handler
 Reset_Handler:
          b          _crt0_entry
 

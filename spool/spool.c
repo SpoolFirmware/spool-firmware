@@ -10,8 +10,11 @@
 
 void main()
 {
-    struct IOLine led = chipHalGpioLineConstruct(GPIOA, 1);
-    chipHalGpioSet(led);
+    REG_WR32(DRF_RCC_AHB1ENR, FLD_SET_DRF(_RCC,_AHB1ENR,_GPIOCEN, _SET, REG_RD32(DRF_RCC_AHB1ENR)));
+
+    struct IOLine led = chipHalGpioLineConstruct(GPIOC, 13);
+    chipHalGpioSetMode(led, DRF_DEF(_GPIO, _MODE, _MODE, _OUTPUT));
+    chipHalGpioClear(led);
     // chipHalGpioSet();
     for(;;)
     {}

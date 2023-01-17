@@ -21314,10 +21314,20 @@ xs:noNamespaceSchemaLocation="CMSIS-SVD_Schema_1_1.xsd">
     <peripheral derivedFrom="GPIOH">
       <name>GPIOE</name>
       <baseAddress>0x40021000</baseAddress>
+      <addressBlock>
+        <offset>0x0</offset>
+        <size>0x400</size>
+        <usage>registers</usage>
+      </addressBlock>
     </peripheral>
     <peripheral derivedFrom="GPIOH">
       <name>GPIOD</name>
       <baseAddress>0X40020C00</baseAddress>
+      <addressBlock>
+        <offset>0x0</offset>
+        <size>0x400</size>
+        <usage>registers</usage>
+      </addressBlock>
       <interrupt>
         <name>TIM1_BRK_TIM9</name>
         <description>TIM1 Break interrupt and TIM9 global
@@ -21345,6 +21355,11 @@ xs:noNamespaceSchemaLocation="CMSIS-SVD_Schema_1_1.xsd">
     <peripheral derivedFrom="GPIOH">
       <name>GPIOC</name>
       <baseAddress>0x40020800</baseAddress>
+      <addressBlock>
+        <offset>0x0</offset>
+        <size>0x400</size>
+        <usage>registers</usage>
+      </addressBlock>
       <interrupt>
         <name>TIM1_UP_TIM10</name>
         <description>TIM1 Update interrupt and TIM10 global

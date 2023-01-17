@@ -35,8 +35,8 @@ def _generate(input_file: str, output_file: str):
             if peripheral._address_blocks is not None:
                 block_size = peripheral._address_blocks[0].size
                 writer.write_right_align(
-                    f'#define {peripheral_name}', 
-                    f'0x{peripheral._base_address:08X}:0x{peripheral._base_address+block_size-1:08X}')
+                    f'#define {prefix}{peripheral_name}', 
+                    f'0x{peripheral._base_address+block_size-1:08X}:0x{peripheral._base_address:08X}')
             reg: SVDRegister
             for reg in peripheral.registers:
                 reg_description = ' '.join(reg.description.split())
@@ -44,6 +44,9 @@ def _generate(input_file: str, output_file: str):
                 writer.write_right_align(
                     f'#define {prefix}{peripheral_name}_{reg.name}',
                     f'0x{reg.address_offset+peripheral._base_address:08X}')
+                writer.write_right_align(
+                    f'#define {prefix}{peripheral_name}_{reg.name}_OFFSET',
+                    f'0x{reg.address_offset:08X}')
                 field: SVDField
                 for field in reg.fields:
                     field_description = ' '.join(field.description.split())
