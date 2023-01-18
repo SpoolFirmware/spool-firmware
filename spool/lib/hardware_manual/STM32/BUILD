@@ -18,3 +18,10 @@ genrule(
     exec_tools = ["//tools/svd2drf:svd2drf"],
     cmd = "$(location //tools/svd2drf:svd2drf) -o $@ $<",
 )
+
+cc_library(
+    name = "stm32f401",
+    hdrs = [":stm32f401_header"],
+    include_prefix = "manual",
+    visibility = ["//visibility:public"],
+)

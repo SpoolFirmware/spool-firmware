@@ -7,6 +7,6 @@ cc_library(
     deps = [
         "//spool/lib/chip_hal:inc",
         "//spool/lib/drf",
-        "//spool/lib/hardware_manual/STM32/STM32F4:stm32f401",
+        "//spool/lib/hardware_manual/STM32:stm32f401",
     ],
 )
