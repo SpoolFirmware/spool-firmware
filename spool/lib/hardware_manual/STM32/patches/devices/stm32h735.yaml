@@ -1,0 +1,1006 @@
+_svd: ../svd/stm32h735.svd
+
+# Merge the hundreds of individual bit fields into single fields for the
+# crypt key/iv registers.
+CRYP:
+  "K[0123][LR]R":
+    _merge:
+      - "k*"
+  "IV[01][LR]R":
+    _merge:
+      - "IV*"
+
+# Fix invalid groupName
+_modify:
+  OctoSPII_O_Manager:
+    groupName: OctoSPII_O_Manager
+  DMAMUX3:
+    name: DMAMUX2
+    description: DMAMUX2
+  ADC1:
+    addressBlock:
+      offset: 0x0
+      size: 0x100
+      usage: registers
+
+_add:
+  # ADC2
+  # Slave ADC, shares an interrupt with ADC2
+  ADC2:
+    description: Analog to Digital Converter
+    derivedFrom: ADC1
+    baseAddress: 0x40022100
+    addressBlock:
+      offset: 0x0
+      size: 0x100
+      usage: registers
+
+  # BDMA block
+  BDMA:
+    description: Basic Direct Memory Access
+    groupName: BDMA
+    baseAddress: 0x58025400
+    addressBlock:
+      offset: 0x000
+      size: 0x400
+      usage: registers
+    registers:
+      {}
+    interrupts:
+      BDMA_CH0:
+        description: BDMA Channel 0 interrupt
+        value: 129
+      BDMA_CH1:
+        description: BDMA Channel 1 interrupt
+        value: 130
+      BDMA_CH2:
+        description: BDMA Channel 2 interrupt
+        value: 131
+      BDMA_CH3:
+        description: BDMA Channel 3 interrupt
+        value: 132
+      BDMA_CH4:
+        description: BDMA Channel 4 interrupt
+        value: 133
+      BDMA_CH5:
+        description: BDMA Channel 5 interrupt
+        value: 134
+      BDMA_CH6:
+        description: BDMA Channel 6 interrupt
+        value: 135
+      BDMA_CH7:
+        description: BDMA Channel 7 interrupt
+        value: 136
+  UART9:
+    derivedFrom: USART1
+    baseAddress: 0x40011800
+    interrupts:
+      UART9:
+         description: UART9 global interrupt
+         value: 155
+  USART10:
+    derivedFrom: USART1
+    baseAddress: 0x40011C00
+    interrupts:
+      USART10:
+        description: USART10 global interrupt
+        value: 156
+
+  # Additional timers
+  TIM23:
+    derivedFrom: TIM2
+    baseAddress: 0x4000E000
+    interrupts:
+      TIM23:
+        description: TIM23 global interrupt
+        value: 161
+  TIM24:
+    derivedFrom: TIM2
+    baseAddress: 0x4000E400
+    interrupts:
+      TIM24:
+        description: TIM24 global interrupt
+        value: 162
+
+  # CORDIC block
+  CORDIC:
+    description: CORDIC co-processor
+    groupName: CORDIC
+    baseAddress: 0x48024400
+    addressBlock:
+      offset: 0x0
+      size: 0x400 # There is a typo in Table 7, P136, RM0468.
+      usage: registers
+    registers:
+      CSR:
+        description: Control and status register
+        addressOffset: 0x00
+        resetValue: 0x00000050
+        fields:
+          RRDY:
+            description: Result ready flag
+            bitOffset: 31
+            bitWidth: 1
+          ARGSIZE:
+            description: Width of input data
+            bitOffset: 22
+            bitWidth: 1
+          RESSIZE:
+            description: Width of output data
+            bitOffset: 21
+            bitWidth: 1
+          NARGS:
+            description: Number of arguments expected by the WDATA register
+            bitOffset: 20
+            bitWidth: 1
+          NRES:
+            description: Number of results in the RDATA register
+            bitOffset: 19
+            bitWidth: 1
+          DMAWEN:
+            description: Enable DMA write channel
+            bitOffset: 18
+            bitWidth: 1
+          DMAREN:
+            description: Enable DMA wread channel
+            bitOffset: 17
+            bitWidth: 1
+          IEN:
+            description: Enable interrupt
+            bitOffset: 16
+            bitWidth: 1
+          SCALE:
+            description: Scaling factor (2^-n for arguments, 2^n for results)
+            bitOffset: 8
+            bitWidth: 3
+          PRECISION:
+            description: Precision required (number of iterations/cycles), where PRECISION = (number of iterations/4)
+            bitOffset: 4
+            bitWidth: 4
+          FUNC:
+            description: Function
+            bitOffset: 0
+            bitWidth: 4
+      WDATA:
+        description: Argument register
+        addressOffset: 0x04
+        resetValue: 0xFFFFFFFF
+        fields:
+          ARG:
+            description: Function input arguments
+            bitOffset: 0
+            bitWidth: 32
+      RDATA:
+        description: Result register
+        addressOffset: 0x08
+        resetValue: 0x00000000
+        fields:
+          RES:
+            description: Function result
+            bitOffset: 0
+            bitWidth: 32
+    interrupts:
+      CORDIC_IT:
+        value: 154
+        description: CORDIC interrupt
+
+  # FMAC block
+  FMAC:
+    description: Filter math accelerator
+    groupName: FMAC
+    baseAddress: 0x48024000
+    addressBlock:
+      offset: 0x0
+      size: 0x400
+      usage: registers
+    registers:
+      X1BUFCFG:
+        description: X1 buffer configuration register
+        addressOffset: 0x00
+        resetValue: 0x00000000
+        fields:
+          FULL_WM:
+            description: Watermark for buffer full flag
+            bitOffset: 24
+            bitWidth: 2
+          X1_BUF_SIZE:
+            description: Allocated size of X1 buffer in 16-bit words
+            bitOffset: 8
+            bitWidth: 8
+          X1_BASE:
+            description: Base address of X1 buffer
+            bitOffset: 0
+            bitWidth: 8
+      X2BUFCFG:
+        description: X2 buffer configuration register
+        addressOffset: 0x04
+        resetValue: 0x00000000
+        fields:
+          X2_BUF_SIZE:
+            description: Size of X2 buffer in 16-bit words
+            bitOffset: 8
+            bitWidth: 8
+          X2_BASE:
+            description: Base address of X2 buffer
+            bitOffset: 0
+            bitWidth: 8
+      YBUFCFG:
+        description: Y buffer configuration register
+        addressOffset: 0x08
+        resetValue: 0x00000000
+        fields:
+          EMPTY_WM:
+            description: Watermark for buffer empty flag
+            bitOffset: 24
+            bitWidth: 2
+          Y_BUF_SIZE:
+            description: Size of Y buffer in 16-bit words
+            bitOffset: 8
+            bitWidth: 8
+          Y_BASE:
+            description: Base address of Y buffer
+            bitOffset: 0
+            bitWidth: 8
+      PARAM:
+        description: Parameter register
+        addressOffset: 0x0C
+        resetValue: 0x00000000
+        fields:
+          START:
+            description: Enable execution
+            bitOffset: 31
+            bitWidth: 1
+          FUNC:
+            description: Function
+            bitOffset: 24
+            bitWidth: 7
+          R:
+            description: Input parameter R
+            bitOffset: 16
+            bitWidth: 8
+          Q:
+            description: Input parameter Q
+            bitOffset: 8
+            bitWidth: 8
+          P:
+            description: Input parameter P
+            bitOffset: 0
+            bitWidth: 8
+      CR:
+        description: Control register
+        addressOffset: 0x10
+        resetValue: 0x00000000
+        fields:
+          RESET:
+            description: Reset FMAC unit
+            bitOffset: 16
+            bitWidth: 1
+          CLIPEN:
+            description: Enable clipping
+            bitOffset: 15
+            bitWidth: 1
+          DMAWEN:
+            description: Enable DMA write channel requests
+            bitOffset: 9
+            bitWidth: 1
+          DMAREN:
+            description: Enable DMA read channel requests
+            bitOffset: 8
+            bitWidth: 1
+          SATIEN:
+            description: Enable saturation error interrupts
+            bitOffset: 4
+            bitWidth: 1
+          UNFLIEN:
+            description: Enable underflow error interrupts
+            bitOffset: 3
+            bitWidth: 1
+          OVFLIEN:
+            description: Enable overflow error interrupts
+            bitOffset: 2
+            bitWidth: 1
+          WIEN:
+            description: Enable write interrupt
+            bitOffset: 1
+            bitWidth: 1
+          RIEN:
+            description: Enable read interrupt
+            bitOffset: 0
+            bitWidth: 1
+      SR:
+        description: Status register
+        addressOffset: 0x14
+        resetValue: 0x00000001
+        fields:
+          SAT:
+            description: Saturation error flag
+            bitOffset: 10
+            bitWidth: 1
+          UNFL:
+            description: Underflow error flag
+            bitOffset: 9
+            bitWidth: 1
+          OVFL:
+            description: Overflow error flag
+            bitOffset: 8
+            bitWidth: 1
+          X1FULL:
+            description: X1 buffer full flag
+            bitOffset: 1
+            bitWidth: 1
+          YEMPTY:
+            description: Y buffer empty flag
+            bitOffset: 0
+            bitWidth: 1
+      WDATA:
+        description: Write data register
+        addressOffset: 0x18
+        resetValue: 0x00000000
+        fields:
+          WDATA:
+            description: Write data (write data are transferred to the address indicated by the write pointer)
+            bitOffset: 0
+            bitWidth: 16
+      RDATA:
+        description: Read data register
+        addressOffset: 0x1C
+        resetValue: 0x00000000
+        fields:
+          RES:
+            description: Read data (contents of the Y output buffer at the address indicated by the READ pointer)
+            bitOffset: 0
+            bitWidth: 16
+    interrupts:
+      FMAC:
+        value: 153
+        description: FMAC interrupt
+
+# PWR block
+PWR:
+  CR3:
+    _add:
+      SDEXTHP:
+        description: SMPS step-down converter forced ON and in High Power MR mode
+        bitWidth: 1
+        bitOffset: 3
+      SDLEVEL:
+        description: SMPS step-down converter voltage output level selection
+        bitWidth: 2
+        bitOffset: 4
+      SDEXTRDY:
+        description: SMPS step-down converter external supply ready
+        bitWidth: 1
+        bitOffset: 16
+  WKUPCR:
+    _delete:
+      - WKUPC
+    _add:
+      WKUPC1:
+        description: Clear Wakeup pin flag for WKUPC1
+        bitWidth: 1
+        bitOffset: 0
+      WKUPC2:
+        description: Clear Wakeup pin flag for WKUPC2
+        bitWidth: 1
+        bitOffset: 1
+      WKUPC4:
+        description: Clear Wakeup pin flag for WKUPC4
+        bitWidth: 1
+        bitOffset: 3
+      WKUPC6:
+        description: Clear Wakeup pin flag for WKUPC6
+        bitWidth: 1
+        bitOffset: 5
+  WKUPFR:
+    _delete:
+      - WKUPF3
+      - WKUPF5
+
+# SYSCFG block
+SYSCFG:
+  _add:
+    CFGR:
+      description: Timer break lockup register
+      addressOffset: 0x18
+      resetValue: 0x00000000
+      fields:
+        PVDL:
+          description: Programmable voltage detector lockup bit
+          bitOffset: 2
+          bitWidth: 1
+        FLASHL:
+          description: FLASH double error lockup bit
+          bitOffset: 3
+          bitWidth: 1
+        CM7L:
+          description: CPU lockup bit
+          bitOffset: 6
+          bitWidth: 1
+        BKRAML:
+          description: Backup RAM Double error lockup bit
+          bitOffset: 7
+          bitWidth: 1
+        SRAM4L:
+          description: SRAM4 Double error lockup bit
+          bitOffset: 9
+          bitWidth: 1
+        SRAM2L:
+          description: SRAM2 Double error lockup bit
+          bitOffset: 11
+          bitWidth: 1
+        SRAM1L:
+          description: SRAM1 Double error lockup bit
+          bitOffset: 12
+          bitWidth: 1
+        DTCML:
+          description: DTCM-RAM Double error lockup bit
+          bitOffset: 13
+          bitWidth: 1
+        ITCML:
+          description: ITCM-RAM Double error lockup bit
+          bitOffset: 14
+          bitWidth: 1
+        AXIRAML:
+          description: AXISRAM Double error lockup bit
+          bitOffset: 15
+          bitWidth: 1
+    ADC2ALT:
+      description: ADC2 internal input alternate connection
+      addressOffset: 0x30
+      resetValue: 0x00000000
+      fields:
+        ADC2_ROUT1:
+          description: ADC2 V_INP17 alternate connection
+          bitOffset: 1
+          bitWidth: 1
+        ADC2_ROUT0:
+          description: ADC2 V_INP16 alternate connection
+          bitOffset: 0
+          bitWidth: 1
+    UR18:
+      description: SYSCFG user register 18
+      addressOffset: 0x348
+      access: read-only
+      fields:
+        CPU_FREQ_BOOST:
+          description: CPU maximum frequency boost
+          bitOffset: 0
+          bitWidth: 1
+  _delete:
+    - UR8                       # Only one flash bank
+    - UR9
+    - UR10
+  PMCR:
+    _add:
+      BOOSTVDDSEL:
+        description: Analog switch supply voltage selection
+        bitWidth: 1
+        bitOffset: 9
+      I2C5FMP:
+        description: I2C5 Fm+
+        bitWidth: 1
+        bitOffset: 10
+  UR0:
+    _delete:
+      - BKS
+  UR11:
+    _delete:
+      - SA_END_2
+  UR17:
+    _add:
+      TCM_AXI_SHARED_CFG:
+        description: ITCM-RAM/AXI-SRAM size
+        bitOffset: 16
+        bitWidth: 2
+
+
+# RCC block
+RCC:
+  _modify:
+    # Fix reset values for these registers.
+    # Note that the rename operation to remove C1 happens alongside this
+    # modification, so we have to use the original names.
+    C1_APB1LLPENR:
+      resetValue: "0xE8FFCBFF"
+    C1_APB4ENR:
+      resetValue: "0x00010000"
+    C1_APB4LPENR:
+      resetValue: "0x0421DEAA"
+  CSICFGR:
+    _modify:
+      CSICAL:
+        bitWidth: 10
+  D1CCIPR:
+    _modify:
+      QSPISRC:
+        name: OCTOSPISEL
+  D2CCIP1R:
+    _delete:
+      - SAI23SRC
+    _modify:
+      SWPSRC:
+        name: SWPMISEL
+  D2CCIP2R:
+    _modify:
+      USART16SRC:
+        name: USART16910SEL
+      I2C123SRC:
+        name: I2C1235SEL
+  AHB3RSTR:
+    _delete:
+      - JPGDECRST
+      - QSPIRST
+    _add:
+      OCTOSPI1RST:
+        description: OCTOSPI1 and OCTOSPI1 delay block reset
+        bitWidth: 1
+        bitOffset: 14
+      OCTOSPI2RST:
+        description: OCTOSPI2 and OCTOSPI2 delay block reset
+        bitWidth: 1
+        bitOffset: 19
+      IOMNGRRST:
+        description: OCTOSPI IO manager reset
+        bitWidth: 1
+        bitOffset: 21
+      OTFD1RST:
+        description: OTFDEC1 reset
+        bitWidth: 1
+        bitOffset: 22
+      OTFD2RST:
+        description: OTFDEC2 reset
+        bitWidth: 1
+        bitOffset: 23
+  AHB3ENR:
+    _delete:
+      - JPGDECEN
+      - QSPIEN
+    _add:
+      OCTOSPI1EN:
+        description: OCTOSPI1 and OCTOSPI1 delay block enable
+        bitWidth: 1
+        bitOffset: 14
+      OCTOSPI2EN:
+        description: OCTOSPI2 and OCTOSPI2 delay block enable
+        bitWidth: 1
+        bitOffset: 19
+      IOMNGREN:
+        description: OCTOSPI IO manager enable
+        bitWidth: 1
+        bitOffset: 21
+      OTFD1EN:
+        description: OTFDEC1 enable
+        bitWidth: 1
+        bitOffset: 22
+      OTFD2EN:
+        description: OTFDEC2 enable
+        bitWidth: 1
+        bitOffset: 23
+  AHB3LPENR,C1_AHB3LPENR:
+    _delete:
+      - JPGDECLPEN
+      - QSPILPEN
+    _add:
+      OCTOSPI1LPEN:
+        description: OCTOSPI1 and OCTOSPI1 delay block enable during CSleep Mode
+        bitWidth: 1
+        bitOffset: 14
+      OCTOSPI2LPEN:
+        description: OCTOSPI2 and OCTOSPI2 delay block enable during CSleep Mode
+        bitWidth: 1
+        bitOffset: 19
+      IOMNGRLPEN:
+        description: OCTOSPI IO manager enable during CSleep Mode
+        bitWidth: 1
+        bitOffset: 21
+      OTFD1LPEN:
+        description: OTFDEC1 enable during CSleep Mode
+        bitWidth: 1
+        bitOffset: 22
+      OTFD2LPEN:
+        description: OTFDEC2 enable during CSleep Mode
+        bitWidth: 1
+        bitOffset: 23
+  AHB1RSTR:
+    _delete:
+      - USB2OTGRST
+  AHB1ENR:
+    _delete:
+      - USB2OTGEN
+      - USB2ULPIEN
+  AHB1LPENR,C1_AHB1LPENR:
+    _delete:
+      - USB2OTGLPEN
+      - USB2ULPILPEN
+  AHB2RSTR:
+    _add:
+      FMACRST:
+        description: FMAC reset
+        bitWidth: 1
+        bitOffset: 16
+      CORDICRST:
+        description: CORDIC reset
+        bitWidth: 1
+        bitOffset: 17
+  AHB2ENR:
+    _delete:
+      - SRAM3EN
+    _add:
+      FMACEN:
+        description: FMAC enable
+        bitWidth: 1
+        bitOffset: 16
+      CORDICEN:
+        description: CORDIC enable
+        bitWidth: 1
+        bitOffset: 17
+  AHB2LPENR,C1_AHB2LPENR:
+    _delete:
+      - SRAM3LPEN
+    _add:
+      FMACLPEN:
+        description: FMAC enable during CSleep Mode
+        bitWidth: 1
+        bitOffset: 16
+      CORDICLPEN:
+        description: CORDIC enable during CSleep Mode
+        bitWidth: 1
+        bitOffset: 17
+  APB1LRSTR:
+    _add:
+      I2C5RST:
+        description: I2C5 block reset
+        bitWidth: 1
+        bitOffset: 25
+    _modify:
+      HDMICECRST:
+        name: CECRST
+  APB1LENR:
+    _add:
+      I2C5EN:
+        description: I2C5 block enable
+        bitWidth: 1
+        bitOffset: 25
+    _modify:
+      HDMICECEN:
+        name: CECEN
+  APB1LLPENR,C1_APB1LLPENR:
+    _add:
+      I2C5LPEN:
+        description: I2C5 block enable during CSleep Mode
+        bitWidth: 1
+        bitOffset: 25
+  APB1HRSTR:
+    _modify:
+      SWPRST:
+        name: SWPMIRST
+    _add:
+      TIM23RST:
+        description: TIM23 block reset
+        bitWidth: 1
+        bitOffset: 24
+      TIM24RST:
+        description: TIM24 block reset
+        bitWidth: 1
+        bitOffset: 25
+  APB1HENR:
+    _modify:
+      SWPEN:
+        name: SWPMIEN
+    _add:
+      TIM23EN:
+        description: TIM23 block enable
+        bitWidth: 1
+        bitOffset: 24
+      TIM24EN:
+        description: TIM24 block enable
+        bitWidth: 1
+        bitOffset: 25
+  APB1HLPENR,C1_APB1HLPENR:
+    _modify:
+      SWPLPEN:
+        name: SWPMILPEN
+    _add:
+      TIM23LPEN:
+        description: TIM23 block enable during CSleep Mode
+        bitWidth: 1
+        bitOffset: 24
+      TIM24LPEN:
+        description: TIM24 block enable during CSleep Mode
+        bitWidth: 1
+        bitOffset: 25
+  APB2RSTR:
+    _delete:
+      - HRTIMRST
+    _add:
+      UART9RST:
+        description: UART9 block reset
+        bitWidth: 1
+        bitOffset: 6
+      USART10RST:
+        description: USART10 block reset
+        bitWidth: 1
+        bitOffset: 7
+  APB2ENR:
+    _delete:
+      - HRTIMEN
+    _add:
+      UART9EN:
+        description: UART9 peripheral clocks enable
+        bitWidth: 1
+        bitOffset: 6
+      USART10EN:
+        description: USART10 peripheral clocks enable
+        bitWidth: 1
+        bitOffset: 7
+  APB2LPENR,C1_APB2LPENR:
+    _delete:
+      - HRTIMLPEN
+    _add:
+      UART9LPEN:
+        description: UART9 peripheral clocks enable during CSleep Mode
+        bitWidth: 1
+        bitOffset: 6
+      USART10LPEN:
+        description: USART10 peripheral clocks enable during CSleep Mode
+        bitWidth: 1
+        bitOffset: 7
+  APB4RSTR:
+    _add:
+      DTSRST:
+        description: Digital temperature sensor block reset
+        bitWidth: 1
+        bitOffset: 26
+  APB4ENR:
+    _add:
+      DTSEN:
+        description: Digital temperature sensor block enable
+        bitWidth: 1
+        bitOffset: 26
+  APB4LPENR,C1_APB4LPENR:
+    _add:
+      DTSLPEN:
+        description: Digital temperature sensor block enable during CSleep Mode
+        bitWidth: 1
+        bitOffset: 26
+  D3AMR:
+    _add:
+      DTSAMEN:
+        description: Digital temperature sensor Autonomous mode enable
+        bitWidth: 1
+        bitOffset: 26
+
+# OCTOSPI blocks
+OCTOSPI?:
+  DCR1:
+    _modify:                    # Wider than in RM0455, where is it 3 bits
+      CSHT:
+        bitWidth: 6
+
+_delete:
+  - HRTIM                       # RM0468 devices do not have an HRTIM
+
+SAI?:
+  _strip:
+    - SAI_
+
+SDMMC?:
+  _strip:
+    - SDMMC_
+
+MPU:
+  _strip:
+    - "MPU_"
+
+MDIOS:
+  _strip:
+    - "MDIOS_"
+
+TIM1:
+  _modify:
+    _interrupts:
+      TIM_CC:
+        name: TIM1_CC
+
+DCMI:
+  _modify:
+    _interrupts:
+      DCMI:
+        name: DCMI_PSSI
+        description: DCMI/PSSI global interrupt
+
+OTG1_HS_GLOBAL:
+  _add:
+    _interrupts:
+      OTG_HS_EP1_OUT:
+        value: 74
+        description: USB OTG_HS OUT endpoint1 global interrupt
+      OTG_HS_EP1_IN:
+        value: 75
+        description: USB OTG_HS IN endpoint1 global interrupt
+      OTG_HS_WKUP:
+        value: 76
+        description: USB OTG_HS wakeup Interrupt through EXTI line
+      OTG_HS:
+        value: 77
+        description: USB OTG_HS global interrupt
+
+RNG:
+  _add:
+    _interrupts:
+      HASH_RNG:
+        value: 80
+        description: HASH OR RNG interrupt
+
+LTDC:
+  _add:
+    _interrupts:
+      LTDC_ERR:
+        value: 89
+        description: LCD-TFT global Error interrupt
+
+RAMECC1:
+  _add:
+    _interrupts:
+      ECC_DIAG_IT:
+        value: 145
+        description: ECC diagnostic global interrupt
+
+# DTS peripheral is missing from the SVD.
+# This interrupt is probably the one described as DTS-IT in the DTS docs.
+#DTS:
+#  _add:
+#    _interrupts:
+#      TEMP_IT:
+#        value: 147
+#        description: Temperature sensor global interrupt (also known as DTS-IT).
+
+# OTFDEC peripheral is missing from the SVD.
+#OTFDEC:
+#  _add:
+#    _interrupts:
+#      OTFDEC1:
+#        value: 151
+#        description: OTFDEC1 interrupt
+#      OTFDEC2:
+#        value: 152
+#        description: OTFDEC2 interrupt
+
+# UART9 peripheral is missing from the SVD.
+#UART9:
+#  _add:
+#    _interrupts:
+#      UART9_IT_OR_UART9_WKUP:
+#        value: 155
+#        description: UART9 interrupt
+
+# USART10 peripheral is missing from the SVD.
+#USART10:
+#  _add:
+#    _interrupts:
+#      USART10:
+#        value: 156
+#        description: USART10 interrupt
+
+# I2C5 peripheral is missing from the SVD.
+#I2C5:
+#  _add:
+#    _interrupts:
+#      I2C5_EV:
+#        value: 157
+#        description: I2C5 event interrupt
+#      I2C5_ER:
+#        value: 158
+#        description: I2C5 error interrupt
+
+# FDCAN3 peripheral is missing from the SVD.
+#FDCAN3:
+#  _add:
+#    _interrupts:
+#      FDCAN3_IT0:
+#        value: 159
+#        description: FDCAN3 interrupt line 0
+#      FDCAN3_IT1:
+#        value: 160
+#        description: FDCAN3 interrupt line 1
+
+# Modify the DBGMCU.CR register fields names to be consistent with RM0468.
+# TODO: Interesting aside: the svd lists these controls additionally for D2 and
+#       D3, while the RM0468 specifies those as reserved bits, while still having
+#       clock controls specified for D2, D3. Thus, it may not be unthinkable that
+#       the same name changes need to be done for D2, D3, even though the reference
+#       manual does not specify them. OR: perhaps remove the D2, D3 fields instead?
+DBGMCU:
+  CR:
+    _modify:
+      DBGSTBD1:
+        name: DBGSTBY_D1
+      DBGSTPD1:
+        name: DBGSTOP_D1
+      DBGSLPD1:
+        name: DBGSLEEP_D1
+
+# -----------------------------------------------------------------------------
+
+_include:
+ - common_patches/hdmi_cec.yaml
+ - common_patches/h7_common_singlecore.yaml
+ - common_patches/dma/fcr_wo.yaml
+ - common_patches/dma/bdma_v2_new.yaml
+ - common_patches/dma/dma_v3.yaml
+ - common_patches/dma/mdma.yaml
+ - common_patches/fdcan/fdcan_h7.yaml
+ - common_patches/fsmc/fsmc_sdram_cluster.yaml
+ - common_patches/rcc/h7_src_sel_common.yaml
+ - common_patches/ethernet/h7_combined_desc.yaml
+ - common_patches/exti/h7_singlecore.yaml
+ - common_patches/dma/h7_dmacr.yaml
+ - common_patches/dma/h7_dmamux.yaml
+ - common_patches/dma/dma2d_v2.yaml
+ - common_patches/hsem/array.yaml
+ - common_patches/adc/h7.yaml
+ - common_patches/adc/h7_boost_rev_v.yaml
+ - common_patches/octospi/h7.yaml
+ - common_patches/sai/h7.yaml
+ - common_patches/sai/h7_mcken.yaml
+ - common_patches/sai/sai_v1.yaml
+ - common_patches/dfsdm/h735_747_753.yaml
+ - common_patches/h7_spdifrx.yaml
+ - common_patches/usb_otg/h7.yaml
+ - common_patches/flash/flash_dual_bank.yaml
+ - common_patches/rcc/h7_hsicfgr_csicfgr_rev_v.yaml
+ - common_patches/ltdc/ltdc.yaml
+ - common_patches/i2c/merge_CR2_SADDx_fields.yaml
+ - common_patches/usart/merge_CR1_DEATx_fields.yaml
+ - common_patches/usart/merge_CR1_DEDTx_fields.yaml
+ - common_patches/usart/merge_CR2_ABRMODx_fields.yaml
+ - common_patches/usart/merge_CR2_ADDx_fields.yaml
+ - common_patches/usart/rename_CR2_DATAINV_field.yaml
+ - common_patches/usart/merge_BRR_fields.yaml
+ - common_patches/tim/tim_o24ce.yaml
+ - ../peripherals/adc/adc_v3_h7.yaml
+ - ../peripherals/adc/adc_v3_common_h7.yaml
+ - ../peripherals/adc/adc_h7_revision_v.yaml
+ - ../peripherals/axi/axi_v1.yaml
+ - common_patches/crc/crc_rename_init.yaml
+ - ../peripherals/crc/crc_advanced.yaml
+ - ../peripherals/crc/crc_idr_32bit.yaml
+ - ../peripherals/crc/crc_pol.yaml
+ - ../peripherals/dma/bdma.yaml
+ - ../peripherals/dma/dma_v3.yaml
+ - ../peripherals/dma/dmamux_v1.yaml
+ - ../peripherals/dma/dma2d_v2.yaml
+ - ../peripherals/gpio/v2/common.yaml
+ - ../peripherals/lptim/lptim_v1.yaml
+ - ../peripherals/ltdc/ltdc.yaml
+ - ../peripherals/rcc/rcc_h7.yaml
+ - ../peripherals/rcc/rcc_h7_revision_v.yaml
+ - ../peripherals/rng/rng_v1.yaml
+ - ../peripherals/rng/rng_v1_ced.yaml
+ - ../peripherals/spi/spi_v3.yaml
+ - common_patches/tim/v2/h7.yaml
+ - common_patches/tim/common.yaml
+ - ../peripherals/tim/tim_basic.yaml
+ - ../peripherals/tim/tim16.yaml
+ - ../peripherals/tim/tim6.yaml
+ - ../peripherals/tim/tim2345_mixed.yaml
+ - common_patches/tim/tim2345_mixed_l.yaml
+ - ../peripherals/tim/tim_advanced.yaml
+ - ../peripherals/tim/tim_h7.yaml
+ - common_patches/tim/tim_ccr.yaml
+ - ../peripherals/tim/v2/ccm.yaml
+ - ../peripherals/iwdg/iwdg_with_WINR.yaml
+ - ../peripherals/exti/exti_h7.yaml
+ - ../peripherals/i2c/i2c_v2.yaml
+ - ../peripherals/wwdg/wwdg_v2.yaml
+ - ../peripherals/usart/usart_v2B1.yaml
+ - ../peripherals/sai/sai.yaml
+ - common_patches/rtc/alarm.yaml
+ - common_patches/rtc/rtc_bkpr.yaml
+ - common_patches/rtc/rtc_cr.yaml
+ - ../peripherals/rtc/rtc_common.yaml
+ - ../peripherals/rtc/rtc_h7.yaml
+ - common_patches/crc/h7_addr_fix.yaml
+ - common_patches/wwdg/h7.yaml
+ - common_patches/ethernet/h7_mac.yaml
+ - ../peripherals/cordic/cordic_h7.yaml

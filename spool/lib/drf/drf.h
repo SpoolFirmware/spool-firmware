@@ -88,7 +88,7 @@
 	 (31 - ((DRF_ISBIT(1, drf)) % 32) + ((DRF_ISBIT(0, drf)) % 32)))
 #define DRF_DEF(d, r, f, c) ((DRF##d##r##f##c) << DRF_SHIFT(DRF##d##r##f))
 #define DRF_NUM(d, r, f, n) \
-	(((n)&DRF_MASK(DRF##d##r##f)) << DRF_SHIFT(DRF_##d##r##f))
+	(((n)&DRF_MASK(DRF##d##r##f)) << DRF_SHIFT(DRF##d##r##f))
 #define DRF_SHIFTMASK(drf) (DRF_MASK(drf) << (DRF_SHIFT(drf)))
 #define DRF_VAL(d, r, f, v) \
 	(((v) >> DRF_SHIFT(DRF##d##r##f)) & DRF_MASK(DRF##d##r##f))

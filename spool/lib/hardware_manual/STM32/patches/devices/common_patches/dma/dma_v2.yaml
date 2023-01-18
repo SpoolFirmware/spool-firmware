@@ -1,0 +1,8 @@
+_include:
+ - dma_v3.yaml
+
+"DMA?":
+  S?CR:
+    _modify:
+      CHSEL:
+        bitWidth: 3

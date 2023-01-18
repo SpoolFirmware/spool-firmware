@@ -70,8 +70,8 @@ class DRFHeaderGenerator:
         elif f.bit_width == 1:
             values = []
             if fld_name.endswith('EN'):
-                values.append((0, 'DISABLE'))
-                values.append((1, 'ENABLE'))
+                values.append((0, 'DISABLED'))
+                values.append((1, 'ENABLED'))
             elif fld_name.endswith('RST'):
                 values.append((0, 'CLR'))
                 values.append((1, 'RESET'))

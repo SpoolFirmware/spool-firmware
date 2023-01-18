@@ -1,0 +1,5 @@
+"FMC,FSMC":
+  _array:
+    "BCR[2-4]": {}
+    "BTR?": {}
+    "BWTR?": {}

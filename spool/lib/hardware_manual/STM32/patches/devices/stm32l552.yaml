@@ -1,0 +1,53 @@
+_svd: ../svd/stm32l552.svd
+
+_modify:
+  cpu:
+    name: CM33
+    revision: r0p1
+    endian: little
+    mpuPresent: "true"
+    fpuPresent: "true"
+    nvicPrioBits: 3
+    vendorSystickConfig: "false"
+
+FMC:
+  _strip:
+    - "FMC_"
+
+DAC:
+  _strip:
+    - "DAC_"
+
+RNG:
+  _strip:
+    - "RNG_"
+
+GTZC_MPCBB1:
+  _strip:
+    - "MPCBB1_"
+
+GTZC_MPCBB2:
+  _strip:
+    - "MPCBB2_"
+
+GTZC_TZIC:
+  _strip:
+    - "TZIC_"
+
+GTZC_TZSC:
+  _strip:
+    - "TZSC_"
+
+_include:
+ - common_patches/dma/interrupt_names.yaml
+ - common_patches/flash/l5_array.yaml
+ - common_patches/icache/l5.yaml
+ - ../peripherals/gpio/gpio_l5.yaml
+ - ../peripherals/rcc/rcc_l5.yaml
+ - common_patches/rtc/alarm.yaml
+ - common_patches/rtc/tamp_bkpr.yaml
+ - common_patches/sai/sai_v1.yaml
+ - ../peripherals/sai/sai.yaml
+ - common_patches/tim/v2/l5.yaml
+ - ../peripherals/tim/v2/ccm.yaml
+ - common_patches/adc/adc_common_group_name.yaml

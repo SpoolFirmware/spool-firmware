@@ -1,0 +1,20 @@
+# Renames a few fields in the F0 ADC and replaces AUTDLY with WAIT
+
+ADC:
+  ISR:
+    _modify:
+      EOS:
+        name: "EOSEQ"
+  IER:
+    _modify:
+      EOSIE:
+        name: "EOSEQIE"
+  CFGR1:
+    _modify:
+      AUTDLY:
+        name: "WAIT"
+        description: "Wait conversion mode"
+  SMPR:
+    _modify:
+      SMPR:
+        name: "SMP"

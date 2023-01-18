@@ -1,0 +1,69 @@
+_svd: ../svd/stm32g0b0.svd
+
+_modify:
+  name: STM32G0B0
+
+_clear_fields: ["*"]
+
+TIM1:
+  _modify:
+    _interrupts:
+      TIM1_BRK_UP_TRG_COM:
+        description: TIM1 break, update, trigger and commutation interrupts
+  _strip:
+    - "TIM1_"
+
+TIM3:
+  CCMR1_Output:
+    _modify:
+      OC1M1:
+        name: OC1M
+      OC1M2:
+        name: OC1M_3
+
+DMAMUX:
+  _strip:
+    - "DMAMUX_"
+
+CRC:
+  _strip:
+    - "CRC_"
+
+DBG:
+  _strip:
+    - "DBG_"
+
+IWDG:
+  _strip:
+    - "IWDG_"
+
+WWDG:
+  _strip:
+    - "WWDG_"
+
+VREFBUF:
+  _strip:
+    - "VREFBUF_"
+
+I2C1:
+  _strip:
+    - "I2C_"
+
+_include:
+ - ./common_patches/nvic/2_prio_bits.yaml
+ - ../peripherals/dma/dma_v1.yaml
+ - ./common_patches/dma/g0_add_dma1_7ch.yaml
+ - ./common_patches/dma/g0_add_dma2_5ch.yaml
+ - common_patches/tim/v2/g0_1.yaml
+ - ../peripherals/tim/v2/ccm.yaml
+ - ../peripherals/gpio/gpio_g0_l0.yaml
+ - ../peripherals/i2c/i2c_v2.yaml
+# TODO: add SPI
+# TODO: usart CR1
+ - ../peripherals/iwdg/iwdg_with_WINR.yaml
+ - ../peripherals/wwdg/wwdg_v2.yaml
+# TODO: add ADC
+ - common_patches/tim/common.yaml
+ - ../peripherals/tim/tim_basic.yaml
+ - ../peripherals/tim/tim6.yaml
+ - ../peripherals/tim/tim_advanced.yaml

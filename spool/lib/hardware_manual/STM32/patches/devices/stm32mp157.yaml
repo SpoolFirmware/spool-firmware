@@ -1,0 +1,30 @@
+_svd: ../svd/stm32mp157.svd
+
+_modify:
+  name: STM32MP157
+  cpu:
+    name: CM4
+    revision: r0p1
+    endian: little
+    mpuPresent: "false"
+    fpuPresent: "true"
+    nvicPrioBits: 4
+    vendorSystickConfig: "false"
+  DSIHOST1:
+    name: DSI
+
+DSI:
+  _strip:
+    - "DSI_"
+
+RTC:
+  _strip:
+    - "RTC_"
+
+TAMP:
+  _strip:
+    - "TAMP_"
+
+_include:
+ - common_patches/rtc/alarm.yaml
+ - common_patches/rtc/tamp_bkpr.yaml

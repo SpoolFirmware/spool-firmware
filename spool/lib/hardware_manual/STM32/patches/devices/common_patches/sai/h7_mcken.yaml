@@ -1,0 +1,9 @@
+# Applies to H7 RM0399, RM0455, RM0468
+
+"SAI*":
+  "?CR1":
+    _add:
+      MCKEN:
+        description: Master clock generation enable
+        bitOffset: 27
+        bitWidth: 1
