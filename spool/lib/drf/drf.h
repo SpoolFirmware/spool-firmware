@@ -1,5 +1,7 @@
 #pragma once
 
+#include <stdint.h>
+
 /* stolen from https://github.com/NVIDIA/open-gpu-kernel-modules/blob/758b4ee8189c5198504cb1c3c5bc29027a9118a3/src/common/sdk/nvidia/inc/nvmisc.h */
 
 /*!

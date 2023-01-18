@@ -4,6 +4,7 @@
 
 #include "chip_hal/hal.h"
 #include "chip_hal/stm32f401/gpio.h"
+#include "spool/lib/chip_hal/inc/clock.h"
 #include "spool_config.h"
 #include <stdint.h>
 
