@@ -129,7 +129,7 @@ class SVDEnumeratedValue(SVDElement):
 
 
 class SVDField(SVDElement):
-    def __init__(self, name, derived_from, description, bit_offset, bit_width, access, enumerated_values, modified_write_values, read_action):
+    def __init__(self, name, derived_from, description, bit_offset, bit_width, access, enumerated_values, modified_write_values, read_action, dim, dim_increment, dim_index_text):
         SVDElement.__init__(self)
         self.name = name
         self.derived_from = derived_from
@@ -140,6 +140,9 @@ class SVDField(SVDElement):
         self.enumerated_values = enumerated_values
         self.modified_write_values = modified_write_values
         self.read_action = read_action
+        self.dim = dim
+        self.dim_increment = dim_increment
+        self.dim_index_text = None if dim_index_text is None else dim_index_text.split(',')
 
     def __getattr__(self, attr):
         return self._lookup_possibly_derived_attribute(attr)
@@ -247,7 +250,7 @@ class SVDRegister(SVDElement):
         # When deriving a register, it is mandatory to specify at least the name, the description,
         # and the addressOffset
         self.derived_from = derived_from
-        self.name = name
+        self.name = name.upper()
         self.description = description
         self.address_offset = address_offset
 
@@ -469,7 +472,7 @@ class SVDPeripheral(SVDElement):
         SVDElement.__init__(self)
 
         # items with underscore are potentially derived
-        self.name = name
+        self.name = name.upper()
         self._version = version
         self._derived_from = derived_from
         self._description = description

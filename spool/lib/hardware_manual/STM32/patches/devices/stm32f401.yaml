@@ -1,0 +1,4 @@
+_svd: ../../svd/stm32f401.svd
+
+_include:
+  - ../peripherals/gpio/v2/common.yaml

@@ -16,3 +16,12 @@ py_binary(
     visibility = ["//visibility:public"],
     deps = [":cmsis_svd"],
 )
+
+
+py_binary(
+    name = "svdpatch",
+    srcs = ["svdpatch.py"],
+    main = "svdpatch.py",
+    srcs_version = "PY3",
+    visibility = ["//visibility:public"],
+)

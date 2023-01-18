@@ -235,6 +235,10 @@ class SVDParser(object):
         bit_width = _get_int(field_node, 'bitWidth')
         msb = _get_int(field_node, 'msb')
         lsb = _get_int(field_node, 'lsb')
+        dim = _get_int(field_node, 'dim')
+        dim_increment = _get_int(field_node, 'dimIncrement')
+        dim_index_text = _get_text(field_node, 'dimIndex')
+
         if bit_range is not None:
             m = re.search('\[([0-9]+):([0-9]+)\]', bit_range)
             bit_offset = int(m.group(2))
@@ -253,6 +257,9 @@ class SVDParser(object):
             enumerated_values=enumerated_values or None,
             modified_write_values=modified_write_values,
             read_action=read_action,
+            dim=dim,
+            dim_increment=dim_increment,
+            dim_index_text=dim_index_text,
         )
 
     def _parse_registers(self, register_node):

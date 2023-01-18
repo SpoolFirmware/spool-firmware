@@ -73,6 +73,9 @@
  *      This is sort of like the inverse of DRF_NUM
  */
 
+/*! Address of a register DRF_REG(_DEVICE_OMEGA, _REGISTER_ALPHA)*/
+#define DRF_REG(d,r)			(DRF_BASE(DRF##d)+(DRF##d##r))
+
 #define DRF_ISBIT(bitval, drf)               \
 	((bitval != 0) ? drf )
 #define DRF_BASE(drf)           (0?drf)
@@ -90,10 +93,13 @@
 #define DRF_VAL(d, r, f, v) \
 	(((v) >> DRF_SHIFT(DRF##d##r##f)) & DRF_MASK(DRF##d##r##f))
 
+#define DRF_IDX_DEF(d,r,f,i,c)          ((DRF##d##r##f##c)<<DRF_SHIFT(DRF##d##r##f(i)))
+#define DRF_IDX_NUM(d,r,f,i,n)          (((n)&DRF_MASK(DRF##d##r##f(i)))<<DRF_SHIFT(DRF##d##r##f(i)))
+#define DRF_IDX_VAL(d,r,f,i,v)          (((v)>>DRF_SHIFT(DRF##d##r##f(i)))&DRF_MASK(DRF##d##r##f(i)))
+
 #define FLD_SET_DRF(d,r,f,c,v)                  (((v) & ~DRF_SHIFTMASK(DRF##d##r##f)) | DRF_DEF(d,r,f,c))
 #define FLD_SET_DRF_NUM(d,r,f,n,v)              (((v) & ~DRF_SHIFTMASK(DRF##d##r##f)) | DRF_NUM(d,r,f,n))
 #define FLD_IDX_SET_DRF(d,r,f,i,c,v)            (((v) & ~DRF_SHIFTMASK(DRF##d##r##f(i))) | DRF_IDX_DEF(d,r,f,i,c))
-#define FLD_IDX_OFFSET_SET_DRF(d,r,f,i,o,c,v)   (((v) & ~DRF_SHIFTMASK(DRF##d##r##f(i,o))) | DRF_IDX_OFFSET_DEF(d,r,f,i,o,c))
 #define FLD_IDX_SET_DRF_DEF(d,r,f,i,c,v)        (((v) & ~DRF_SHIFTMASK(DRF##d##r##f(i))) | DRF_IDX_DEF(d,r,f,i,c))
 #define FLD_IDX_SET_DRF_NUM(d,r,f,i,n,v)        (((v) & ~DRF_SHIFTMASK(DRF##d##r##f(i))) | DRF_IDX_NUM(d,r,f,i,n))
 #define FLD_SET_DRF_IDX(d,r,f,c,i,v)            (((v) & ~DRF_SHIFTMASK(DRF##d##r##f)) | DRF_DEF(d,r,f,c(i)))
@@ -102,7 +108,6 @@
 #define FLD_TEST_DRF_AND(d,r,f,c,v)             ((DRF_VAL(d, r, f, (v)) & DRF##d##r##f##c))
 #define FLD_TEST_DRF_NUM(d,r,f,n,v)             ((DRF_VAL(d, r, f, (v)) == (n)))
 #define FLD_IDX_TEST_DRF(d,r,f,i,c,v)           ((DRF_IDX_VAL(d, r, f, i, (v)) == DRF##d##r##f##c))
-#define FLD_IDX_OFFSET_TEST_DRF(d,r,f,i,o,c,v)  ((DRF_IDX_OFFSET_VAL(d, r, f, i, o, (v)) == DRF##d##r##f##c))
 
 #define REG_RD32(reg)	(*((volatile uint32_t*)(reg)))
 #define REG_WR32(reg, val) (*((volatile uint32_t*)(reg)) = (val))

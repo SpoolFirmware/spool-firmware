@@ -1,11 +1,11 @@
-def generate_drf(name, devices, include_prefix='manual', visibility=None):
+def generate_drf(name, device_yml, include_prefix='manual', visibility=None):
     for d in devices:
         native.genrule(
             name = name + "_" + d + "_header",
             srcs = [d + ".svd"],
             outs = [d + ".h"],
-            tools = ["//tools/svd2drf:svd2drf"],
-            cmd = "$(location //tools/svd2drf:svd2drf) -o $@ $<",
+            exec_tools = ["//tools/svd2drf:svd2drf"],
+            cmd = "$(location //tools/svd2drf:svd2drf) -o $@ $(location " + + ")",
             visibility = ["//visibility:private"]
         )
 

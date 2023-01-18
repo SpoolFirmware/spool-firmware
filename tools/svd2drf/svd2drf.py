@@ -1,10 +1,14 @@
 #PERIPH_REGISTER_FIELD
 import argparse
 from typing import IO
+from cmsis_svd.parser import SVDParser
+from cmsis_svd.model import *
+import re
 
 
-class _HeaderWriter:
-    def __init__(self, out: IO, column: int):
+class CHeaderWriter:
+    def __init__(self, out: IO, column: int = 80, define_prefix="DRF_"):
+        self.prefix = define_prefix
         self.out = out
         self.column = column
 
@@ -16,51 +20,100 @@ class _HeaderWriter:
         spaces = ' ' * max(1, (self.column - len(left) - len(right)))
         self.write_line(f'{left}{spaces}{right}{extra}')
 
-def _generate(input_file: str, output_file: str):
-    from cmsis_svd.parser import SVDParser, SVDPeripheral, SVDRegister, SVDField
-    import os.path
+    def write_define(self, name, content, comment=None):
+        self.write_right_align(
+            f'#define {self.prefix}{name}',
+            content,
+            '' if comment is None else f'/* {comment} */'
+        )
 
-    parser = SVDParser.for_xml_file(input_file)
+def camel_to_snake(name):
+    name = re.sub('(.)([A-Z][a-z]+)', r'\1_\2', name)
+    return re.sub('([a-z0-9])([A-Z])', r'\1_\2', name).upper()
 
-    prefix = 'DRF_'
 
-    with open(output_file, 'w') as out:
-        writer = _HeaderWriter(out, 80)
-        writer.write_line(f"// Generated from {os.path.basename(input_file)}. DO NOT EDIT.\n")
-        writer.write_line("#pragma once\n")
-        peripheral: SVDPeripheral
-        for peripheral in parser.get_device().peripherals:
-            peripheral_name = peripheral.name.upper()
-            writer.write_line(f'/* {peripheral_name} */')
-            if peripheral._address_blocks is not None:
-                block_size = peripheral._address_blocks[0].size
-                writer.write_right_align(
-                    f'#define {prefix}{peripheral_name}', 
-                    f'0x{peripheral._base_address+block_size-1:08X}:0x{peripheral._base_address:08X}')
-            reg: SVDRegister
-            for reg in peripheral.registers:
-                reg_description = ' '.join(reg.description.split())
-                writer.write_line(f'/* {reg.name} {reg_description} */')
-                writer.write_right_align(
-                    f'#define {prefix}{peripheral_name}_{reg.name}',
-                    f'0x{reg.address_offset+peripheral._base_address:08X}')
-                writer.write_right_align(
-                    f'#define {prefix}{peripheral_name}_{reg.name}_OFFSET',
-                    f'0x{reg.address_offset:08X}')
-                field: SVDField
-                for field in reg.fields:
-                    field_description = ' '.join(field.description.split())
-                    writer.write_right_align(
-                        f'#define {prefix}{peripheral_name}_{reg.name}_{field.name}',
-                        f'{field.bit_offset+field.bit_width-1}:{field.bit_offset}',
-                        f'/* {field_description} */')
-                    if field.bit_width == 1:
-                        writer.write_right_align(
-                            f'#define {prefix}{peripheral_name}_{reg.name}_{field.name}_SET',
-                            f'1U')
-                        writer.write_right_align(
-                            f'#define {prefix}{peripheral_name}_{reg.name}_{field.name}_CLR',
-                            f'0U')
+class DRFHeaderGenerator:
+    def __init__(self, input_file: str, output_file: str) -> None:
+        self.output_file = open(output_file, 'w')
+        self.out = CHeaderWriter(self.output_file)
+        self.device = SVDParser.for_xml_file(input_file).get_device()
+        pass
+
+    def processField(self, p: SVDPeripheral, r: SVDRegister, f: SVDField):
+        pr_name = f'{p.name}_{r.name}'
+        fld_name = f.name
+        if f.dim is not None:
+            fld_name = f.name.replace('%s', '')
+            assert f.dim_increment is not None
+            idx_name = f.name.replace('%s', '(n)')
+            offset_component = '' if f.bit_offset == 0 else f'{f.bit_offset} + '
+            self.out.write_define(
+                f'{pr_name}_{idx_name}', 
+                f'({offset_component}{f.bit_width-1} + ((n) * {f.dim_increment})):({offset_component}((n) * {f.dim_increment}))', 
+                f'{f.dim_index_text}')
+        else:
+            self.out.write_define(
+                f'{pr_name}_{fld_name}',
+                f'{f.bit_offset+f.bit_width-1}:{f.bit_offset}'
+            )
+        
+        # Enumerate
+        if f.enumerated_values is not None:
+            e: SVDEnumeratedValue
+            for e in f.enumerated_values:
+                self.out.write_define(
+                    f'{pr_name}_{fld_name}_{camel_to_snake(e.name)}',
+                    f'{e.value}U',
+                    f'{e.description}'
+                )
+
+        pass
+
+    def processRegister(self, p: SVDPeripheral, r: SVDRegister):
+        self.out.write_define(f'{p.name}_{r.name}', f'0x{r.address_offset:08X}', r.description)
+        if r.fields is not None:
+            for f in r.fields:
+                self.processField(p,r,f)
+        pass
+
+    def processPeripheral(self, p: SVDPeripheral):
+        self.out.write_line(
+            f'/**\n'+
+            f' * @defgroup {p.name} {p.description}\n'
+            f' * @{{\n'+
+            f' */')
+        if p.base_address is not None:
+            block_size = 0;
+            if p.address_blocks is not None:
+                block_size = p.address_blocks[0].size
+            else:
+                print(f'WARN: {p.name} has base_address defined but no block')
+            self.out.write_define(f'{p.name}', f'0x{p.base_address+block_size:08X}:0x{p.base_address:08X}')
+        
+        for r in p.registers:
+            self.processRegister(p, r)
+        
+        self.out.write_line(f'/*! @}}*/\n')
+        pass
+
+    def generate(self):
+        if self.output_file is None:
+            raise Exception('Invalid State for Generate')
+
+        # Write headers
+        self.out.write_line(f"// Generated from (patched) SVD files. DO NOT EDIT.")
+        self.out.write_line("#pragma once\n")
+
+        for peripheral in self.device.peripherals:
+            self.processPeripheral(peripheral)
+        
+        self.output_file.close()
+        self.output_file = None
+
+def generate_header(input_file: str, output_file: str):
+    gen = DRFHeaderGenerator(input_file, output_file)
+    gen.generate()
+    
 
 def main():
     parser = argparse.ArgumentParser()
@@ -68,7 +121,7 @@ def main():
     parser.add_argument('file', help='Path to input svd file')
     args = parser.parse_args()
 
-    _generate(args.file, args.output)
+    generate_header(args.file, args.output)
 
     pass
 
