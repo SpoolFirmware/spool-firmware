@@ -41,6 +41,7 @@ class DRFHeaderGenerator:
 
     def processField(self, p: SVDPeripheral, r: SVDRegister, f: SVDField):
         pr_name = f'{p.name}_{r.name}'
+        fld_name: str
         fld_name = f.name
         if f.dim is not None:
             fld_name = f.name.replace('%s', '')
@@ -66,6 +67,21 @@ class DRFHeaderGenerator:
                     f'{e.value}U',
                     f'{e.description}'
                 )
+        elif f.bit_width == 1:
+            values = []
+            if fld_name.endswith('EN'):
+                values.append((0, 'DISABLE'))
+                values.append((1, 'ENABLE'))
+            elif fld_name.endswith('RST'):
+                values.append((0, 'CLR'))
+                values.append((1, 'RESET'))
+            else:
+                values.append((0, 'CLR'))
+                values.append((0, 'SET'))
+            for (v, name) in values:
+                self.out.write_define(
+                    f'{pr_name}_{fld_name}_{name}',
+                    f'{v}U')
 
         pass
 

@@ -7,21 +7,17 @@
 void chipHalGpioSetMode(struct IOLine line, GPIOMode mode)
 {
     // SetMode
-    uint32_t moder = line.group + DRF_GPIOA_MODER_OFFSET;
+    uint32_t moder = line.group + DRF_GPIO_MODER;
     uint32_t val = REG_RD32(moder);
-    val &= ~(DRF_MASK(DRF_GPIOA_MODER_MODER0) << (line.pin * 2));
-    val |= (DRF_VAL(_GPIO,_MODE,_MODE, mode) << (line.pin * 2));
-    REG_WR32(moder, val);
+    REG_WR32(moder, FLD_IDX_SET_DRF_NUM(_GPIO, _MODER, _MODER, line.pin, mode, val));
 }
 
 void chipHalGpioSet(struct IOLine line)
 {
-    uint32_t bsrr_reg = line.group + DRF_GPIOC_BSRR_OFFSET;
-    REG_WR32(bsrr_reg, DRF_DEF(_GPIOA, _BSRR, _BS0, _SET) << line.pin);
+    REG_WR32(line.group + DRF_GPIO_BSRR, DRF_IDX_DEF(_GPIO, _BSRR, _BS, line.pin, _SET));
 }
 
 void chipHalGpioClear(struct IOLine line)
 {
-    uint32_t bsrr_reg = line.group + DRF_GPIOC_BSRR_OFFSET;
-    REG_WR32(bsrr_reg, DRF_DEF(_GPIOA, _BSRR, _BR0, _SET) << line.pin);
+    REG_WR32(line.group + DRF_GPIO_BSRR, DRF_IDX_DEF(_GPIO, _BSRR, _BR, line.pin, _RESET));
 }

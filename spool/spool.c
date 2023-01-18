@@ -10,7 +10,7 @@
 
 void main()
 {
-    REG_WR32(DRF_RCC_AHB1ENR, FLD_SET_DRF(_RCC,_AHB1ENR,_GPIOCEN, _SET, REG_RD32(DRF_RCC_AHB1ENR)));
+    REG_WR32(DRF_REG(_RCC,_AHB1ENR), FLD_SET_DRF(_RCC,_AHB1ENR,_GPIOCEN, _ENABLE, REG_RD32(DRF_REG(_RCC,_AHB1ENR))));
 
     struct IOLine led = chipHalGpioLineConstruct(GPIOC, 13);
     chipHalGpioSetMode(led, DRF_DEF(_GPIO, _MODE, _MODE, _OUTPUT));
