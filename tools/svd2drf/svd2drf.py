@@ -44,6 +44,7 @@ class DRFHeaderGenerator:
         fld_name: str
         fld_name = f.name
         if f.dim is not None:
+            dim_idx_cnt = len(f.dim_index_text)
             fld_name = f.name.replace('%s', '')
             assert f.dim_increment is not None
             idx_name = f.name.replace('%s', '(n)')
@@ -52,6 +53,10 @@ class DRFHeaderGenerator:
                 f'{pr_name}_{idx_name}', 
                 f'({offset_component}{f.bit_width-1} + ((n) * {f.dim_increment})):({offset_component}((n) * {f.dim_increment}))', 
                 f'{f.dim_index_text}')
+            self.out.write_define(
+                f'{pr_name}_{fld_name}__COUNT',
+                f'{dim_idx_cnt}U'
+            )
         else:
             self.out.write_define(
                 f'{pr_name}_{fld_name}',

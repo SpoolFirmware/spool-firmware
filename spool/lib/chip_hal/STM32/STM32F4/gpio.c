@@ -6,10 +6,59 @@
 
 void chipHalGpioSetMode(struct IOLine line, GPIOMode mode)
 {
+    uint32_t val;
     // SetMode
-    uint32_t moder = line.group + DRF_GPIO_MODER;
-    uint32_t val = REG_RD32(moder);
-    REG_WR32(moder, FLD_IDX_SET_DRF_NUM(_GPIO, _MODER, _MODER, line.pin, mode, val));
+    const uint32_t pinMode = DRF_VAL(_HAL_GPIO, _MODE, _MODE, mode);
+    const uint32_t outType = DRF_VAL(_HAL_GPIO, _MODE, _TYPE, mode);
+    const uint32_t outSpeed = DRF_VAL(_HAL_GPIO, _MODE, _SPEED, mode);
+    const uint32_t afNumber = DRF_VAL(_HAL_GPIO, _MODE, _AF, mode);
+    uint32_t pullType = DRF_VAL(_HAL_GPIO, _MODE, _PUPD, mode);
+
+    // MODER
+    const uint32_t modeR = line.group + DRF_GPIO_MODER;
+    val = REG_RD32(modeR);
+    REG_WR32(modeR, FLD_IDX_SET_DRF_NUM(_GPIO, _MODER, _MODER, line.pin, pinMode, val));
+
+    if (mode == DRF_HAL_GPIO_MODE_MODE_OUTPUT || mode == DRF_HAL_GPIO_MODE_MODE_AF) 
+    {
+        // OTYPER
+        const uint32_t oTypeR = line.group + DRF_GPIO_OTYPER;
+        val = REG_RD32(oTypeR);
+        REG_WR32(oTypeR, FLD_IDX_SET_DRF_NUM(_GPIO, _OTYPER, _OT, line.pin, outType, val));
+        // OSPEEDR
+        const uint32_t oSpeedR = line.group + DRF_GPIO_OSPEEDR;
+        val = REG_RD32(oSpeedR);
+        REG_WR32(oSpeedR, FLD_IDX_SET_DRF_NUM(_GPIO, _OSPEEDR, _OSPEEDR, line.pin, outSpeed, val));
+    }
+
+    if (mode == DRF_HAL_GPIO_MODE_MODE_ANALOG)
+    {
+        pullType = DRF_HAL_GPIO_MODE_PUPD_FLOATING;
+    }
+    // PUPDR
+    const uint32_t oTypeR = line.group + DRF_GPIO_PUPDR;
+    val = REG_RD32(oTypeR);
+    REG_WR32(oTypeR, FLD_IDX_SET_DRF_NUM(_GPIO, _PUPDR, _PUPDR, line.pin, pullType, val));
+
+    //AF
+    if (mode == DRF_HAL_GPIO_MODE_MODE_AF)
+    {
+        if (line.pin < DRF_GPIO_AFRL_AFRL__COUNT)
+        {
+            // AFRL (0..7)
+            const uint32_t afRL = line.group + DRF_GPIO_AFRL;
+            val = REG_RD32(afRL);
+            REG_WR32(afRL, FLD_IDX_SET_DRF_NUM(_GPIO, _AFRL, _AFRL, line.pin, afNumber, val));
+        }
+        else
+        {
+            // AFRH (8..15)
+            const uint32_t afRH = line.group + DRF_GPIO_AFRH;
+            val = REG_RD32(afRH);
+            REG_WR32(afRH, FLD_IDX_SET_DRF_NUM(_GPIO, _AFRH, _AFRH, line.pin - DRF_GPIO_AFRL_AFRL__COUNT, afNumber, val));
+        }
+    }
+    
 }
 
 void chipHalGpioSet(struct IOLine line)
