@@ -8,7 +8,7 @@ constraint_value(
 platform(
     name = "stm32f401_mini",
     constraint_values = ["platform"],
-    parents = ["@bazel_embedded//platforms:cortex_m4"],
+    parents = ["@bazel_embedded//platforms:cortex_m4_fpu"],
 )
 
 cc_library(
@@ -19,6 +19,7 @@ cc_library(
     ],
     deps = ["//spool/lib/chip_hal/STM32/STM32F4:stm32f401"],
     hdrs = ["spool_config.h"],
+    alwayslink=True,
     include_prefix = ".",
 )
 

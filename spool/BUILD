@@ -13,13 +13,14 @@ cc_binary_with_platforms(
         # "skr_pro_1_2": "//spool/platforms/SKR_PRO_1_2:skr_pro_1_2",
     },
     srcs = [
-        "spool.c",
+        "core/spool.c",
     ],
     linkopts = ["-T $(execpath //spool/platforms:linker.ld)"],
     visibility = ["//visibility:public"],
     deps = [
         "//spool/platforms:config",
         "//spool/platforms:linker.ld",
+        "//spool/freertos:freertos",
     ],
 )
 

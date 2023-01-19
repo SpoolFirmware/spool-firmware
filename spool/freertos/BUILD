@@ -1,0 +1,41 @@
+cc_library(
+    name="headers",
+    hdrs=glob(["include/*.h"]),
+    textual_hdrs=glob(["include/*.h"]),
+    strip_include_prefix="include",
+    include_prefix=".",
+    visibility=["//visibility:public"]
+)
+
+cc_library(
+    name="port_arm_cm4f",
+    hdrs=["portable/GCC/ARM_CM4F/portmacro.h"],
+    srcs=["portable/GCC/ARM_CM4F/port.c"],
+    includes=["portable/GCC/ARM_CM4F"],
+    strip_include_prefix="portable/GCC/ARM_CM4F",
+    include_prefix=".",
+    deps=[
+        ":headers",
+        "//spool/cfg:freertos_config"
+    ],
+    alwayslink=True,
+    visibility=["//visibility:public"],
+)
+
+
+cc_library(
+    name="freertos",
+    srcs=[
+        "list.c",
+        "queue.c",
+        "tasks.c",
+        "portable/MemMang/heap_1.c",
+    ],
+    deps=[
+        ":headers",
+        ":port_arm_cm4f",
+        "//spool/cfg:freertos_config",
+    ],
+    alwayslink=True,
+    visibility=["//visibility:public"]
+)
