@@ -1,3 +1,5 @@
+load("@svdpatch_deps//:requirements.bzl", "requirement")
+
 py_library(
     name = "cmsis_svd",
     srcs = [
@@ -17,11 +19,17 @@ py_binary(
     deps = [":cmsis_svd"],
 )
 
-
 py_binary(
     name = "svdpatch",
     srcs = ["svdpatch.py"],
     main = "svdpatch.py",
     srcs_version = "PY3",
     visibility = ["//visibility:public"],
+    deps = [
+        requirement("lxml"),
+        requirement("pyyaml"),
+        requirement("braceexpand")
+    ],
 )
+
+exports_files(["requirements.txt"])
