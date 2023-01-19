@@ -6,6 +6,7 @@
 #include "FreeRTOS.h"
 #include "task.h"
 
+#include "platform/platform.h"
 #include "chip_hal/hal.h"
 #include "chip_hal/stm32f401/gpio.h"
 #include "spool_config.h"
@@ -52,7 +53,8 @@ static portTASK_FUNCTION( vLEDFlashTask2, pvParameters )
 
 void main()
 {
-    chipHalClockInit();
+    struct PlatformConfig platformConfig = { 0 };
+    platformInit(&platformConfig);
 
     uint32_t rcc = REG_RD32(DRF_REG(_RCC,_AHB1ENR));
     rcc = FLD_SET_DRF(_RCC,_AHB1ENR,_GPIOAEN, _ENABLED, rcc);

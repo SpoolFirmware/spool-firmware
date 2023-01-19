@@ -1,5 +1,12 @@
 package(default_visibility = ["//visibility:public"])
 
+cc_library(
+    name = "lib",
+    hdrs = ["platform.h"],
+    include_prefix = "platform",
+    visibility = ["//spool/platforms:__subpackages__"],
+)
+
 alias(
     name = "config",
     actual = select(

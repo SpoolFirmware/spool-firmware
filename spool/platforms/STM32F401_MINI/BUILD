@@ -14,14 +14,24 @@ platform(
 cc_library(
     name = "spool_config",
     srcs = [
+        "platform.c",
         "startup/crt0.s",
         "startup/vectors.s",
     ],
-    deps = ["//spool/lib/chip_hal/STM32/STM32F4:stm32f401"],
-    hdrs = ["spool_config.h", "FreeRTOSConfig.h"],
-    textual_hdrs = ["spool_config.h", "FreeRTOSConfig.h"],
-    alwayslink=True,
+    hdrs = [
+        "FreeRTOSConfig.h",
+        "spool_config.h",
+    ],
     include_prefix = ".",
+    textual_hdrs = [
+        "spool_config.h",
+        "FreeRTOSConfig.h",
+    ],
+    deps = [
+        "//spool/lib/chip_hal/STM32/STM32F4:stm32f401",
+        "//spool/platforms:lib",
+    ],
+    alwayslink = True,
 )
 
 exports_files(["linker.ld"])
