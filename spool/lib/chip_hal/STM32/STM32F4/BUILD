@@ -5,6 +5,7 @@ cc_library(
     include_prefix = "chip_hal/stm32f401",
     visibility = ["//spool/platforms:__subpackages__"],
     deps = [
+        "//spool/freertos:freertos",
         "//spool/lib/chip_hal:common",
         "//spool/lib/drf",
         "//spool/lib:lib",

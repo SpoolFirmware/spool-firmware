@@ -1,4 +1,4 @@
-package(default_visibility = ["//visibility:public"])
+package(default_visibility = ["//spool/platforms:__pkg__"])
 
 constraint_value(
     name = "platform",
@@ -12,22 +12,27 @@ platform(
 )
 
 cc_library(
-    name = "spool_config",
+    name = "config",
+    hdrs = [
+        "spool_config.h", 
+        "FreeRTOSConfig.h"
+    ],
+    textual_hdrs = [
+        "spool_config.h",
+        "FreeRTOSConfig.h",
+    ],
+    include_prefix="."
+)
+
+cc_library(
+    name = "runtime",
     srcs = [
         "platform.c",
         "startup/crt0.s",
         "startup/vectors.s",
     ],
-    hdrs = [
-        "FreeRTOSConfig.h",
-        "spool_config.h",
-    ],
-    include_prefix = ".",
-    textual_hdrs = [
-        "spool_config.h",
-        "FreeRTOSConfig.h",
-    ],
     deps = [
+        ":config",
         "//spool/lib/chip_hal/STM32/STM32F4:stm32f401",
         "//spool/platforms:lib",
     ],
