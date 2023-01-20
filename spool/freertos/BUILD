@@ -16,7 +16,7 @@ cc_library(
     include_prefix=".",
     deps=[
         ":headers",
-        "//spool/cfg:freertos_config"
+        "//spool/platforms:config",
     ],
     alwayslink=True,
     visibility=["//visibility:public"],
@@ -34,7 +34,7 @@ cc_library(
     deps=[
         ":headers",
         ":port_arm_cm4f",
-        "//spool/cfg:freertos_config",
+        "//spool/platforms:config",
     ],
     alwayslink=True,
     visibility=["//visibility:public"]

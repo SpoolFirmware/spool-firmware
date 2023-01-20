@@ -18,7 +18,8 @@ cc_library(
         "startup/vectors.s",
     ],
     deps = ["//spool/lib/chip_hal/STM32/STM32F4:stm32f401"],
-    hdrs = ["spool_config.h"],
+    hdrs = ["spool_config.h", "FreeRTOSConfig.h"],
+    textual_hdrs = ["spool_config.h", "FreeRTOSConfig.h"],
     alwayslink=True,
     include_prefix = ".",
 )

@@ -44,9 +44,9 @@ static portTASK_FUNCTION( vLEDFlashTask2, pvParameters )
     for( ; ; )
     {
         chipHalGpioClear(led2);
-        vTaskDelay(25);
+        vTaskDelay(50);
         chipHalGpioSet(led2);
-        vTaskDelay(25);
+        vTaskDelay(50);
     }
 }
 
