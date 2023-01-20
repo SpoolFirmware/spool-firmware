@@ -23,10 +23,10 @@ static portTASK_FUNCTION( vLEDFlashTask1, pvParameters )
     
     for( ; ; )
     {
-        chipHalGpioClear(led1);
-        for (volatile int i = 0; i < 0x3ffff; i++);
         chipHalGpioSet(led1);
-        for (volatile int i = 0; i < 0x3ffff; i++);
+        vTaskDelay(25);
+        chipHalGpioClear(led1);
+        vTaskDelay(25);
     }
 }
 
@@ -44,9 +44,9 @@ static portTASK_FUNCTION( vLEDFlashTask2, pvParameters )
     for( ; ; )
     {
         chipHalGpioClear(led2);
-        for (volatile int i = 0; i < 0x3ffff; i++);
+        vTaskDelay(25);
         chipHalGpioSet(led2);
-        for (volatile int i = 0; i < 0x3ffff; i++);
+        vTaskDelay(25);
     }
 }
 
@@ -60,9 +60,9 @@ void main()
     rcc = FLD_SET_DRF(_RCC,_AHB1ENR,_GPIOCEN, _ENABLED, rcc);
     REG_WR32(DRF_REG(_RCC,_AHB1ENR), rcc);
 
-    xTaskCreate( vLEDFlashTask2, "LEDx", configMINIMAL_STACK_SIZE, NULL, tskIDLE_PRIORITY+1, ( TaskHandle_t * ) NULL );
-    xTaskCreate( vLEDFlashTask1, "LEDx", configMINIMAL_STACK_SIZE, NULL, tskIDLE_PRIORITY+1, ( TaskHandle_t * ) NULL );
+    xTaskCreate( vLEDFlashTask1, "LEDx", 1024, NULL, tskIDLE_PRIORITY+1, ( TaskHandle_t * ) NULL );
+    xTaskCreate( vLEDFlashTask2, "LEDx", 1024, NULL, tskIDLE_PRIORITY+1, ( TaskHandle_t * ) NULL );
 
-    xPortStartScheduler();
+    vTaskStartScheduler();
     for(;;){}
 }

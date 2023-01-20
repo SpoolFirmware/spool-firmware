@@ -14,6 +14,7 @@ cc_binary_with_platforms(
     },
     srcs = [
         "core/spool.c",
+        "core/rtos_support.c",
     ],
     linkopts = ["-T $(execpath //spool/platforms:linker.ld)"],
     visibility = ["//visibility:public"],
