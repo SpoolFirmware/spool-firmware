@@ -1,4 +1,4 @@
-#include "hal/gpio.h"
+#include "hal/spi.h"
 
 void halSpiInit(struct SPIDevice *pDevice, const struct SPIConfig *pConfig)
 {
