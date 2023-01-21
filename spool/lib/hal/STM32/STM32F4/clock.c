@@ -1,5 +1,5 @@
 #include "clock.h"
-#include "chip_hal/clock.h"
+#include "hal/clock.h"
 #include "drf/drf.h"
 #include "manual/stm32f401.h"
 #include "spool/lib/error.h"
@@ -183,7 +183,7 @@ static void configureFlash(void)
         ;
 }
 
-void chipHalClockInit(struct ChipHalClockConfig *config)
+void halClockInit(struct HalClockConfig *config)
 {
     configureVoltage();
     configureHse();

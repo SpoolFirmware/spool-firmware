@@ -7,16 +7,16 @@
 #include "task.h"
 
 #include "platform/platform.h"
-#include "chip_hal/hal.h"
-#include "chip_hal/stm32f401/gpio.h"
+#include "hal/hal.h"
+#include "hal/stm32f401/gpio.h"
 #include "spool_config.h"
 
 static portTASK_FUNCTION_PROTO( vLEDFlashTask1, pvParameters );
 static portTASK_FUNCTION( vLEDFlashTask1, pvParameters )
 {
     ( void ) pvParameters;
-    struct IOLine led1 = chipHalGpioLineConstruct(GPIOC, 13);
-    chipHalGpioSetMode(led1, 
+    struct IOLine led1 = halGpioLineConstruct(GPIOC, 13);
+    halGpioSetMode(led1, 
         DRF_DEF(_HAL_GPIO, _MODE, _MODE, _OUTPUT)
         | DRF_DEF(_HAL_GPIO, _MODE, _TYPE, _PUSHPULL)
         | DRF_DEF(_HAL_GPIO, _MODE, _SPEED, _VERY_HIGH)
@@ -24,9 +24,9 @@ static portTASK_FUNCTION( vLEDFlashTask1, pvParameters )
     
     for( ; ; )
     {
-        chipHalGpioSet(led1);
+        halGpioSet(led1);
         vTaskDelay(25);
-        chipHalGpioClear(led1);
+        halGpioClear(led1);
         vTaskDelay(25);
     }
 }
@@ -35,8 +35,8 @@ static portTASK_FUNCTION_PROTO( vLEDFlashTask2, pvParameters );
 static portTASK_FUNCTION( vLEDFlashTask2, pvParameters )
 {
     ( void ) pvParameters;
-    struct IOLine led2 = chipHalGpioLineConstruct(GPIOA, 11);
-    chipHalGpioSetMode(led2, 
+    struct IOLine led2 = halGpioLineConstruct(GPIOA, 11);
+    halGpioSetMode(led2, 
         DRF_DEF(_HAL_GPIO, _MODE, _MODE, _OUTPUT)
         | DRF_DEF(_HAL_GPIO, _MODE, _TYPE, _PUSHPULL)
         | DRF_DEF(_HAL_GPIO, _MODE, _SPEED, _VERY_HIGH)
@@ -44,9 +44,9 @@ static portTASK_FUNCTION( vLEDFlashTask2, pvParameters )
     
     for( ; ; )
     {
-        chipHalGpioClear(led2);
+        halGpioClear(led2);
         vTaskDelay(50);
-        chipHalGpioSet(led2);
+        halGpioSet(led2);
         vTaskDelay(50);
     }
 }

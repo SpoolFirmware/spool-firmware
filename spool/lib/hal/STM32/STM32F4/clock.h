@@ -1,10 +1,10 @@
-#include <chip_hal/clock.h>
+#include <hal/clock.h>
 
 /*
  * Flash/Voltage depends on AHB frequency
  * Required: AHB runs at 84MHz
  */
-struct ChipHalClockConfig {
+struct HalClockConfig {
     uint32_mhz_t hseFreq;
 
     uint32_t q;

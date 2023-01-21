@@ -2,11 +2,11 @@ cc_library(
     name = "stm32f401",
     srcs = glob(["*.c"]),
     hdrs = glob(["*.h"]),
-    include_prefix = "chip_hal/stm32f401",
+    include_prefix = "hal/stm32f401",
     visibility = ["//spool/platforms:__subpackages__"],
     deps = [
         "//spool/freertos:freertos",
-        "//spool/lib/chip_hal:common",
+        "//spool/lib/hal:common",
         "//spool/lib/drf",
         "//spool/lib:lib",
         "//spool/lib/hardware_manual/STM32:stm32f401",

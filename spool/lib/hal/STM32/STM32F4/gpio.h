@@ -1,6 +1,6 @@
 #pragma once
 #include "drf/drf.h"
-#include "chip_hal/gpio.h"
+#include "hal/gpio.h"
 #include "manual/stm32f401.h"
 
 #define DRF_HAL_GPIO_MODE_MODE            1 : 0

@@ -4,7 +4,7 @@
  * For STM32 GPIO block, line.group is the base addr of the GPIO bank, line.pin is the pin #
  */
 
-void chipHalGpioSetMode(struct IOLine line, GPIOMode mode)
+void halGpioSetMode(struct IOLine line, GPIOMode mode)
 {
     uint32_t val;
     // SetMode
@@ -62,14 +62,14 @@ void chipHalGpioSetMode(struct IOLine line, GPIOMode mode)
 }
 
 __attribute__((always_inline))
-inline void chipHalGpioSet(struct IOLine line)
+inline void halGpioSet(struct IOLine line)
 {
     REG_WR32(line.group + DRF_GPIO_BSRR, DRF_IDX_DEF(_GPIO, _BSRR, _BS, line.pin, _SET));
 
 }
 
 __attribute__((always_inline))
-inline void chipHalGpioClear(struct IOLine line)
+inline void halGpioClear(struct IOLine line)
 {
     REG_WR32(line.group + DRF_GPIO_BSRR, DRF_IDX_DEF(_GPIO, _BSRR, _BR, line.pin, _RESET));
 }

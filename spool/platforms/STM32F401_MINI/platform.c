@@ -1,10 +1,10 @@
 #include "platform/platform.h"
-#include "chip_hal/clock.h"
-#include "chip_hal/stm32f401/clock.h"
+#include "hal/clock.h"
+#include "hal/stm32f401/clock.h"
 
 void platformInit(struct PlatformConfig *config)
 {
-    struct ChipHalClockConfig chipHalClockConfig = {
+    struct HalClockConfig halClockConfig = {
         .hseFreq = 25,
         .q = 7,
         .p = 4,
@@ -16,5 +16,5 @@ void platformInit(struct PlatformConfig *config)
         .ahbPrescaler = 0,
     };
 
-    chipHalClockInit(&chipHalClockConfig);
+    halClockInit(&halClockConfig);
 }
