@@ -7,19 +7,6 @@ const static struct IOLine xStep = { .group = GPIOE, .pin = 9 };
 const static struct IOLine xDir = { .group = GPIOF, .pin = 1 };
 const static struct IOLine xEn = { .group = GPIOF, .pin = 2 };
 
-void spinMotor(void)
-{
-    halGpioClear(xEn);
-    halGpioClear(xDir);
-}
-
-void stepX(void)
-{
-    halGpioSet(xStep);
-    asm(".rept 400 ; nop ; .endr");
-    halGpioClear(xStep);
-}
-
 void platformInit(struct PlatformConfig *config)
 {
     struct HalClockConfig halClockConfig = {
@@ -47,15 +34,28 @@ void platformInit(struct PlatformConfig *config)
                                   DRF_DEF(_HAL_GPIO, _MODE, _SPEED, _HIGH));
     halGpioSetMode(xStep, DRF_DEF(_HAL_GPIO, _MODE, _MODE, _OUTPUT) |
                               DRF_DEF(_HAL_GPIO, _MODE, _TYPE, _PUSHPULL) |
-                              DRF_DEF(_HAL_GPIO, _MODE, _SPEED, _HIGH));
+                              DRF_DEF(_HAL_GPIO, _MODE, _SPEED, _VERY_HIGH));
     halGpioSetMode(xDir, DRF_DEF(_HAL_GPIO, _MODE, _MODE, _OUTPUT) |
                              DRF_DEF(_HAL_GPIO, _MODE, _TYPE, _PUSHPULL) |
-                             DRF_DEF(_HAL_GPIO, _MODE, _SPEED, _HIGH));
+                             DRF_DEF(_HAL_GPIO, _MODE, _SPEED, _VERY_HIGH));
     halGpioSetMode(xEn, DRF_DEF(_HAL_GPIO, _MODE, _MODE, _OUTPUT) |
                             DRF_DEF(_HAL_GPIO, _MODE, _TYPE, _PUSHPULL) |
-                            DRF_DEF(_HAL_GPIO, _MODE, _SPEED, _HIGH));
+                            DRF_DEF(_HAL_GPIO, _MODE, _SPEED, _VERY_HIGH));
 
-    spinMotor();
+    halGpioClear(xEn);
+    halGpioClear(xDir);
+}
+
+void stepX(void)
+{
+    halGpioSet(xStep);
+    asm(".rept 400 ; nop ; .endr");
+    halGpioClear(xStep);
+}
+
+void platformMotorStep(uint16_t motor_mask)
+{
+
 }
 
 __attribute__((always_inline)) 

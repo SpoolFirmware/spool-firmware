@@ -35,6 +35,10 @@ void stepX(void)
 {
 }
 
+void platformMotorStep(uint16_t motor_mask)
+{
+}
+
 __attribute__((always_inline))
 inline struct IOLine platformGetStatusLED(void)
 {
