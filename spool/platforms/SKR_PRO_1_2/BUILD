@@ -11,13 +11,35 @@ platform(
         ":platform",
         "//spool/platforms/mcu:stm32f407",
     ],
-    parents = ["@bazel_embedded//platforms:cortex_m4"],
+    parents = ["@bazel_embedded//platforms:cortex_m4_fpu"],
 )
 
 cc_library(
-    name = "spool_config",
-    hdrs = ["spool_config.h"],
-    include_prefix = ".",
+    name = "config",
+    hdrs = [
+        "spool_config.h", 
+        "FreeRTOSConfig.h"
+    ],
+    textual_hdrs = [
+        "spool_config.h",
+        "FreeRTOSConfig.h",
+    ],
+    include_prefix="."
+)
+
+cc_library(
+    name = "runtime",
+    srcs = [
+        "platform.c",
+        "startup/crt0.s",
+        "startup/vectors.s",
+    ],
+    deps = [
+        ":config",
+        "//spool/lib/hal/stm32/stm32f407:lib",
+        "//spool/platforms:lib",
+    ],
+    alwayslink = True,
 )
 
 exports_files(["linker.ld"])

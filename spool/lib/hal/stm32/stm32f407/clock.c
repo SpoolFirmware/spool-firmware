@@ -10,7 +10,7 @@ static void configurePll(uint32_t q, uint32_t p, uint32_t n, uint32_t m)
     if (!(2 <= q && q <= 15)) {
         panic();
     }
-    if (!(192 <= n && n <= 432)) {
+    if (!(50 <= n && n <= 432)) {
         panic();
     }
     if (!(2 <= m && m <= 63)) {
@@ -157,8 +157,9 @@ static void configureVoltage(void)
     REG_WR32(DRF_REG(_RCC, _APB1ENR), rcc_apb1enr);
 
     uint32_t pwr_cr = REG_RD32(DRF_REG(_PWR, _CR));
-    /* scale 2 mode */
-    pwr_cr = FLD_SET_DRF_NUM(_PWR, _CR, _VOS, 2, pwr_cr);
+    /* scale 1 mode */
+    /* bigtree 407 */
+    pwr_cr = FLD_SET_DRF_NUM(_PWR, _CR, _VOS, 1, pwr_cr);
     REG_WR32(DRF_REG(_PWR, _CR), pwr_cr);
 }
 
@@ -180,14 +181,14 @@ static void waitForPllReady(void)
 static void configureFlash(void)
 {
     uint32_t flash_acr = REG_RD32(DRF_REG(_FLASH, _ACR));
-    /* stm32f401 wait state 2 */
-    flash_acr = FLD_SET_DRF(_FLASH, _ACR, _LATENCY, _WS2, flash_acr);
+    /* skr pro 1.2 wait state 5 */
+    flash_acr = FLD_SET_DRF(_FLASH, _ACR, _LATENCY, _WS5, flash_acr);
     flash_acr = FLD_SET_DRF(_FLASH, _ACR, _PRFTEN, _ENABLED, flash_acr);
     flash_acr = FLD_SET_DRF(_FLASH, _ACR, _ICEN, _ENABLED, flash_acr);
     flash_acr = FLD_SET_DRF(_FLASH, _ACR, _DCEN, _ENABLED, flash_acr);
     REG_WR32(DRF_REG(_FLASH, _ACR), flash_acr);
 
-    while (!FLD_TEST_DRF(_FLASH, _ACR, _LATENCY, _WS2,
+    while (!FLD_TEST_DRF(_FLASH, _ACR, _LATENCY, _WS5,
                          REG_RD32(DRF_REG(_FLASH, _ACR))))
         ;
 }

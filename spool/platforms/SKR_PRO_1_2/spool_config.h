@@ -1,3 +1,5 @@
 #pragma once
 
-// #error NOT_IMPLEMENTED
+struct PlatformConfig {
+    int __unused__;
+};

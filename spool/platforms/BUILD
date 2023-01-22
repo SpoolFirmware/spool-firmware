@@ -23,6 +23,7 @@ alias(
     actual = select(
         {
             "//spool/platforms/STM32F401_MINI:platform": "//spool/platforms/STM32F401_MINI:runtime",
+            "//spool/platforms/SKR_PRO_1_2:platform": "//spool/platforms/SKR_PRO_1_2:runtime",
         },
         no_match_error = "No matching configuration found",
     )

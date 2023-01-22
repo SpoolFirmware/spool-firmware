@@ -1,4 +1,4 @@
-_svd: ../svd/stm32f407.svd
+_svd: ../../svd/stm32f407.svd
 
 _rebase:
   # Make I2C1 the base type
@@ -62,6 +62,18 @@ CRC:
 MPU:
   _strip:
     - "MPU_"
+
+PWR:
+  CR:
+    _add:
+      VOS:
+        description: Regulator voltage scaling output selection
+        bitOffset: 14
+        bitWidth: 1
+        access: read-write
+    VOS:
+      SCALE_2: [0, Scale 2]
+      SCALE_1: [1, Scale 1]
 
 _include:
  - common_patches/nvic/4_prio_bits.yaml

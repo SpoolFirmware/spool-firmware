@@ -31,7 +31,7 @@ typedef enum {
 
 #define panic() __panic(__LINE__)
 
-_Noreturn void __panic(int line) {
+_Noreturn __attribute__((noinline)) void __panic(int line) {
   for (volatile int i = line;; i = line)
     (void)i;
 }
