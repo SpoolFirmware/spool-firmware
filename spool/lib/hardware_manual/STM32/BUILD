@@ -14,7 +14,7 @@ genrule(
 genrule(
     name = "stm32f401_header",
     srcs = [":stm32f401_patch_svd"],
-    outs = ["stm32f401.h"],
+    outs = ["mcu.h"],
     exec_tools = ["//tools/svd2drf:svd2drf"],
     cmd = "$(location //tools/svd2drf:svd2drf) -o $@ $<",
 )
@@ -23,5 +23,5 @@ cc_library(
     name = "stm32f401",
     hdrs = [":stm32f401_header"],
     include_prefix = "manual",
-    visibility = ["//visibility:public"],
+    visibility = ["//spool/lib/hardware_manual:__pkg__"],
 )

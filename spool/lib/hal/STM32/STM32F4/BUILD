@@ -9,6 +9,6 @@ cc_library(
         "//spool/lib/hal:common",
         "//spool/lib/drf",
         "//spool/lib:lib",
-        "//spool/lib/hardware_manual/STM32:stm32f401",
+        "//spool/lib/hardware_manual:mcu",
     ],
 )

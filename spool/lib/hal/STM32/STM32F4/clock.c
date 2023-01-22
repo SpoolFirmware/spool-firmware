@@ -1,7 +1,7 @@
 #include "clock.h"
 #include "hal/clock.h"
 #include "drf/drf.h"
-#include "manual/stm32f401.h"
+#include "manual/mcu.h"
 #include "spool/lib/error.h"
 #include <stdint.h>
 

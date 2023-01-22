@@ -7,7 +7,10 @@ constraint_value(
 
 platform(
     name = "skr_pro_1_2",
-    constraint_values = ["platform"],
+    constraint_values = [
+        ":platform",
+        "//spool/platforms/mcu:stm32f407",
+    ],
     parents = ["@bazel_embedded//platforms:cortex_m4"],
 )
 
