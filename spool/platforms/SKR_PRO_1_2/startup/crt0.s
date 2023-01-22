@@ -9,37 +9,16 @@
 
     .globl _crt0_entry
 _crt0_entry:
-    /*
-    // FPU FPCCR initialization.
-    movw    r0, #CRT0_FPCCR_INIT & 0xFFFF
-    movt    r0, #CRT0_FPCCR_INIT >> 16
-    movw    r1, #SCB_FPCCR & 0xFFFF
-    movt    r1, #SCB_FPCCR >> 16
-    str     r0, [r1]
+    
+    // FPU Init (From ARM DOCS)
+    // CPACR is located at address 0xE000ED88
+    ldr.w   r0, =0xE000ED88
+    ldr     r1, [r0]
+    // Set bits 20-23 to enable CP10 and CP11 coprocessors
+    orr     r1, r1, #(0xF << 20)
+    str     r1, [r0]
     dsb
     isb
-
-    // CPACR initialization
-    movw    r0, #CRT0_CPACR_INIT & 0xFFFF
-    movt    r0, #CRT0_CPACR_INIT >> 16
-    movw    r1, #SCB_CPACR & 0xFFFF
-    movt    r1, #SCB_CPACR >> 16
-    str     r0, [r1]
-    dsb
-    isb
-
-    // FPU FPSCR initially cleared
-    mov     r0, #0
-    vmsr    FPSCR, r0
-
-    // FPU FPDSCR initially cleared
-    movw    r1, #SCB_FPDSCR & 0xFFFF
-    movt    r1, #SCB_FPDSCR >> 16
-    str     r0, [r1]
-
-    // Enforcing FPCA bit in the CONTROL register
-    movs    r0, #CRT0_CONTROL_INIT | CONTROL_FPCA
-    */
 
 /* BSS INIT */
     movs    r0, #0
