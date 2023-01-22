@@ -19,6 +19,7 @@ cc_binary_with_platforms(
     linkopts = ["-T $(execpath //spool/platforms:linker.ld)"],
     visibility = ["//visibility:public"],
     deps = [
+        "//spool/lib/hal/common:lib",
         "//spool/platforms:runtime",
         "//spool/platforms:linker.ld",
         "//spool/freertos:freertos",

@@ -36,7 +36,7 @@ cc_library(
     ],
     deps = [
         ":config",
-        "//spool/lib/hal/STM32/STM32F4:stm32f401",
+        "//spool/lib/hal/stm32/stm32f401:lib",
         "//spool/platforms:lib",
     ],
     alwayslink = True,

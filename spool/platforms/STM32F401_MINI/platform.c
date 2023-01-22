@@ -1,6 +1,6 @@
 #include "platform/platform.h"
 #include "hal/clock.h"
-#include "hal/stm32f401/clock.h"
+#include "hal/stm32/clock.h"
 
 void platformInit(struct PlatformConfig *config)
 {

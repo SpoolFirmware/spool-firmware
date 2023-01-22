@@ -1,0 +1,14 @@
+cc_library(
+    name="lib",
+    srcs=glob(["*.c"]),
+    hdrs=glob(["*.h"]),
+    include_prefix="hal/stm32",
+    deps=[
+        "//spool/freertos:freertos",
+        "//spool/lib/hal/common:lib",
+        "//spool/lib/drf",
+        "//spool/lib:lib",
+        "//spool/lib/hardware_manual:mcu",
+    ],
+    visibility=["//spool/lib/hal:__subpackages__"],
+)

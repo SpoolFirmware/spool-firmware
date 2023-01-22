@@ -8,7 +8,7 @@
 
 #include "platform/platform.h"
 #include "hal/hal.h"
-#include "hal/stm32f401/gpio.h"
+#include "hal/stm32/gpio.h"
 #include "spool_config.h"
 
 static portTASK_FUNCTION_PROTO( vLEDFlashTask1, pvParameters );
