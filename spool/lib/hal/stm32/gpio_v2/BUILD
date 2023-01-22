@@ -3,6 +3,7 @@ cc_library(
     srcs=glob(["*.c"]),
     hdrs=glob(["*.h"]),
     include_prefix="hal/stm32",
+    alwayslink=True,
     deps=[
         "//spool/freertos:freertos",
         "//spool/lib/hal/common:lib",

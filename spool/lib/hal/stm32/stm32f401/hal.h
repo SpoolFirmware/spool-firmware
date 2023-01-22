@@ -1,4 +1,4 @@
 #pragma once
 
-#include "gpio.h"
+#include "hal/stm32/gpio.h"
 #include "clock.h"
