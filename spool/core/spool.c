@@ -17,9 +17,7 @@ static portTASK_FUNCTION(vLEDFlashTask1, pvParameters)
     struct IOLine led1 = platformGetStatusLED();
 
     for (;;) {
-        halGpioClear(led1);
-        vTaskDelay(25);
-        halGpioSet(led1);
+        halGpioToggle(led1);
         vTaskDelay(25);
     }
 }
@@ -40,7 +38,7 @@ void main()
     struct PlatformConfig platformConfig = { 0 };
     platformInit(&platformConfig);
 
-    xTaskCreate(vLEDFlashTask1, "LEDx", 1024, NULL, tskIDLE_PRIORITY + 1,
+    xTaskCreate(vLEDFlashTask1, "LED", configMINIMAL_STACK_SIZE, NULL, tskIDLE_PRIORITY + 1,
                 (TaskHandle_t *)NULL);
     xTaskCreate(motorTask, "Motor", 1024, NULL, tskIDLE_PRIORITY + 2,
                 (TaskHandle_t *)NULL);

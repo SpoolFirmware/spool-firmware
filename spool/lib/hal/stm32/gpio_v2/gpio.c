@@ -4,6 +4,9 @@
  * For STM32 GPIO block, line.group is the base addr of the GPIO bank, line.pin is the pin #
  */
 
+
+#define LINE_REG(LINE, REG) ((LINE.group) + (DRF_GPIO_##REG))
+
 void halGpioSetMode(struct IOLine line, GPIOMode mode)
 {
     uint32_t val;
@@ -65,6 +68,12 @@ __attribute__((always_inline))
 inline uint8_t halGpioRead(struct IOLine line)
 {
     return DRF_IDX_VAL(_GPIO, _IDR, _IDR, line.pin, REG_RD32(line.group + DRF_GPIO_IDR));
+}
+
+__attribute((always_inline))
+inline void halGpioToggle(struct IOLine line)
+{
+    REG_WR32(LINE_REG(line, ODR), REG_RD32(LINE_REG(line, ODR)) ^ DRF_IDX_DEF(_GPIO, _ODR, _ODR, line.pin, _HIGH));
 }
 
 __attribute__((always_inline))

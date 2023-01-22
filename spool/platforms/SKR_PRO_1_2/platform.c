@@ -58,7 +58,8 @@ void platformInit(struct PlatformConfig *config)
     spinMotor();
 }
 
-__attribute__((always_inline)) struct IOLine platformGetStatusLED(void)
+__attribute__((always_inline)) 
+inline struct IOLine platformGetStatusLED(void)
 {
     return statusLED;
 }

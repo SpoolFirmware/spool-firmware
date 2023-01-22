@@ -34,7 +34,6 @@ cc_library(
         "startup/crt0.s",
         "startup/vectors.s",
     ],
-    copts = ["-Wno-attributes"],
     deps = [
         ":config",
         "//spool/lib/hal/stm32/stm32f401:lib",

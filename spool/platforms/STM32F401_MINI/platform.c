@@ -31,8 +31,12 @@ void platformInit(struct PlatformConfig *config)
         );
 }
 
+void stepX(void)
+{
+}
+
 __attribute__((always_inline))
-struct IOLine platformGetStatusLED(void)
+inline struct IOLine platformGetStatusLED(void)
 {
     return statusLED;
 }
