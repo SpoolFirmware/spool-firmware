@@ -1,6 +1,6 @@
 #include "platform/platform.h"
-#include "hal/clock.h"
-#include "hal/stm32/clock.h"
+#include "hal/hal.h"
+#include "hal/stm32/hal.h"
 
 const static struct IOLine statusLED = {.group = GPIOA, .pin = 7};
 
