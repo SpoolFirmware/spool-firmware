@@ -21,8 +21,6 @@ void platformInit(struct PlatformConfig *config)
     halClockInit(&halClockConfig);
 
     uint32_t rcc = REG_RD32(DRF_REG(_RCC,_AHB1ENR));
-    rcc = FLD_SET_DRF(_RCC,_AHB1ENR,_GPIOAEN, _ENABLED, rcc);
-    rcc = FLD_SET_DRF(_RCC,_AHB1ENR,_GPIOBEN, _ENABLED, rcc);
     rcc = FLD_SET_DRF(_RCC,_AHB1ENR,_GPIOCEN, _ENABLED, rcc);
     REG_WR32(DRF_REG(_RCC,_AHB1ENR), rcc);
 
