@@ -6,3 +6,5 @@ struct PlatformConfig;
 
 void platformInit(struct PlatformConfig *config);
 struct IOLine platformGetStatusLED(void);
+
+void stepX(void);
