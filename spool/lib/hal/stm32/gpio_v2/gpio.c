@@ -62,10 +62,15 @@ void halGpioSetMode(struct IOLine line, GPIOMode mode)
 }
 
 __attribute__((always_inline))
+inline uint8_t halGpioRead(struct IOLine line)
+{
+    return DRF_IDX_VAL(_GPIO, _IDR, _IDR, line.pin, REG_RD32(line.group + DRF_GPIO_IDR));
+}
+
+__attribute__((always_inline))
 inline void halGpioSet(struct IOLine line)
 {
     REG_WR32(line.group + DRF_GPIO_BSRR, DRF_IDX_DEF(_GPIO, _BSRR, _BS, line.pin, _SET));
-
 }
 
 __attribute__((always_inline))

@@ -14,19 +14,28 @@ static portTASK_FUNCTION_PROTO( vLEDFlashTask1, pvParameters );
 static portTASK_FUNCTION( vLEDFlashTask1, pvParameters )
 {
     ( void ) pvParameters;
+    struct IOLine pa15 = halGpioLineConstruct(GPIOA, 15);
     struct IOLine led1 = halGpioLineConstruct(GPIOC, 13);
     halGpioSetMode(led1, 
         DRF_DEF(_HAL_GPIO, _MODE, _MODE, _OUTPUT)
         | DRF_DEF(_HAL_GPIO, _MODE, _TYPE, _PUSHPULL)
         | DRF_DEF(_HAL_GPIO, _MODE, _SPEED, _VERY_HIGH)
         );
+    halGpioSetMode(pa15, 
+        DRF_DEF(_HAL_GPIO, _MODE, _MODE, _INPUT) |
+        DRF_DEF(_HAL_GPIO, _MODE, _PUPD, _PULL_UP)
+        );
     
     for( ; ; )
     {
-        halGpioSet(led1);
-        vTaskDelay(25);
-        halGpioClear(led1);
-        vTaskDelay(25);
+        if (halGpioRead(pa15))
+        {
+            halGpioClear(led1);
+        }
+        else {
+            halGpioSet(led1);
+        }
+        vTaskDelay(5);
     }
 }
 
