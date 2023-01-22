@@ -8,8 +8,7 @@ cc_library(
         "//spool/lib/hal/stm32/gpio_v2:lib",
         "//spool/freertos:freertos",
         "//spool/lib/hal/common:lib",
-        "//spool/lib/drf",
-        "//spool/lib:lib",
+        "//spool/lib/common:lib",
         "//spool/lib/hardware_manual:mcu",
     ],
 )

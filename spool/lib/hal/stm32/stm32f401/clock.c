@@ -1,8 +1,8 @@
 #include "clock.h"
 #include "hal/clock.h"
-#include "drf/drf.h"
+#include "drf.h"
 #include "manual/mcu.h"
-#include "spool/lib/error.h"
+#include "error.h"
 #include <stdint.h>
 
 static void configurePll(uint32_t q, uint32_t p, uint32_t n, uint32_t m)
