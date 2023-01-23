@@ -7,24 +7,24 @@
 
 #define IRQ_TIM2 28
 
+const static struct HalClockConfig halClockConfig = {
+    .hseFreqHz = 25000000,
+    .q = 7,
+    .p = 4,
+    .n = 336,
+    .m = 25,
+
+    .apb2Prescaler = 1,
+    .apb1Prescaler = 2,
+    .ahbPrescaler = 1,
+};
+
 const static struct IOLine statusLED = {.group = GPIOC, .pin = 13};
 
 static void setupTimer(void);
 
 void platformInit(struct PlatformConfig *config)
 {
-    struct HalClockConfig halClockConfig = {
-        .hseFreq = 25,
-        .q = 7,
-        .p = 4,
-        .n = 336,
-        .m = 25,
-
-        .apb2Prescaler = 0,
-        .apb1Prescaler = 2,
-        .ahbPrescaler = 0,
-    };
-
     halClockInit(&halClockConfig);
 
     uint32_t rcc = REG_RD32(DRF_REG(_RCC,_AHB1ENR));

@@ -58,19 +58,19 @@ static void configureHse(void)
         ;
 }
 
-static void configurePrescalers(uint32_mhz_t hseFreq, uint32_t apb2Prescaler,
+static void configurePrescalers(uint32_t hseFreqHz, uint32_t apb2Prescaler,
                                 uint32_t apb1Prescaler, uint32_t ahbPrescaler)
 {
-    if (!(2 <= hseFreq && hseFreq <= 31)) {
+    if (!(2000000 <= hseFreqHz && hseFreqHz <= 31000000)) {
         panic();
     }
 
     uint32_t cfgr = REG_RD32(DRF_REG(_RCC, _CFGR));
 
-    cfgr = FLD_SET_DRF_NUM(_RCC, _CFGR, _RTCPRE, hseFreq, cfgr);
+    cfgr = FLD_SET_DRF_NUM(_RCC, _CFGR, _RTCPRE, (hseFreqHz / 1000000), cfgr);
 
     switch (apb2Prescaler) {
-    case 0:
+    case 1:
         cfgr = FLD_SET_DRF(_RCC, _CFGR, _PPRE2, _DIV1, cfgr);
         break;
     case 2:
@@ -89,7 +89,7 @@ static void configurePrescalers(uint32_mhz_t hseFreq, uint32_t apb2Prescaler,
         panic();
     }
     switch (apb1Prescaler) {
-    case 0:
+    case 1:
         cfgr = FLD_SET_DRF(_RCC, _CFGR, _PPRE1, _DIV1, cfgr);
         break;
     case 2:
@@ -109,7 +109,7 @@ static void configurePrescalers(uint32_mhz_t hseFreq, uint32_t apb2Prescaler,
     }
 
     switch (ahbPrescaler) {
-    case 0:
+    case 1:
         cfgr = FLD_SET_DRF(_RCC, _CFGR, _HPRE, _DIV1, cfgr);
         break;
     case 2:
@@ -199,8 +199,42 @@ void halClockInit(struct HalClockConfig *config)
     configurePll(config->q, config->p, config->n, config->m);
     waitForVosReady();
     waitForPllReady();
-    configurePrescalers(config->hseFreq, config->apb2Prescaler,
+    configurePrescalers(config->hseFreqHz, config->apb2Prescaler,
                         config->apb1Prescaler, config->ahbPrescaler);
     configureFlash();
     switchClockSource();
+}
+
+uint32_t halClockSysclkFreqGet(const struct HalClockConfig *cfg)
+{
+    return ((cfg->hseFreqHz * (cfg->n / cfg->m)) / cfg->p);
+}
+
+uint32_t halClockAhbFreqGet(const struct HalClockConfig *cfg)
+{
+    return halClockSysclkFreqGet(cfg) / cfg->ahbPrescaler;
+}
+
+uint32_t halClockApb1TimerFreqGet(const struct HalClockConfig *cfg)
+{
+    const uint32_t apb1Freq = halClockAhbFreqGet(cfg) / cfg->apb1Prescaler;
+    if (cfg->apb1Prescaler == 1) {
+        return apb1Freq;
+    }
+    else 
+    {
+        return apb1Freq * 2;
+    }
+}
+
+uint32_t halClockApb2TimerFreqGet(const struct HalClockConfig *cfg)
+{
+    const uint32_t apb2Freq = halClockAhbFreqGet(cfg) / cfg->apb2Prescaler;
+    if (cfg->apb2Prescaler == 1) {
+        return apb2Freq;
+    }
+    else 
+    {
+        return apb2Freq * 2;
+    }
 }
