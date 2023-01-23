@@ -1,3 +1,4 @@
+#include "FreeRTOS.h"
 #include "platform/platform.h"
 #include "hal/hal.h"
 #include "hal/stm32/hal.h"
@@ -6,6 +7,15 @@ const static struct IOLine statusLED = { .group = GPIOA, .pin = 7 };
 const static struct IOLine xStep = { .group = GPIOE, .pin = 9 };
 const static struct IOLine xDir = { .group = GPIOF, .pin = 1 };
 const static struct IOLine xEn = { .group = GPIOF, .pin = 2 };
+
+static void setupTimer(){
+
+}
+
+void VectorB0() {
+    portDISABLE_INTERRUPTS();
+    portENABLE_INTERRUPTS();
+}
 
 void platformInit(struct PlatformConfig *config)
 {
@@ -23,11 +33,17 @@ void platformInit(struct PlatformConfig *config)
 
     halClockInit(&halClockConfig);
 
-    uint32_t rcc = REG_RD32(DRF_REG(_RCC, _AHB1ENR));
-    rcc = FLD_SET_DRF(_RCC, _AHB1ENR, _GPIOAEN, _ENABLED, rcc);
-    rcc = FLD_SET_DRF(_RCC, _AHB1ENR, _GPIOFEN, _ENABLED, rcc);
-    rcc = FLD_SET_DRF(_RCC, _AHB1ENR, _GPIOEEN, _ENABLED, rcc);
-    REG_WR32(DRF_REG(_RCC, _AHB1ENR), rcc);
+    // Enable AHB Peripherials
+    uint32_t ahb1enr = REG_RD32(DRF_REG(_RCC, _AHB1ENR));
+    ahb1enr = FLD_SET_DRF(_RCC, _AHB1ENR, _GPIOAEN, _ENABLED, ahb1enr);
+    ahb1enr = FLD_SET_DRF(_RCC, _AHB1ENR, _GPIOFEN, _ENABLED, ahb1enr);
+    ahb1enr = FLD_SET_DRF(_RCC, _AHB1ENR, _GPIOEEN, _ENABLED, ahb1enr);
+    REG_WR32(DRF_REG(_RCC, _AHB1ENR), ahb1enr);
+
+    // Enable APB1 Peripherials
+    uint32_t apb1enr = REG_RD32(DRF_REG(_RCC, _APB1ENR));
+    apb1enr = FLD_SET_DRF(_RCC, _APB1ENR, _TIM2EN, _ENABLED, apb1enr);
+    REG_WR32(DRF_REG(_RCC, _APB1ENR), apb1enr);
 
     halGpioSetMode(statusLED, DRF_DEF(_HAL_GPIO, _MODE, _MODE, _OUTPUT) |
                                   DRF_DEF(_HAL_GPIO, _MODE, _TYPE, _PUSHPULL) |
@@ -53,7 +69,7 @@ void stepX(void)
     halGpioClear(xStep);
 }
 
-void platformMotorStep(uint16_t motor_mask)
+void platformMotorStep(uint8_t motor_mask, uint8_t dir_mask)
 {
 
 }

@@ -10,6 +10,8 @@ cc_library(
 
         "//spool/lib/hardware_manual:mcu",
         
+        "//spool/lib/hal/cortexm:lib",
+
         "//spool/lib/hal/stm32/gpio_v2:lib",
     ],
 )

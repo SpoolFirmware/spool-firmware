@@ -1,0 +1,11 @@
+cc_library(
+    name="lib",
+    srcs=glob(["*.c"]),
+    hdrs=glob(["*.h"]),
+    include_prefix="hal/cortexm",
+    alwayslink=True,
+    deps=[
+        "//spool/lib/common:lib",
+    ],
+    visibility=["//visibility:public"],
+)

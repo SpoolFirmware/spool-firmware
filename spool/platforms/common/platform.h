@@ -8,4 +8,4 @@ void platformInit(struct PlatformConfig *config);
 struct IOLine platformGetStatusLED(void);
 
 void stepX(void);
-void platformMotorStep(uint16_t motor_mask);
+void platformMotorStep(uint8_t motor_mask, uint8_t dir_mask);
