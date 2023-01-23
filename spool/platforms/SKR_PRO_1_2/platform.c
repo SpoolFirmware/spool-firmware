@@ -20,7 +20,7 @@ void VectorB0() {
 void platformInit(struct PlatformConfig *config)
 {
     struct HalClockConfig halClockConfig = {
-        .hseFreqHz = 8,
+        .hseFreqHz = 8000000,
         .q = 7,
         .p = 2,
         .n = 168,
