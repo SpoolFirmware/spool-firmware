@@ -11,3 +11,5 @@ inline unsigned int count_trailing_zero(unsigned int num)
 {
     return __builtin_ctz(num);
 }
+
+#define BIT(n) (1U << (n))

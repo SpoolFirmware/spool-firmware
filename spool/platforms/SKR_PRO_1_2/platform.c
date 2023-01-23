@@ -2,15 +2,61 @@
 #include "platform/platform.h"
 #include "hal/hal.h"
 #include "hal/stm32/hal.h"
+#include "bitops.h"
 
 const static struct IOLine statusLED = { .group = GPIOA, .pin = 7 };
-const static struct IOLine xStep = { .group = GPIOE, .pin = 9 };
-const static struct IOLine xDir = { .group = GPIOF, .pin = 1 };
-const static struct IOLine xEn = { .group = GPIOF, .pin = 2 };
+
+#define NR_STEPPERS 2
+
+const static struct IOLine step[NR_STEPPERS] = {
+    /* X */
+    { .group = GPIOE, .pin = 9 },
+    /* Y */
+    { .group = GPIOE, .pin = 11 },
+};
+
+const static struct IOLine dir[NR_STEPPERS] = {
+    /* X */
+    { .group = GPIOF, .pin = 1 },
+    /* Y */
+    { .group = GPIOE, .pin = 8 },
+};
+
+const static struct IOLine en[NR_STEPPERS] = {
+    /* X */
+    { .group = GPIOF, .pin = 2 },
+    /* Y */
+    { .group = GPIOD, .pin = 7 },
+};
 
 static void setupTimer(){
 
+void enableStepper(uint8_t stepperMask)
+{
+    for (uint8_t i = 0; i < NR_STEPPERS; ++i) {
+        if (stepperMask & BIT(i)) {
+            halGpioClear(en[i]);
+        } else {
+            halGpioSet(en[i]);
+        }
+    }
 }
+void setStepper(uint8_t stepperMask, uint8_t dirMask, uint8_t stepMask)
+{
+    for (uint8_t i = 0; i < NR_STEPPERS; ++i) {
+        if (stepperMask & BIT(i)) {
+            if (dirMask & BIT(i)) {
+                halGpioSet(dir[i]);
+            } else {
+                halGpioClear(dir[i]);
+            }
+            if (stepMask & BIT(i)) {
+                halGpioClear(step[i]);
+            } else {
+                halGpioSet(step[i]);
+            }
+        }
+    }
 
 void VectorB0() {
     portDISABLE_INTERRUPTS();
