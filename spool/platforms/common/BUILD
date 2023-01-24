@@ -4,6 +4,7 @@ cc_library(
     include_prefix = "platform",
     deps = [
         "//spool/lib/hal/common:lib",
+        "//spool/freertos:freertos",
     ],
     visibility = ["//visibility:public"],
 )

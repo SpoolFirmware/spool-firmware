@@ -57,8 +57,8 @@ static void setupTimer(void)
     // Set Interrupt Priority
     // 28 is TIM2
     halGpioSet(statusLED);
-    halIrqEnable(IRQ_TIM2);
     halIrqPrioritySet(IRQ_TIM2, configMAX_SYSCALL_INTERRUPT_PRIORITY + 1);
+    halIrqEnable(IRQ_TIM2);
 
     // Enable Counter
     REG_WR32(DRF_REG(_TIM2, _PSC), 400);

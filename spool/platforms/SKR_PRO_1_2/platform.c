@@ -1,12 +1,35 @@
 #include "FreeRTOS.h"
+#include "queue.h"
 #include "platform/platform.h"
 #include "hal/hal.h"
+#include "hal/cortexm/hal.h"
 #include "hal/stm32/hal.h"
 #include "bitops.h"
+#include "spool_config.h"
+#include "manual/mcu.h"
+
+const static struct HalClockConfig halClockConfig = {
+    .hseFreqHz = 8000000,
+    .q = 7,
+    .p = 2,
+    .n = 168,
+    .m = 4,
+
+    .apb2Prescaler = 2,
+    .apb1Prescaler = 4,
+    .ahbPrescaler = 1,
+};
 
 const static struct IOLine statusLED = { .group = GPIOA, .pin = 7 };
 
+#define IRQ_TIM2 28
+#define IRQ_TIM3 29
 #define NR_STEPPERS 2
+
+#define STEPPER_A BIT(0)
+#define STEPPER_B BIT(1)
+
+static QueueHandle_t queueHandle;
 
 const static struct IOLine step[NR_STEPPERS] = {
     /* X */
@@ -29,8 +52,6 @@ const static struct IOLine en[NR_STEPPERS] = {
     { .group = GPIOD, .pin = 7 },
 };
 
-static void setupTimer(){
-
 void enableStepper(uint8_t stepperMask)
 {
     for (uint8_t i = 0; i < NR_STEPPERS; ++i) {
@@ -41,7 +62,8 @@ void enableStepper(uint8_t stepperMask)
         }
     }
 }
-void setStepper(uint8_t stepperMask, uint8_t dirMask, uint8_t stepMask)
+
+static void setStepper(uint8_t stepperMask, uint8_t dirMask, uint8_t stepMask)
 {
     for (uint8_t i = 0; i < NR_STEPPERS; ++i) {
         if (stepperMask & BIT(i)) {
@@ -57,25 +79,72 @@ void setStepper(uint8_t stepperMask, uint8_t dirMask, uint8_t stepMask)
             }
         }
     }
+}
+
+void VectorB4() {
+    if(FLD_TEST_DRF(_TIM3, _SR, _UIF, _UPDATE_PENDING, REG_RD32(DRF_REG(_TIM3, _SR)))){
+        REG_WR32(DRF_REG(_TIM3, _SR), ~DRF_DEF(_TIM3, _SR, _UIF, _UPDATE_PENDING));
+        /* schedule stepping */
+        scheduleSteps(queueHandle);
+        // halGpioToggle(step[0]);
+    }
+    halIrqClear(IRQ_TIM3);
+}
+
+static void reloadTimer(void)
+{
+    REG_WR32(DRF_REG(_TIM2, _CR1), DRF_DEF(_TIM2, _CR1, _CEN, _ENABLED) |
+                                       DRF_DEF(_TIM2, _CR1, _OPM, _ENABLED));
+}
+
+void stepStepper(uint8_t stepperMask, uint8_t dirMask)
+{
+    setStepper(stepperMask, dirMask, stepperMask);
+    reloadTimer();
+}
 
 void VectorB0() {
-    portDISABLE_INTERRUPTS();
-    portENABLE_INTERRUPTS();
+    if(FLD_TEST_DRF(_TIM2, _SR, _UIF, _UPDATE_PENDING, REG_RD32(DRF_REG(_TIM2, _SR)))){
+        REG_WR32(DRF_REG(_TIM2, _SR), ~DRF_DEF(_TIM2, _SR, _UIF, _UPDATE_PENDING));
+        setStepper(STEPPER_A | STEPPER_B, 0, 0);
+    }
+    halIrqClear(IRQ_TIM2);
+}
+
+static void setupTimer()
+{
+    // Set Interrupt Priority
+    // 28 is TIM2
+    // halGpioSet(statusLED);
+    halIrqPrioritySet(IRQ_TIM2, configMAX_SYSCALL_INTERRUPT_PRIORITY + 1);
+    halIrqEnable(IRQ_TIM2);
+
+    // Enable Counter
+    /* TIM2 runs off APB1, which runs at 42, but 84 due to x2 in the clock graph??? */
+    REG_WR32(DRF_REG(_TIM2, _PSC), 168);
+    /* scaled by /168, meaning 0.5 MHz, 2.5 microseconds should be 5? */
+    REG_WR32(DRF_REG(_TIM2, _ARR), 0x5);
+    REG_WR32(DRF_REG(_TIM2, _CNT), 0);
+    REG_WR32(DRF_REG(_TIM2, _CR1), DRF_DEF(_TIM2, _CR1, _OPM, _ENABLED));
+    REG_WR32(DRF_REG(_TIM2, _DIER), DRF_DEF(_TIM2, _DIER, _UIE, _ENABLED));
+
+    // schedule steps on different timer
+    halIrqPrioritySet(IRQ_TIM3, configMAX_SYSCALL_INTERRUPT_PRIORITY + 1);
+    halIrqEnable(IRQ_TIM3);
+
+    // Enable Counter
+    /* TIM3 runs off APB1, which runs at 42, but 84 due to x2 in the clock graph??? */
+    /* actual PSC is value + 1 */
+    REG_WR32(DRF_REG(_TIM3, _PSC), 0);
+    /* scaled by /1680, meaning 0.05 MHz, 25 microseconds should be 5? */
+    REG_WR32(DRF_REG(_TIM3, _ARR), halClockApb1TimerFreqGet(&halClockConfig) / 10000);
+    REG_WR32(DRF_REG(_TIM3, _CNT), 0);
+    REG_WR32(DRF_REG(_TIM3, _CR1), DRF_DEF(_TIM3, _CR1, _CEN, _ENABLED));
+    REG_WR32(DRF_REG(_TIM3, _DIER), DRF_DEF(_TIM3, _DIER, _UIE, _ENABLED));
 }
 
 void platformInit(struct PlatformConfig *config)
 {
-    struct HalClockConfig halClockConfig = {
-        .hseFreqHz = 8000000,
-        .q = 7,
-        .p = 2,
-        .n = 168,
-        .m = 4,
-
-        .apb2Prescaler = 2,
-        .apb1Prescaler = 4,
-        .ahbPrescaler = 1,
-    };
 
     halClockInit(&halClockConfig);
 
@@ -89,35 +158,29 @@ void platformInit(struct PlatformConfig *config)
     // Enable APB1 Peripherials
     uint32_t apb1enr = REG_RD32(DRF_REG(_RCC, _APB1ENR));
     apb1enr = FLD_SET_DRF(_RCC, _APB1ENR, _TIM2EN, _ENABLED, apb1enr);
+    apb1enr = FLD_SET_DRF(_RCC, _APB1ENR, _TIM3EN, _ENABLED, apb1enr);
     REG_WR32(DRF_REG(_RCC, _APB1ENR), apb1enr);
 
     halGpioSetMode(statusLED, DRF_DEF(_HAL_GPIO, _MODE, _MODE, _OUTPUT) |
                                   DRF_DEF(_HAL_GPIO, _MODE, _TYPE, _PUSHPULL) |
                                   DRF_DEF(_HAL_GPIO, _MODE, _SPEED, _HIGH));
-    halGpioSetMode(xStep, DRF_DEF(_HAL_GPIO, _MODE, _MODE, _OUTPUT) |
+    for (uint8_t i = 0; i < NR_STEPPERS; ++i) {
+    halGpioSetMode(step[i], DRF_DEF(_HAL_GPIO, _MODE, _MODE, _OUTPUT) |
                               DRF_DEF(_HAL_GPIO, _MODE, _TYPE, _PUSHPULL) |
                               DRF_DEF(_HAL_GPIO, _MODE, _SPEED, _VERY_HIGH));
-    halGpioSetMode(xDir, DRF_DEF(_HAL_GPIO, _MODE, _MODE, _OUTPUT) |
-                             DRF_DEF(_HAL_GPIO, _MODE, _TYPE, _PUSHPULL) |
-                             DRF_DEF(_HAL_GPIO, _MODE, _SPEED, _VERY_HIGH));
-    halGpioSetMode(xEn, DRF_DEF(_HAL_GPIO, _MODE, _MODE, _OUTPUT) |
-                            DRF_DEF(_HAL_GPIO, _MODE, _TYPE, _PUSHPULL) |
-                            DRF_DEF(_HAL_GPIO, _MODE, _SPEED, _VERY_HIGH));
-
-    halGpioClear(xEn);
-    halGpioClear(xDir);
+    halGpioSetMode(en[i], DRF_DEF(_HAL_GPIO, _MODE, _MODE, _OUTPUT) |
+                              DRF_DEF(_HAL_GPIO, _MODE, _TYPE, _PUSHPULL) |
+                              DRF_DEF(_HAL_GPIO, _MODE, _SPEED, _VERY_HIGH));
+    halGpioSetMode(dir[i], DRF_DEF(_HAL_GPIO, _MODE, _MODE, _OUTPUT) |
+                              DRF_DEF(_HAL_GPIO, _MODE, _TYPE, _PUSHPULL) |
+                              DRF_DEF(_HAL_GPIO, _MODE, _SPEED, _VERY_HIGH));
+    }
 }
 
-void stepX(void)
+void __platformInitMotor(QueueHandle_t queueHandle_)
 {
-    halGpioSet(xStep);
-    asm(".rept 400 ; nop ; .endr");
-    halGpioClear(xStep);
-}
-
-void platformMotorStep(uint8_t motor_mask, uint8_t dir_mask)
-{
-
+    queueHandle = queueHandle_;
+    setupTimer();
 }
 
 __attribute__((always_inline)) 
