@@ -6,7 +6,7 @@ cc_library(
     alwayslink=True,
     deps=[
         "//lib/common:lib",
-        "//spool/freertos:freertos",
+        "//lib/freertos:freertos",
         "//spool/lib/hal/common:lib",
         "//spool/lib/hardware_manual:mcu",
     ],

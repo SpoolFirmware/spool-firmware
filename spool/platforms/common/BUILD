@@ -3,8 +3,8 @@ cc_library(
     hdrs = ["platform.h"],
     include_prefix = "platform",
     deps = [
+        "//lib/freertos:freertos",
         "//spool/lib/hal/common:lib",
-        "//spool/freertos:freertos",
     ],
     visibility = ["//visibility:public"],
 )

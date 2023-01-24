@@ -22,10 +22,10 @@ cc_binary_with_platforms(
     visibility = ["//visibility:public"],
     deps = [
         "//lib/syslib:lib",
+        "//lib/freertos:freertos",
         "//spool/lib/hal/common:lib",
         "//spool/platforms:runtime",
         "//spool/platforms:linker.ld",
-        "//spool/freertos:freertos",
     ],
 )
 
