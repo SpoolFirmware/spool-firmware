@@ -1,4 +1,5 @@
     .syntax unified
+    .extern __copy_data
     .cpu    cortex-m4
 // if FPU
     .fpu    fpv4-sp-d16
@@ -29,7 +30,7 @@ bloop:
     strlo   r0, [r1], #4
     blo     bloop
 
-    bl      main
+    bl      __copy_data
 
 main_exit_loop:
     b main_exit_loop
