@@ -20,7 +20,8 @@ const static struct HalClockConfig halClockConfig = {
     .ahbPrescaler = 1,
 };
 
-const static struct IOLine statusLED = { .group = GPIOA, .pin = 7 };
+// const static struct IOLine statusLED = { .group = GPIOA, .pin = 7 };
+const static struct IOLine statusLED = { .group = GPIOE, .pin = 0 };
 
 #define IRQ_TIM2 28
 #define IRQ_TIM3 29

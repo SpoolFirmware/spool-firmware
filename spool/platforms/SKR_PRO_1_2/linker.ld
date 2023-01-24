@@ -12,8 +12,7 @@ SECTIONS {
 
   .data : {
     _sdata = .;   /* .data section start */
-    *(.first_data)
-    *(.data SORT(.data.*))
+    KEEP(*(.data .data.*))
     _edata = .;  /* .data section end */
   } > sram AT > flash
   _sidata = LOADADDR(.data);

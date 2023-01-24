@@ -19,20 +19,16 @@ StaticQueue_t stepQueue;
 // uint32_t posY;
 
 static struct job jobs[2] = {
-    {
-        .aInterval = 10,
-        .aSteps = 10000,
-        .bInterval = 10,
-        .bSteps = 10000,
-        .stepperDirs = BIT(0) | BIT(1)
-    },
-    {
-        .aInterval = 10,
-        .aSteps = 10000,
-        .bInterval = 10,
-        .bSteps = 10000,
-        .stepperDirs = 0
-    },
+    { .aInterval = 0,
+      .aSteps = 10000,
+      .bInterval = 0,
+      .bSteps = 10000,
+      .stepperDirs = BIT(0) | BIT(1) },
+    { .aInterval = 0,
+      .aSteps = 10000,
+      .bInterval = 0,
+      .bSteps = 10000,
+      .stepperDirs = 0 },
 };
 
 QueueHandle_t stepTaskInit(void)
@@ -72,9 +68,13 @@ __attribute__((noinline)) void scheduleSteps(QueueHandle_t queueHandle)
     static struct job job = { 0 };
     static uint16_t aCntr = 0;
     static uint16_t bCntr = 0;
+    halGpioSet(platformGetStatusLED());
     if (job.aSteps == 0 && job.bSteps == 0) {
         if (xQueueReceiveFromISR(queueHandle, &job, NULL) == pdTRUE) {
-            halGpioToggle(platformGetStatusLED());
+            if (job.aSteps == 0 && job.bSteps == 0) {
+                for (;;) {
+                }
+            }
             setStepperDir(job.stepperDirs);
             aCntr = job.aInterval;
             bCntr = job.bInterval;
@@ -85,23 +85,30 @@ __attribute__((noinline)) void scheduleSteps(QueueHandle_t queueHandle)
     }
 
     uint32_t stepper_mask = 0;
-    if (aCntr == 0) {
-        stepper_mask |= STEPPER_A;
+    if (job.aSteps != 0) {
+        if (aCntr == 0) {
+            stepper_mask |= STEPPER_A;
 
-        aCntr = job.aInterval;
-        job.aSteps--;
+            aCntr = job.aInterval;
+            job.aSteps--;
+        } else {
+            aCntr--;
+        }
     }
-    if (bCntr == 0) {
-        stepper_mask |= STEPPER_B;
-        
-        bCntr = job.bInterval;
-        job.bSteps--;
+    if (job.bSteps != 0) {
+        if (bCntr == 0) {
+            stepper_mask |= STEPPER_B;
+
+            bCntr = job.bInterval;
+            job.bSteps--;
+        } else {
+            bCntr--;
+        }
     }
-    aCntr--;
-    bCntr--;
 
     if (stepper_mask == 0) {
         return;
     }
     stepStepper(stepper_mask);
+    halGpioClear(platformGetStatusLED());
 }

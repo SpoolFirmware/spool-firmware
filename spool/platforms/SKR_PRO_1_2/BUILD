@@ -31,12 +31,14 @@ cc_library(
     name = "runtime",
     srcs = [
         "platform.c",
+        "startup/crt1.c",
         "startup/crt0.s",
         "startup/vectors.s",
     ],
     deps = [
         ":config",
         "//spool/platforms/common:lib",
+        "//lib/syslib:lib",
         "//spool/lib/hal/stm32/stm32f407:lib",
     ],
     alwayslink = True,
