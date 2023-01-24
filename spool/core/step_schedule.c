@@ -1,42 +1,58 @@
 #include "step_schedule.h"
 #include <stdint.h>
+#include <stdbool.h>
 #include "platform/platform.h"
 #include "bitops.h"
 
-struct job {
-    uint16_t aInterval;
-    uint16_t bInterval;
-    uint16_t aSteps;
-    uint16_t bSteps;
+#define NR_STEPPERS 2
+
+struct StepperJob {
+    uint16_t interval[NR_STEPPERS];
+    uint16_t steps[NR_STEPPERS];
     uint8_t stepperDirs;
 };
 
-struct job queueBuf[STEP_QUEUE_SIZE];
+bool stepperJobFinished(const struct StepperJob *pStepperJob)
+{
+    for (uint8_t i = 0; i < NR_STEPPERS; ++i) {
+        if (pStepperJob->steps[i] != 0) {
+            return false;
+        }
+    }
+    return true;
+}
+
+struct StepperJob queueBuf[STEP_QUEUE_SIZE];
 
 StaticQueue_t stepQueue;
 
 // uint32_t posX;
 // uint32_t posY;
 
-static struct job jobs[2] = {
-    { .aInterval = 0,
-      .aSteps = 10000,
-      .bInterval = 0,
-      .bSteps = 10000,
-      .stepperDirs = BIT(0) | BIT(1) },
-    { .aInterval = 0,
-      .aSteps = 10000,
-      .bInterval = 0,
-      .bSteps = 10000,
-      .stepperDirs = 0 },
-};
+
+
+#define MICROSTEPPING 32
+#define STEPS_PER_ROT 200
+#define MM_PER_ROT 31
+#define MM_TO_STEP(x) ((x) * MICROSTEPPING * STEPS_PER_ROT / MM_PER_ROT)
+
+static const struct StepperJob jobs[2] = {
+    {
+        .interval = { 10, 10 },
+        .steps = { 10000, 10000 },
+        .stepperDirs = BIT(0) | BIT(1),
+    },
+    {
+        .interval = { 10, 10 },
+        .steps = { 10000, 10000 },
+        .stepperDirs = 0,
+    },
+    };
 
 QueueHandle_t stepTaskInit(void)
 {
     QueueHandle_t handle = xQueueCreateStatic(
-        STEP_QUEUE_SIZE, sizeof(struct job), (uint8_t *)queueBuf, &stepQueue);
-    // xQueueSend(handle, &jobs[0], 10);
-    // xQueueSend(handle, &jobs[1], 10);
+        STEP_QUEUE_SIZE, sizeof(struct StepperJob), (uint8_t *)queueBuf, &stepQueue);
     return handle;
 }
 
@@ -65,47 +81,31 @@ portTASK_FUNCTION(stepScheduleTask, pvParameters)
 
 __attribute__((noinline)) void scheduleSteps(QueueHandle_t queueHandle)
 {
-    static struct job job = { 0 };
-    static uint16_t aCntr = 0;
-    static uint16_t bCntr = 0;
+    static struct StepperJob job = { 0 };
+    static uint16_t counter[NR_STEPPERS] = { 0 };
     halGpioSet(platformGetStatusLED());
-    if (job.aSteps == 0 && job.bSteps == 0) {
+    if (stepperJobFinished(&job)) {
         if (xQueueReceiveFromISR(queueHandle, &job, NULL) == pdTRUE) {
-            if (job.aSteps == 0 && job.bSteps == 0) {
-                for (;;) {
-                }
-            }
             setStepperDir(job.stepperDirs);
-            aCntr = job.aInterval;
-            bCntr = job.bInterval;
-            return;
-        } else {
-            return;
+            for (uint8_t i = 0; i < NR_STEPPERS; ++i) {
+                counter[i] = job.interval[i];
+            }
         }
+        return;
     }
 
     uint32_t stepper_mask = 0;
-    if (job.aSteps != 0) {
-        if (aCntr == 0) {
-            stepper_mask |= STEPPER_A;
-
-            aCntr = job.aInterval;
-            job.aSteps--;
-        } else {
-            aCntr--;
+    for (uint8_t i = 0; i < NR_STEPPERS; ++i) {
+        if (job.steps[i] != 0) {
+            if (counter[i] == 0) {
+                stepper_mask |= BIT(i);
+                counter[i] = job.interval[i];
+                job.steps[i]--;
+            } else {
+                counter[i]--;
+            }
         }
     }
-    if (job.bSteps != 0) {
-        if (bCntr == 0) {
-            stepper_mask |= STEPPER_B;
-
-            bCntr = job.bInterval;
-            job.bSteps--;
-        } else {
-            bCntr--;
-        }
-    }
-
     if (stepper_mask == 0) {
         return;
     }
