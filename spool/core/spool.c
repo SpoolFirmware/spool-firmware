@@ -18,8 +18,8 @@ static portTASK_FUNCTION(vLEDFlashTask1, pvParameters)
     struct IOLine led1 = platformGetStatusLED();
 
     for (;;) {
-        halGpioToggle(led1);
-        vTaskDelay(25);
+        // halGpioToggle(led1);
+        // vTaskDelay(25);
     }
 }
 

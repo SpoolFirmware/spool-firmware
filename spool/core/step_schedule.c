@@ -19,29 +19,27 @@ StaticQueue_t stepQueue;
 
 static struct job jobs[2] = {
     {
-    .aInterval = 10,
-    .aSteps = 10000,
-    .bInterval = 10,
-    .bSteps = 10000,
+        .aInterval = 10,
+        .aSteps = 1000,
+        .bInterval = 10,
+        .bSteps = 1000,
     },
     {
-    .aInterval = 10,
-    .aSteps = -10000,
-    .bInterval = 10,
-    .bSteps = -10000,
+        .aInterval = 10,
+        .aSteps = -1000,
+        .bInterval = 10,
+        .bSteps = -1000,
     },
 };
 
 QueueHandle_t stepTaskInit(void)
 {
-    QueueHandle_t handle = xQueueCreateStatic(STEP_QUEUE_SIZE,
-                                              sizeof(struct job),
-                                              (uint8_t *)queueBuf, &stepQueue);
+    QueueHandle_t handle = xQueueCreateStatic(
+        STEP_QUEUE_SIZE, sizeof(struct job), (uint8_t *)queueBuf, &stepQueue);
     // xQueueSend(handle, &jobs[0], 10);
     // xQueueSend(handle, &jobs[1], 10);
     return handle;
 }
-
 
 /* 1/32 microstepping */
 /* 200 steps per rotation */
@@ -68,41 +66,52 @@ portTASK_FUNCTION(stepScheduleTask, pvParameters)
 
 #define abs(x) (((x) >= 0) ? (x) : -(x))
 
-void scheduleSteps(QueueHandle_t queueHandle)
+#define sign(x) (((x) >= 0) ? 1 : -1)
+
+__attribute__((noinline)) void scheduleSteps(QueueHandle_t queueHandle)
 {
-    struct job tick = {0};
-    int32_t aAcc = 0;
-    uint32_t a = 0;
-    int32_t bAcc = 0;
-    uint32_t b = 0;
+    static struct job tick = { 0 };
+    static int32_t aAcc = 0;
+    static uint32_t a = 0;
+    static int32_t bAcc = 0;
+    static uint32_t b = 0;
     BaseType_t woken;
     if (abs(aAcc) == abs(tick.aSteps) && abs(bAcc) == abs(tick.bSteps)) {
         if (xQueueReceiveFromISR(queueHandle, &tick, &woken) == pdTRUE) {
             a = tick.aInterval;
             b = tick.bInterval;
+            struct IOLine led1 = platformGetStatusLED();
+            halGpioToggle(led1);
+
+            uint32_t dir_mask = 0;
+            if (tick.aSteps >= 0) {
+                dir_mask |= STEPPER_A;
+            }
+            if (tick.bSteps >= 0) {
+                dir_mask |= STEPPER_B;
+            }
+            setStepperDir(dir_mask);
+            return;
         } else
             return;
     }
 
     uint32_t stepper_mask = 0;
-    uint32_t dir_mask = 0;
     if (a == 0) {
         stepper_mask |= STEPPER_A;
+        a = tick.aInterval;
+        aAcc += sign(tick.aSteps);
     }
     if (b == 0) {
         stepper_mask |= STEPPER_B;
+        b = tick.bInterval;
+        bAcc += sign(tick.bSteps);
     }
     a--;
     b--;
     if (stepper_mask == 0) {
         return;
     }
-    if (tick.aSteps >= 0) {
-        dir_mask |= STEPPER_A;
-    }
-    if (tick.bSteps >= 0) {
-        dir_mask |= STEPPER_B;
-    }
 
-    stepStepper(stepper_mask, dir_mask);
+    stepStepper(stepper_mask);
 }

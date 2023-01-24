@@ -63,19 +63,25 @@ void enableStepper(uint8_t stepperMask)
     }
 }
 
-static void setStepper(uint8_t stepperMask, uint8_t dirMask, uint8_t stepMask)
+void setStepperDir(uint8_t dirMask)
+{
+    for (uint8_t i = 0; i < NR_STEPPERS; ++i) {
+        if (dirMask & BIT(i)) {
+            halGpioSet(dir[i]);
+        } else {
+            halGpioClear(dir[i]);
+        }
+    }
+}
+
+static void setStepper(uint8_t stepperMask, uint8_t stepMask)
 {
     for (uint8_t i = 0; i < NR_STEPPERS; ++i) {
         if (stepperMask & BIT(i)) {
-            if (dirMask & BIT(i)) {
-                halGpioSet(dir[i]);
-            } else {
-                halGpioClear(dir[i]);
-            }
             if (stepMask & BIT(i)) {
-                halGpioClear(step[i]);
-            } else {
                 halGpioSet(step[i]);
+            } else {
+                halGpioClear(step[i]);
             }
         }
     }
@@ -97,16 +103,16 @@ static void reloadTimer(void)
                                        DRF_DEF(_TIM2, _CR1, _OPM, _ENABLED));
 }
 
-void stepStepper(uint8_t stepperMask, uint8_t dirMask)
+void stepStepper(uint8_t stepperMask)
 {
-    setStepper(stepperMask, dirMask, stepperMask);
+    setStepper(stepperMask, stepperMask);
     reloadTimer();
 }
 
 void VectorB0() {
     if(FLD_TEST_DRF(_TIM2, _SR, _UIF, _UPDATE_PENDING, REG_RD32(DRF_REG(_TIM2, _SR)))){
         REG_WR32(DRF_REG(_TIM2, _SR), ~DRF_DEF(_TIM2, _SR, _UIF, _UPDATE_PENDING));
-        setStepper(STEPPER_A | STEPPER_B, 0, 0);
+        setStepper(STEPPER_A | STEPPER_B, 0);
     }
     halIrqClear(IRQ_TIM2);
 }
@@ -121,9 +127,9 @@ static void setupTimer()
 
     // Enable Counter
     /* TIM2 runs off APB1, which runs at 42, but 84 due to x2 in the clock graph??? */
-    REG_WR32(DRF_REG(_TIM2, _PSC), 168);
+    REG_WR32(DRF_REG(_TIM2, _PSC), halClockApb1TimerFreqGet(&halClockConfig) / 10000000 - 1);
     /* scaled by /168, meaning 0.5 MHz, 2.5 microseconds should be 5? */
-    REG_WR32(DRF_REG(_TIM2, _ARR), 0x5);
+    REG_WR32(DRF_REG(_TIM2, _ARR), 20);
     REG_WR32(DRF_REG(_TIM2, _CNT), 0);
     REG_WR32(DRF_REG(_TIM2, _CR1), DRF_DEF(_TIM2, _CR1, _OPM, _ENABLED));
     REG_WR32(DRF_REG(_TIM2, _DIER), DRF_DEF(_TIM2, _DIER, _UIE, _ENABLED));
