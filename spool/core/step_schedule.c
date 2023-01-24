@@ -32,7 +32,7 @@ StaticQueue_t stepQueue;
 
 
 #define MICROSTEPPING 32
-#define STEPS_PER_ROT 200
+#define STEPS_PER_REV 200
 #define MM_PER_ROT 31
 #define MM_TO_STEP(x) ((x) * MICROSTEPPING * STEPS_PER_ROT / MM_PER_ROT)
 
