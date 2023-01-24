@@ -4,10 +4,11 @@
 #include "bitops.h"
 
 struct job {
-    uint32_t aInterval;
-    uint32_t bInterval;
-    int32_t aSteps;
-    int32_t bSteps;
+    uint16_t aInterval;
+    uint16_t bInterval;
+    uint16_t aSteps;
+    uint16_t bSteps;
+    uint8_t stepperDirs;
 };
 
 struct job queueBuf[STEP_QUEUE_SIZE];
@@ -20,15 +21,17 @@ StaticQueue_t stepQueue;
 static struct job jobs[2] = {
     {
         .aInterval = 10,
-        .aSteps = 1000,
+        .aSteps = 10000,
         .bInterval = 10,
-        .bSteps = 1000,
+        .bSteps = 10000,
+        .stepperDirs = BIT(0) | BIT(1)
     },
     {
         .aInterval = 10,
-        .aSteps = -1000,
+        .aSteps = 10000,
         .bInterval = 10,
-        .bSteps = -1000,
+        .bSteps = 10000,
+        .stepperDirs = 0
     },
 };
 
@@ -64,54 +67,41 @@ portTASK_FUNCTION(stepScheduleTask, pvParameters)
     }
 }
 
-#define abs(x) (((x) >= 0) ? (x) : -(x))
-
-#define sign(x) (((x) >= 0) ? 1 : -1)
-
 __attribute__((noinline)) void scheduleSteps(QueueHandle_t queueHandle)
 {
-    static struct job tick = { 0 };
-    static int32_t aAcc = 0;
-    static uint32_t a = 0;
-    static int32_t bAcc = 0;
-    static uint32_t b = 0;
-    BaseType_t woken;
-    if (abs(aAcc) == abs(tick.aSteps) && abs(bAcc) == abs(tick.bSteps)) {
-        if (xQueueReceiveFromISR(queueHandle, &tick, &woken) == pdTRUE) {
-            a = tick.aInterval;
-            b = tick.bInterval;
-            struct IOLine led1 = platformGetStatusLED();
-            halGpioToggle(led1);
-
-            uint32_t dir_mask = 0;
-            if (tick.aSteps >= 0) {
-                dir_mask |= STEPPER_A;
-            }
-            if (tick.bSteps >= 0) {
-                dir_mask |= STEPPER_B;
-            }
-            setStepperDir(dir_mask);
+    static struct job job = { 0 };
+    static uint16_t aCntr = 0;
+    static uint16_t bCntr = 0;
+    if (job.aSteps == 0 && job.bSteps == 0) {
+        if (xQueueReceiveFromISR(queueHandle, &job, NULL) == pdTRUE) {
+            halGpioToggle(platformGetStatusLED());
+            setStepperDir(job.stepperDirs);
+            aCntr = job.aInterval;
+            bCntr = job.bInterval;
             return;
-        } else
+        } else {
             return;
+        }
     }
 
     uint32_t stepper_mask = 0;
-    if (a == 0) {
+    if (aCntr == 0) {
         stepper_mask |= STEPPER_A;
-        a = tick.aInterval;
-        aAcc += sign(tick.aSteps);
+
+        aCntr = job.aInterval;
+        job.aSteps--;
     }
-    if (b == 0) {
+    if (bCntr == 0) {
         stepper_mask |= STEPPER_B;
-        b = tick.bInterval;
-        bAcc += sign(tick.bSteps);
+        
+        bCntr = job.bInterval;
+        job.bSteps--;
     }
-    a--;
-    b--;
+    aCntr--;
+    bCntr--;
+
     if (stepper_mask == 0) {
         return;
     }
-
     stepStepper(stepper_mask);
 }
