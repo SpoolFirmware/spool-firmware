@@ -5,7 +5,7 @@ cc_library(
     include_prefix="hal/cortexm",
     alwayslink=True,
     deps=[
-        "//spool/lib/common:lib",
+        "//lib/common:lib",
     ],
     visibility=["//visibility:public"],
 )
