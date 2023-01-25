@@ -23,6 +23,14 @@ const static struct IOLine statusLED = {.group = GPIOC, .pin = 13};
 
 static void setupTimer(void);
 
+void __platformInitMotor(QueueHandle_t queueHandle)
+{
+}
+
+void enableStepper(uint8_t stepperMask)
+{
+}
+
 void platformInit(struct PlatformConfig *config)
 {
     halClockInit(&halClockConfig);
