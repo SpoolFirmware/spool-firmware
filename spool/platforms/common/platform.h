@@ -8,7 +8,7 @@
 struct PlatformConfig;
 
 void platformInit(struct PlatformConfig *config);
-void __platformInitMotor(QueueHandle_t queueHandle);
+void platformPostInit(void);
 struct IOLine platformGetStatusLED(void);
 
 void enableStepper(uint8_t stepperMask);
@@ -16,4 +16,4 @@ void stepStepper(uint8_t stepperMask);
 void disableStepper(uint8_t stepperMask);
 
 void setStepperDir(uint8_t dirMask);
-void scheduleSteps(QueueHandle_t queueHandle);
+void executeStep(void);

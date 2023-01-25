@@ -1,5 +1,4 @@
 #include "FreeRTOS.h"
-#include "queue.h"
 #include "platform/platform.h"
 #include "hal/hal.h"
 #include "hal/cortexm/hal.h"
@@ -29,8 +28,6 @@ const static struct IOLine statusLED = { .group = GPIOE, .pin = 0 };
 
 #define STEPPER_A BIT(0)
 #define STEPPER_B BIT(1)
-
-static QueueHandle_t queueHandle;
 
 const static struct IOLine step[NR_STEPPERS] = {
     /* X */
@@ -91,9 +88,8 @@ static void setStepper(uint8_t stepperMask, uint8_t stepMask)
 void VectorB4() {
     if(FLD_TEST_DRF(_TIM3, _SR, _UIF, _UPDATE_PENDING, REG_RD32(DRF_REG(_TIM3, _SR)))){
         REG_WR32(DRF_REG(_TIM3, _SR), ~DRF_DEF(_TIM3, _SR, _UIF, _UPDATE_PENDING));
-        /* schedule stepping */
-        scheduleSteps(queueHandle);
-        // halGpioToggle(step[0]);
+        /* execute current job */
+        executeStep();
     }
     halIrqClear(IRQ_TIM3);
 }
@@ -185,9 +181,8 @@ void platformInit(struct PlatformConfig *config)
     }
 }
 
-void __platformInitMotor(QueueHandle_t queueHandle_)
+void platformPostInit()
 {
-    queueHandle = queueHandle_;
     setupTimer();
 }
 

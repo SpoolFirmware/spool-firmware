@@ -3,6 +3,7 @@ cc_library(
     hdrs=glob(["src/*.h",]),
     srcs=glob(["src/*.c",]),
     strip_include_prefix="src",
+    visibility = ["//visibility:public"],
 )
 
 cc_test(
