@@ -21,6 +21,8 @@ typedef enum {
   } else {                                                                     \
   }
 
+_Noreturn void __panic(int line);
+
 #define ASSIGN_OR_GOTO(x, expr, l) _ASSIGN_OR_STATEMENT(x, expr, goto l)
 
 #define DEFINE_OR_GOTO(x, expr, l) _DEFINE_OR_STATEMENT(x, expr, goto l)
@@ -31,7 +33,3 @@ typedef enum {
 
 #define panic() __panic(__LINE__)
 
-_Noreturn __attribute__((noinline)) void __panic(int line) {
-  for (volatile int i = line;; i = line)
-    (void)i;
-}

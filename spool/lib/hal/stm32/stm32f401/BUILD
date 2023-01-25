@@ -13,5 +13,6 @@ cc_library(
         "//spool/lib/hal/cortexm:lib",
 
         "//spool/lib/hal/stm32/peripheral/gpio_v2:lib",
+        "//spool/lib/hal/stm32/peripheral/usart_v1:lib",
     ],
 )

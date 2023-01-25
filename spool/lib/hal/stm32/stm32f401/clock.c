@@ -215,21 +215,30 @@ uint32_t halClockAhbFreqGet(const struct HalClockConfig *cfg)
     return halClockSysclkFreqGet(cfg) / cfg->ahbPrescaler;
 }
 
+uint32_t halClockApb1FreqGet(const struct HalClockConfig *cfg)
+{
+    return halClockAhbFreqGet(cfg) / cfg->apb1Prescaler;
+}
+
 uint32_t halClockApb1TimerFreqGet(const struct HalClockConfig *cfg)
 {
-    const uint32_t apb1Freq = halClockAhbFreqGet(cfg) / cfg->apb1Prescaler;
     if (cfg->apb1Prescaler == 1) {
-        return apb1Freq;
+        return halClockAhbFreqGet(cfg);
     }
     else 
     {
-        return apb1Freq * 2;
+        return halClockAhbFreqGet(cfg) * 2;
     }
+}
+
+uint32_t halClockApb2FreqGet(const struct HalClockConfig *cfg)
+{
+    return halClockAhbFreqGet(cfg) / cfg->apb2Prescaler;
 }
 
 uint32_t halClockApb2TimerFreqGet(const struct HalClockConfig *cfg)
 {
-    const uint32_t apb2Freq = halClockAhbFreqGet(cfg) / cfg->apb2Prescaler;
+    const uint32_t apb2Freq = halClockAhbFreqGet(cfg);
     if (cfg->apb2Prescaler == 1) {
         return apb2Freq;
     }

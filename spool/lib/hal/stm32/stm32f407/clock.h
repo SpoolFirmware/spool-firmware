@@ -20,5 +20,7 @@ struct HalClockConfig {
 
 uint32_t halClockSysclkFreqGet(const struct HalClockConfig *cfg);
 uint32_t halClockAhbFreqGet(const struct HalClockConfig *cfg);
+uint32_t halClockApb1FreqGet(const struct HalClockConfig *cfg);
 uint32_t halClockApb1TimerFreqGet(const struct HalClockConfig *cfg);
+uint32_t halClockApb2FreqGet(const struct HalClockConfig *cfg);
 uint32_t halClockApb2TimerFreqGet(const struct HalClockConfig *cfg);

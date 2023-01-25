@@ -11,7 +11,7 @@ refresh_compile_commands(
     # Specify the targets of interest.
     # For example, specify a dict of targets and any flags required to build.
     targets = {
-        "//spool:skr_pro_1_2": "",
+        "//spool": "",
         "//lib/fxp:simple_test": "",
     },
     # No need to add flags already in .bazelrc. They're automatically picked up.
