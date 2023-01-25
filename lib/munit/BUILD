@@ -3,4 +3,5 @@ cc_library(
     srcs=["munit.c"],
     hdrs=["munit.h"],
     include_prefix=".",
+    visibility=["//visibility:public"],
 )
