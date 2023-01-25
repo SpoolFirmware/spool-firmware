@@ -5,6 +5,11 @@
 #include "queue.h"
 #include "magic_config.h"
 
+struct PrinterState {
+    fix16_t x;
+    fix16_t y;
+};
+
 struct StepperJob {
     uint16_t interval[NR_STEPPERS];
     uint16_t steps[NR_STEPPERS];

@@ -139,8 +139,8 @@ static void setupTimer()
     /* TIM3 runs off APB1, which runs at 42, but 84 due to x2 in the clock graph??? */
     /* actual PSC is value + 1 */
     REG_WR32(DRF_REG(_TIM3, _PSC), 0);
-    /* scaled by /1680, meaning 0.05 MHz, 25 microseconds should be 5? */
-    REG_WR32(DRF_REG(_TIM3, _ARR), halClockApb1TimerFreqGet(&halClockConfig) / 10000);
+    /* 10khz */
+    REG_WR32(DRF_REG(_TIM3, _ARR), halClockApb1TimerFreqGet(&halClockConfig) / 40000);
     REG_WR32(DRF_REG(_TIM3, _CNT), 0);
     REG_WR32(DRF_REG(_TIM3, _CR1), DRF_DEF(_TIM3, _CR1, _CEN, _ENABLED));
     REG_WR32(DRF_REG(_TIM3, _DIER), DRF_DEF(_TIM3, _DIER, _UIE, _ENABLED));
@@ -190,4 +190,9 @@ __attribute__((always_inline))
 inline struct IOLine platformGetStatusLED(void)
 {
     return statusLED;
+}
+
+uint32_t getStepperTimerFreq(void)
+{
+    return 40000;
 }

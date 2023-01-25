@@ -5,8 +5,9 @@
 
 #define STEPPER_A BIT(0)
 #define STEPPER_B BIT(1)
+#define STEPPER_A_IDX 0
+#define STEPPER_B_IDX 1
 
-#define MICROSTEPPING 32
-#define STEPS_PER_REV 200
-#define MM_PER_ROT 31
-#define MM_TO_STEP(x) ((x) * MICROSTEPPING * STEPS_PER_ROT / MM_PER_ROT)
+#define MAX_VEL 50
+#define JERK    10
+#define ACC     700
