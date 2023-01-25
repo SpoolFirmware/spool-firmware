@@ -31,6 +31,7 @@ cc_library(
     name = "runtime",
     srcs = [
         "platform.c",
+        "startup/crt1.c",
         "startup/crt0.s",
         "startup/vectors.s",
     ],
