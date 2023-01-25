@@ -193,7 +193,7 @@ static void configureFlash(void)
         ;
 }
 
-void halClockInit(struct HalClockConfig *config)
+void halClockInit(const struct HalClockConfig *config)
 {
     configureVoltage();
     configureHse();

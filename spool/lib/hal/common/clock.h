@@ -4,4 +4,4 @@
 
 struct HalClockConfig;
 
-void halClockInit(struct HalClockConfig *config);
+void halClockInit(const struct HalClockConfig *config);
