@@ -44,7 +44,7 @@ void halGpioSetMode(struct IOLine line, GPIOMode mode)
     REG_WR32(oTypeR, FLD_IDX_SET_DRF_NUM(_GPIO, _PUPDR, _PUPDR, line.pin, pullType, val));
 
     //AF
-    if (mode == DRF_HAL_GPIO_MODE_MODE_AF)
+    if (pinMode == DRF_HAL_GPIO_MODE_MODE_AF)
     {
         if (line.pin < DRF_GPIO_AFRL_AFRL__COUNT)
         {
