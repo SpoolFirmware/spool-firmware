@@ -131,6 +131,33 @@ class DRFHeaderGenerator:
         self.output_file.close()
         self.output_file = None
 
+class IRQHeaderGenerator:
+    def __init__(self, input_file: str, output_file: str) -> None:
+        self.output_file = open(output_file, 'w')
+        self.out = CHeaderWriter(self.output_file, define_prefix='')
+        self.device = SVDParser.for_xml_file(input_file).get_device()
+        pass
+
+    def generate(self):
+        FIRST_VECTOR_OFFSET = 0x40
+
+        self.out.write_line('#pragma once')
+        self.out.write_line('// THIS FILE IS GENERATED, DO NOT EDIT')
+
+        p: SVDPeripheral
+        for p in self.device.peripherals:
+            i: SVDInterrupt
+            if p.interrupts is not None:
+                for i in p.interrupts:
+                    desc = ' '.join(i.description.split())
+                    val = i.value
+                    name = i.name
+
+                    self.out.write_define(f'IRQ_{name}', f'{val}U', desc)
+                    self.out.write_define(f'IRQ_HANDLER_{name}(...)', f'void Vector{FIRST_VECTOR_OFFSET+val*4:X}(__VA_ARGS__)')
+
+        pass
+
 def generate_header(input_file: str, output_file: str):
     gen = DRFHeaderGenerator(input_file, output_file)
     gen.generate()
@@ -140,9 +167,17 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('-o', '--output', required=True, help='Path to output .h header')
     parser.add_argument('file', help='Path to input svd file')
+    parser.add_argument('--drf', help='Generate DRF macros', action='store_true')
+    parser.add_argument('--irq', help='Generate IRQ function templates', action='store_true')
     args = parser.parse_args()
 
-    generate_header(args.file, args.output)
+    if args.drf:
+        generate_header(args.file, args.output)
+    elif args.irq:
+        gen = IRQHeaderGenerator(input_file=args.file, output_file=args.output)
+        gen.generate()
+    else:
+        print('Need to select one of the generate options')
 
     pass
 

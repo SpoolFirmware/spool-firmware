@@ -9,7 +9,7 @@ your application. */
 #define configUSE_TICKLESS_IDLE                 0
 #define configCPU_CLOCK_HZ                      168000000
 #define configSYSTICK_CLOCK_HZ                  (configCPU_CLOCK_HZ / 8)
-#define configTICK_RATE_HZ                      250
+#define configTICK_RATE_HZ                      100
 #define configMAX_PRIORITIES                    5
 #define configMINIMAL_STACK_SIZE                128
 #define configMAX_TASK_NAME_LEN                 16

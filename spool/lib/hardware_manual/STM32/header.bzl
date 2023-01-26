@@ -7,8 +7,8 @@ def hardware_manual_library(name):
     svd_patched_file = name + ".svd.patched"
     svd_patched_target = name + "_patched_svd"
 
-    svd_header = name + "_header"
-    svd_header_file = name + ".h"
+    svd_drf_header = name + "_drf_header"
+    svd_irq_header = name + "_irq_header"
 
     native.genrule(
         name = svd_patched_target,
@@ -19,16 +19,24 @@ def hardware_manual_library(name):
     )
 
     native.genrule(
-        name = svd_header,
+        name = svd_drf_header,
         srcs = [svd_patched_target],
         outs = [name + "/mcu.h"],
         exec_tools = ["//tools/svd2drf:svd2drf"],
-        cmd = "$(location //tools/svd2drf:svd2drf) -o $@ $<",
+        cmd = "$(location //tools/svd2drf:svd2drf) --drf -o $@ $<",
+    )
+
+    native.genrule(
+        name = svd_irq_header,
+        srcs = [svd_patched_target],
+        outs = [name + "/irq.h"],
+        exec_tools = ["//tools/svd2drf:svd2drf"],
+        cmd = "$(location //tools/svd2drf:svd2drf) --irq -o $@ $<",
     )
 
     cc_library(
         name = name,
-        hdrs = [svd_header],
+        hdrs = [svd_drf_header, svd_irq_header],
         include_prefix = "manual",
         strip_include_prefix = name,
         visibility = ["//spool/lib/hardware_manual:__pkg__"],

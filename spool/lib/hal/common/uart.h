@@ -12,4 +12,4 @@ struct UARTDriver;
 // halUartInit is defined in port specific manner
 void halUartStart(struct UARTDriver *pDriver);
 void halUartSendByte(struct UARTDriver *pDriver, uint8_t byte);
-void halUartSend(struct UARTDriver *pDriver, uint8_t *pBuffer, uint32_t len);
+void halUartSend(struct UARTDriver *pDriver, const uint8_t *pBuffer, uint32_t len);
