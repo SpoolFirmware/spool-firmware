@@ -19,6 +19,7 @@ enum MotionBlockState {
 typedef struct MotionBlock {
     uint32_t totalSteps;
     uint32_t accelerationSteps;
+    uint32_t cruiseSteps;
     uint32_t decelerationSteps;
 
     uint32_t entryVel_steps_s;
