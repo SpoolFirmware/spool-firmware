@@ -7,7 +7,7 @@
 struct StepperJob queueBuf[STEP_QUEUE_SIZE];
 StaticQueue_t stepQueue;
 
-const fix16_t STEPS_PER_MM = F16(160);
+const fix16_t STEPS_PER_MM_FIX = F16(160);
 const fix16_t VEL_FIX = F16(VEL);
 const fix16_t ACC_FIX = F16(ACC);
 
@@ -129,12 +129,12 @@ static void scheduleMoveTo(QueueHandle_t handle,
 
     planVelocity(aX, bX, &aVel, &bVel, &aAccX, &bAccX);
 
-    uint32_t aXSteps = fix16_mul_abs(aX, STEPS_PER_MM);
-    uint32_t bXSteps = fix16_mul_abs(bX, STEPS_PER_MM);
-    uint32_t aVelSteps = fix16_mul_abs(aVel, STEPS_PER_MM);
-    uint32_t bVelSteps = fix16_mul_abs(bVel, STEPS_PER_MM);
-    uint32_t aAccXSteps = fix16_mul_abs(aAccX, STEPS_PER_MM);
-    uint32_t bAccXSteps = fix16_mul_abs(bAccX, STEPS_PER_MM);
+    uint32_t aXSteps = fix16_mul_abs(aX, STEPS_PER_MM_FIX);
+    uint32_t bXSteps = fix16_mul_abs(bX, STEPS_PER_MM_FIX);
+    uint32_t aVelSteps = fix16_mul_abs(aVel, STEPS_PER_MM_FIX);
+    uint32_t bVelSteps = fix16_mul_abs(bVel, STEPS_PER_MM_FIX);
+    uint32_t aAccXSteps = fix16_mul_abs(aAccX, STEPS_PER_MM_FIX);
+    uint32_t bAccXSteps = fix16_mul_abs(bAccX, STEPS_PER_MM_FIX);
 
     job_t job = {
         .blocks = { 

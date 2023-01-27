@@ -14,7 +14,7 @@ void stepExecuteSetQueue(QueueHandle_t queueHandle_)
 static bool stepperJobFinished(const struct StepperJob *pJob)
 {
     for (uint8_t i = 0; i < NR_STEPPERS; ++i) {
-        motion_block_t *pBlock = &(pJob->blocks[i]);
+        const motion_block_t *pBlock = &(pJob->blocks[i]);
         if (pBlock->stepsExecuted < pBlock->totalSteps) {
             return false;
         }
