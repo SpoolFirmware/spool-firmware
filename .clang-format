@@ -32,16 +32,16 @@ BinPackArguments: true
 BinPackParameters: true
 BraceWrapping:
   AfterClass: false
-  AfterControlStatement: true
-  AfterEnum: true
+  AfterControlStatement: false
+  AfterEnum: false
   AfterFunction: true
   AfterNamespace: true
   AfterObjCDeclaration: false
-  AfterStruct: true
-  AfterUnion: true
+  AfterStruct: false
+  AfterUnion: false
   AfterExternBlock: false
   BeforeCatch: false
-  BeforeElse: true
+  BeforeElse: false
   IndentBraces: false
   SplitEmptyFunction: true
   SplitEmptyRecord: true

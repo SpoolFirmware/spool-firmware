@@ -88,6 +88,32 @@ static inline fix16_t fix16_from_dbl(double a)
 */
 #define F16(x) ((fix16_t)(((x) >= 0) ? ((x) * 65536.0 + 0.5) : ((x) * 65536.0 - 0.5)))
 
+static inline fix16_t fix16_copy_sign(fix16_t dst, fix16_t src)
+{
+    if (src >= 0)
+    {
+        if (dst >= 0)
+        {
+            return dst;
+        }
+        else
+        {
+            return -dst;
+        }
+    }
+    else
+    {
+        if (dst < 0)
+        {
+            return dst;
+        }
+        else
+        {
+            return -dst;
+        }
+    }
+}
+
 static inline fix16_t fix16_abs(fix16_t x)
     { return (fix16_t)(x < 0 ? -(uint32_t)x : (uint32_t)x); }
 static inline fix16_t fix16_floor(fix16_t x)

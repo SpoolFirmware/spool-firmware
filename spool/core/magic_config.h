@@ -8,6 +8,6 @@
 #define STEPPER_A_IDX 0
 #define STEPPER_B_IDX 1
 
-#define MAX_VEL 50
-#define JERK    10
+#define VEL 50
+// #define JERK    10
 #define ACC     700
