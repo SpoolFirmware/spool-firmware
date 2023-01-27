@@ -22,7 +22,7 @@ typedef struct MotionBlock {
     uint32_t decelerationSteps;
 
     uint32_t entryVel_steps_s;
-    uint32_t curiseVel_steps_s;
+    uint32_t cruiseVel_steps_s;
     uint32_t exitVel_steps_s;
 
     uint32_t stepsExecuted;

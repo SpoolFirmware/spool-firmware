@@ -136,9 +136,33 @@ static void scheduleMoveTo(QueueHandle_t handle,
     uint32_t aAccXSteps = fix16_mul_abs(aAccX, STEPS_PER_MM);
     uint32_t bAccXSteps = fix16_mul_abs(bAccX, STEPS_PER_MM);
 
-    struct MotionBlock motionBlock = {};
+    job_t job = {
+        .blocks = { 
+{
+            .totalSteps = aXSteps,
+            .accelerationSteps = aAccXSteps,
+            .decelerationSteps = aAccXSteps,
 
-    while (xQueueSend(handle, job, -1) != pdTRUE)
+            .entryVel_steps_s = 0,
+            .cruiseVel_steps_s = aVelSteps,
+            .exitVel_steps_s = 0,
+            .blockState = BlockStateAccelerating,
+                    },
+                    {
+            .totalSteps = bXSteps,
+            .accelerationSteps = bAccXSteps,
+            .decelerationSteps = bAccXSteps,
+
+            .entryVel_steps_s = 0,
+            .cruiseVel_steps_s = bVelSteps,
+            .exitVel_steps_s = 0,
+            .blockState = BlockStateAccelerating,
+},
+        },
+        .stepDirs = dirMask,
+    };
+
+    while (xQueueSend(handle, &job, -1) != pdTRUE)
         ;
 
     /* TODO, if we want to interrupt the print, we might have to
