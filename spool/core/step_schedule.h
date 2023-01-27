@@ -10,11 +10,30 @@ struct PrinterState {
     fix16_t y;
 };
 
-struct StepperJob {
-    uint16_t interval[NR_STEPPERS];
-    uint16_t steps[NR_STEPPERS];
-    uint8_t stepperDirs;
+enum MotionBlockState {
+    BlockStateAccelerating = 0,
+    BlockStateCruising,
+    BlockStateDecelerating,
 };
+
+typedef struct MotionBlock {
+    uint32_t totalSteps;
+    uint32_t accelerationSteps;
+    uint32_t decelerationSteps;
+
+    uint32_t entryVel_steps_s;
+    uint32_t curiseVel_steps_s;
+    uint32_t exitVel_steps_s;
+
+    uint32_t stepsExecuted;
+    enum MotionBlockState blockState;
+} motion_block_t;
+
+typedef struct StepperJob {
+    motion_block_t blocks[NR_STEPPERS];
+    uint8_t stepDirs;
+} job_t;
+
 
 #define STEP_QUEUE_SIZE 20
 
