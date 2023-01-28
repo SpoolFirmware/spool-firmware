@@ -31,19 +31,34 @@ static bool stepperJobFinished(const struct StepperJob *pJob)
  */
 static uint16_t sCalcInterval(motion_block_t *pBlock)
 {
-    switch(pBlock->blockState) {
-        case BlockStateDecelerating:
-            return (uint32_t)(((uint64_t)getStepperTimerFreq() * getStepperTimerFreq()) >> 10UL) / (pBlock->cruiseVel_steps_s - (ACCEL_STEPS >> 10UL * (pBlock->stepsExecuted - pBlock->cruiseSteps - pBlock->accelerationSteps)));
-            break;
-        case BlockStateAccelerating:
-            return (uint32_t)(((uint64_t)getStepperTimerFreq() * getStepperTimerFreq()) >> 10UL) / (pBlock->entryVel_steps_s + (ACCEL_STEPS >> 10UL * pBlock->stepsExecuted));
-            break;
-        case BlockStateCruising:
-            return getStepperTimerFreq() / pBlock->cruiseVel_steps_s;
-        default:
-            break;
+    switch (pBlock->blockState) {
+    case BlockStateDecelerating:
+        return (uint32_t)(((uint64_t)getStepperTimerFreq() *
+                           getStepperTimerFreq()) >>
+                          10UL) /
+               (pBlock->cruiseVel_steps_s -
+                (ACCEL_STEPS >>
+                 10UL * (pBlock->stepsExecuted - pBlock->cruiseSteps -
+                         pBlock->accelerationSteps)));
+        break;
+    case BlockStateAccelerating:
+        return (uint32_t)(((uint64_t)getStepperTimerFreq() *
+                           getStepperTimerFreq()) >>
+                          10UL) /
+               (pBlock->entryVel_steps_s +
+                (ACCEL_STEPS >> 10UL * pBlock->stepsExecuted));
+        break;
+    case BlockStateCruising:
+        return getStepperTimerFreq() / pBlock->cruiseVel_steps_s;
+    default:
+        break;
     }
     return 1;
+}
+
+static uint32_t min(uint32_t a, uint32_t b)
+{
+    return a < b ? a : b;
 }
 
 void executeStep(void)
@@ -57,26 +72,27 @@ void executeStep(void)
         if (pBlock->totalSteps < pBlock->stepsExecuted) {
             if (counter[i] == 0) {
                 pBlock->stepsExecuted += 1;
-                switch(pBlock->blockState) {
-                    case BlockStateAccelerating:
-                        if (pBlock->stepsExecuted >= pBlock->accelerationSteps) {
-                            if (pBlock->cruiseSteps != 0) {
-                                pBlock->blockState = BlockStateCruising;
-                            } else {
-                                pBlock->blockState = BlockStateDecelerating;
-                            }
-                        }
-                        break;
-                    case BlockStateCruising:
-                        if (pBlock->stepsExecuted >= pBlock->accelerationSteps + pBlock->cruiseSteps) {
+                switch (pBlock->blockState) {
+                case BlockStateAccelerating:
+                    if (pBlock->stepsExecuted >= pBlock->accelerationSteps) {
+                        if (pBlock->cruiseSteps != 0) {
+                            pBlock->blockState = BlockStateCruising;
+                        } else {
                             pBlock->blockState = BlockStateDecelerating;
                         }
-                        break;
-                    default:
-                        break;
+                    }
+                    break;
+                case BlockStateCruising:
+                    if (pBlock->stepsExecuted >=
+                        pBlock->accelerationSteps + pBlock->cruiseSteps) {
+                        pBlock->blockState = BlockStateDecelerating;
+                    }
+                    break;
+                default:
+                    break;
                 }
                 stepper_mask |= BIT(i);
-                counter[i] = sCalcInterval(pBlock);
+                counter[i] = min(sCalcInterval(pBlock), 100);
             } else {
                 counter[i]--;
             }
@@ -95,5 +111,4 @@ void executeStep(void)
             job.blocks[i].stepsExecuted = 0;
         }
     }
-
 }

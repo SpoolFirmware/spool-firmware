@@ -141,6 +141,7 @@ static void scheduleMoveTo(QueueHandle_t handle,
 {
             .totalSteps = aXSteps,
             .accelerationSteps = aAccXSteps,
+            .cruiseSteps = aXSteps - 2 * aAccXSteps,
             .decelerationSteps = aAccXSteps,
 
             .entryVel_steps_s = 0,
@@ -151,6 +152,7 @@ static void scheduleMoveTo(QueueHandle_t handle,
                     {
             .totalSteps = bXSteps,
             .accelerationSteps = bAccXSteps,
+            .cruiseSteps = bXSteps - 2 * bAccXSteps,
             .decelerationSteps = bAccXSteps,
 
             .entryVel_steps_s = 0,
