@@ -28,6 +28,7 @@ typedef struct MotionBlock {
 
     uint32_t stepsExecuted;
     enum MotionBlockState blockState;
+    uint32_t ticksCurState;
 } motion_block_t;
 
 typedef struct StepperJob {
