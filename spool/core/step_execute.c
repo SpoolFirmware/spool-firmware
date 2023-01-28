@@ -28,23 +28,33 @@ static uint64_t getFreqSquared(void) {
 }
 
 /*!
- * Derived from v = 1/2 a t^2
+ * Derived from delta_v = 1/2 a t^2
  *
- * Since v is essentially step frequency (scaled by steps/mm), this can be simplified into
+ * Since del_v is essentially step frequency (scaled by steps/mm),
+ * this can be simplified into
  *
- * interval = 1/(v0 - (accel_steps_s2 * ticks_elapsed_in_stage))
+ * interval = freq_squared / (v0 * freq + (accel_steps_s2 * ticks_elapsed_in_stage))
  */
 static uint16_t sCalcInterval(motion_block_t *pBlock)
 {
+    uint64_t deltaVel = ACCEL_STEPS * (uint64_t)pBlock->ticksCurState;
     switch(pBlock->blockState) {
-        case BlockStateDecelerating:
-            return (uint16_t)(getFreqSquared() / (pBlock->cruiseSteps - (ACCEL_STEPS * pBlock->ticksCurState)));
-        case BlockStateAccelerating:
-            return (uint16_t)(getFreqSquared() / (pBlock->entryVel_steps_s + (ACCEL_STEPS * pBlock->ticksCurState)));
-        case BlockStateCruising:
-            return (uint16_t)(getStepperTimerFreq() / pBlock->cruiseVel_steps_s);
-        default:
-            break;
+    case BlockStateDecelerating: {
+        uint64_t initialVel = ((uint64_t)pBlock->cruiseVel_steps_s) * getStepperTimerFreq();
+        if (deltaVel > initialVel) {
+            return 10;
+        } else {
+            return (uint16_t)(getFreqSquared() / (initialVel - deltaVel));
+        }
+    }
+    case BlockStateAccelerating: {
+        uint64_t initialVel = (uint64_t)pBlock->entryVel_steps_s * getStepperTimerFreq();
+        return (uint16_t)(getFreqSquared() / (initialVel + deltaVel));
+    }
+    case BlockStateCruising:
+        return (uint16_t)(getStepperTimerFreq() / pBlock->cruiseVel_steps_s);
+    default:
+        break;
     }
     return 1;
 }
@@ -100,8 +110,9 @@ void executeStep(void)
                         break;
                 }
                 counter[i] = sCalcInterval(pBlock);
+                if (counter[i] > 0) counter[i] -= 1;
                 if (counter[i] > 40) counter[i] = 40;
-                pBlock->ticksCurState += counter[i];
+                pBlock->ticksCurState += counter[i] + 1;
             } else {
                 counter[i]--;
             }
