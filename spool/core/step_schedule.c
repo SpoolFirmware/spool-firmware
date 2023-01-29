@@ -1,6 +1,8 @@
 #include "step_schedule.h"
+#include "step_plan.h"
 #include <stdint.h>
 #include <stdbool.h>
+#include <math.h>
 #include "platform/platform.h"
 #include "bitops.h"
 
@@ -8,8 +10,6 @@ struct StepperJob queueBuf[STEP_QUEUE_SIZE];
 StaticQueue_t stepQueue;
 
 const fix16_t STEPS_PER_MM_FIX = F16(160);
-const fix16_t VEL_FIX = F16(VEL);
-const fix16_t ACC_FIX = F16(ACC);
 
 #define MAGIC_PRINTER_STATES 4
 static const struct PrinterState states[MAGIC_PRINTER_STATES] = {
@@ -42,76 +42,18 @@ inline uint16_t abs(int16_t x)
     return (x >= 0) ? x : -x;
 }
 
-static inline fix16_t fix16_mul3(fix16_t a, fix16_t b, fix16_t c)
-{
-    return fix16_mul(fix16_mul(a, b), c);
-}
-
-static inline fix16_t fix16_mul4(fix16_t a, fix16_t b, fix16_t c, fix16_t d)
-{
-    return fix16_mul(fix16_mul(a, b), fix16_mul(c, d));
-}
-
-/* assuming both axes have the same max velocity and acceleration */
-static void planVelocity(fix16_t aX, fix16_t bX, fix16_t *aVel, fix16_t *bVel,
-                         fix16_t *aAccX, fix16_t *bAccX)
-{
-    if (fix_abs(aX) > fix_abs(bX)) {
-        planVelocity(bX, aX, bVel, aVel, bAccX, aAccX);
-        return;
-    }
-    /* rest of calculation assumes bX > aX */
-    if (bX == 0) {
-        *aVel = 0;
-        *bVel = 0;
-        return;
-    }
-
-    fix16_t bVel_ = fix16_copy_sign(VEL_FIX, bX);
-    fix16_t bAcc = fix16_copy_sign(ACC_FIX, bX);
-
-    fix16_t t1_b = fix16_div(bVel_, bAcc);
-    fix16_t double_x1_b = fix16_mul3(bAcc, t1_b, t1_b);
-    if (fix_abs(bX) < fix_abs(double_x1_b)) {
-        t1_b = fix16_sqrt(fix16_div(bX, bAcc));
-        double_x1_b = bX;
-        bVel_ = fix16_mul(t1_b, bAcc);
-    }
-
-    fix16_t t3 = fix16_add(fix16_mul(F16(2), t1_b),
-                           fix16_div(fix16_sub(bX, double_x1_b), bVel_));
-
-    fix16_t m = fix16_add(fix16_sub(aX, bX), fix16_sub(fix16_mul(bVel_, t3),
-                                                       fix16_mul(bVel_, t1_b)));
-
-    fix16_t aAcc = fix16_copy_sign(ACC_FIX, aX);
-
-    fix16_t det = fix16_sqrt(
-        fix16_sub(fix16_mul4(t3, t3, aAcc, aAcc), fix16_mul3(F16(4), aAcc, m)));
-
-    fix16_t t1_t_denom = fix16_mul(F16(-2), aAcc);
-    fix16_t t1_t_const = fix16_mul(-t3, aAcc);
-    fix16_t t1 = fix16_div(fix16_add(t1_t_const, det), t1_t_denom);
-    if (t1 < 0) {
-        t1 = fix16_div(fix16_sub(t1_t_const, det), t1_t_denom);
-    }
-
-    fix16_t aVel_ = fix16_mul(t1, aAcc);
-
-    fix16_t double_x1_a = fix16_mul3(aAcc, t1, t1);
-
-    *aVel = aVel_;
-    *bVel = bVel_;
-    *aAccX = fix16_div(double_x1_a, F16(2));
-    *bAccX = fix16_div(double_x1_b, F16(2));
-}
-
 static uint32_t fix16_mul_abs(fix16_t a, int32_t b)
 {
     int64_t product = (int64_t)a * b;
-    fix16_t result = product >> 16;
-    result += (product & 0x8000) >> 15;
-    return result >= 0 ? result : -result;
+    fix16_t result = (fix16_t)(product >> 16);
+    result += (fix16_t)((product & 0x8000) >> 15);
+    if (result == fix16_minimum) {
+        // minimum negative number has same representation as
+        // its absolute value in unsigned
+        return 0x80000000;
+    } else {
+        return result >= 0 ? (uint32_t)result : (uint32_t)-result;
+    }
 }
 
 static void scheduleMoveTo(QueueHandle_t handle,
@@ -129,19 +71,22 @@ static void scheduleMoveTo(QueueHandle_t handle,
 
     planVelocity(aX, bX, &aVel, &bVel, &aAccX, &bAccX);
 
-    uint32_t aXSteps = fix16_mul_abs(aX, STEPS_PER_MM_FIX);
-    uint32_t bXSteps = fix16_mul_abs(bX, STEPS_PER_MM_FIX);
-    uint32_t aVelSteps = fix16_mul_abs(aVel, STEPS_PER_MM_FIX);
-    uint32_t bVelSteps = fix16_mul_abs(bVel, STEPS_PER_MM_FIX);
-    uint32_t aAccXSteps = fix16_mul_abs(aAccX, STEPS_PER_MM_FIX);
-    uint32_t bAccXSteps = fix16_mul_abs(bAccX, STEPS_PER_MM_FIX);
+    uint32_t aXSteps = fix16_mul_abs(aX, STEPS_PER_MM);
+    uint32_t bXSteps = fix16_mul_abs(bX, STEPS_PER_MM);
+    uint32_t aVelSteps = fix16_mul_abs(aVel, STEPS_PER_MM);
+    uint32_t bVelSteps = fix16_mul_abs(bVel, STEPS_PER_MM);
+    uint32_t aAccXSteps = fix16_mul_abs(aAccX, STEPS_PER_MM);
+    uint32_t bAccXSteps = fix16_mul_abs(bAccX, STEPS_PER_MM);
+
+    uint32_t aCruise = aXSteps > 2 * aAccXSteps ? aXSteps - 2 * aAccXSteps : 0;
+    uint32_t bCruise = bXSteps > 2 * bAccXSteps ? bXSteps - 2 * bAccXSteps : 0;
 
     job_t job = {
         .blocks = { 
 {
             .totalSteps = aXSteps,
             .accelerationSteps = aAccXSteps,
-            .cruiseSteps = aXSteps - 2 * aAccXSteps,
+            .cruiseSteps = aCruise,
             .decelerationSteps = aAccXSteps,
 
             .entryVel_steps_s = 0,
@@ -152,7 +97,7 @@ static void scheduleMoveTo(QueueHandle_t handle,
                     {
             .totalSteps = bXSteps,
             .accelerationSteps = bAccXSteps,
-            .cruiseSteps = bXSteps - 2 * bAccXSteps,
+            .cruiseSteps = bCruise,
             .decelerationSteps = bAccXSteps,
 
             .entryVel_steps_s = 0,
@@ -164,7 +109,7 @@ static void scheduleMoveTo(QueueHandle_t handle,
         .stepDirs = dirMask,
     };
 
-    while (xQueueSend(handle, &job, -1) != pdTRUE)
+    while (xQueueSend(handle, &job, (unsigned int)-1) != pdTRUE)
         ;
 
     /* TODO, if we want to interrupt the print, we might have to

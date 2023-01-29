@@ -68,7 +68,7 @@ void executeStep(void)
 {
     static struct StepperJob job = { 0 };
     static uint16_t counter[NR_STEPPERS] = { 0 };
-    uint32_t stepper_mask = 0;
+    uint8_t stepper_mask = 0;
 
     if (stepperJobFinished(&job)) {
         if (xQueueReceiveFromISR(queueHandle, &job, NULL) != pdTRUE) {

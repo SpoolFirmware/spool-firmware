@@ -13,6 +13,7 @@ refresh_compile_commands(
     targets = {
         "//spool:skr_pro_1_2": "",
         "//lib/fxp:simple_test": "",
+        "//spool:step_plan_test": "",
     },
     # No need to add flags already in .bazelrc. They're automatically picked up.
     # If you don't need flags, a list of targets is also okay, as is a single target string.
