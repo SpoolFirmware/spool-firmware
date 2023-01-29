@@ -12,7 +12,9 @@ void dbgPutc(const char c)
 {
     portENTER_CRITICAL();
     if ((tail + 1) % BUFFER_SIZE != head) {
-        print_buffer[tail++] = c;
+        print_buffer[tail] = c;
+        __asm__("dsb");
+        tail = (tail + 1) % BUFFER_SIZE;
     }
     portEXIT_CRITICAL();
 }
@@ -21,7 +23,9 @@ void dbgPuts(const char *c)
 {
     portENTER_CRITICAL();
     while((*c) != '\0' && (tail + 1) % BUFFER_SIZE != head) {
-        print_buffer[tail++] = *c++;
+        print_buffer[tail] = *c++;
+        __asm__("dsb");
+        tail = (tail + 1) % BUFFER_SIZE;
     }
     portEXIT_CRITICAL();
 }
@@ -30,6 +34,7 @@ int dbgGetc(void)
 {
     if (head != tail) {
         char c = print_buffer[head];
+        __asm__("dsb");
         head++;
         return c;
     }
