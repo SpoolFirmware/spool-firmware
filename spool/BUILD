@@ -58,7 +58,9 @@ cc_binary_with_platforms(
     },
     visibility = ["//visibility:public"],
     deps = [
-        "//lib/freertos",
+        "//lib/freertos:freertos",
+        "//lib/syslib:lib",
+        "//lib/dbg:lib",
         "//lib/fxp:lib",
         "//lib/syslib:lib",
         "//spool/lib/hal/common:lib",

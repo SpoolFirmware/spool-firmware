@@ -70,7 +70,7 @@ void platformInit(struct PlatformConfig *config)
     setupTimer();
 }
 
-void VectorB0()
+void VectorB0(void)
 {
     if (FLD_TEST_DRF(_TIM2, _SR, _UIF, _UPDATE_PENDING,
                      REG_RD32(DRF_REG(_TIM2, _SR))))
