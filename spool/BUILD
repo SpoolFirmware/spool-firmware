@@ -25,6 +25,16 @@ cc_test(
 
 )
 
+cc_binary(
+    name = "parser",
+    srcs = [
+        "core/gcode_parser.c",
+    ],
+    deps = [
+        "//lib/fxp:lib",
+    ],
+)
+
 test_suite(
     name = "tests",
     tags = [],
