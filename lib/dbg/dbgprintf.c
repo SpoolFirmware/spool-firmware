@@ -35,7 +35,7 @@ int dbgGetc(void)
     if (head != tail) {
         char c = print_buffer[head];
         __asm__("dsb");
-        head++;
+        head = (head + 1) % BUFFER_SIZE;
         return c;
     }
     return -1;
