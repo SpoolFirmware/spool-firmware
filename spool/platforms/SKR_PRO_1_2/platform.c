@@ -19,6 +19,8 @@ const static struct HalClockConfig halClockConfig = {
     .ahbPrescaler = 1,
 };
 
+struct UARTDriver printUart = {0};
+
 // const static struct IOLine statusLED = { .group = GPIOA, .pin = 7 };
 const static struct IOLine statusLED = { .group = GPIOE, .pin = 0 };
 

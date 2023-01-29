@@ -24,7 +24,7 @@ const static struct UARTConfig uart1Cfg = {
 };
 
 const static struct IOLine statusLED = { .group = GPIOC, .pin = 13 };
-struct UARTDriver uart1;
+struct UARTDriver printUart;
 
 static void setupTimer(void);
 
@@ -63,9 +63,9 @@ void platformInit(struct PlatformConfig *config)
                                DRF_DEF(_HAL_GPIO, _MODE, _SPEED, _VERY_HIGH) |
                                DRF_NUM(_HAL_GPIO, _MODE, _AF, 7));
 
-    halUartInit(&uart1, &uart1Cfg, DRF_BASE(DRF_USART1),
+    halUartInit(&printUart, &uart1Cfg, DRF_BASE(DRF_USART1),
                 halClockApb2FreqGet(&halClockConfig));
-    halUartStart(&uart1);
+    halUartStart(&printUart);
 
     setupTimer();
 }
