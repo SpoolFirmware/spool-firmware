@@ -97,6 +97,7 @@ uint16_t executeStep(uint16_t ticksElapsed)
         }
     }
 
+    uint16_t sleepTime = 40;
     for (uint8_t i = 0; i < NR_STEPPERS; ++i) {
         motion_block_t *pBlock = &job.blocks[i];
         if (pBlock->stepsExecuted < pBlock->totalSteps) {
@@ -129,9 +130,13 @@ uint16_t executeStep(uint16_t ticksElapsed)
                 if (counter[i] > 40)
                     counter[i] = 40;
             }
+            // Update next wakeup time
             pBlock->ticksCurState += ticksElapsed;
+            if (counter[i] < sleepTime) {
+                sleepTime = counter[i];
+            }
         }
     }
 
-    return 1;
+    return sleepTime;
 }

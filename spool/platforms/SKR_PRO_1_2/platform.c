@@ -87,11 +87,20 @@ static void setStepper(uint8_t stepperMask, uint8_t stepMask)
     }
 }
 
+static uint32_t lastCntrReload = 0;
 void VectorB4() {
+VectorB4_begin:
     if(FLD_TEST_DRF(_TIM3, _SR, _UIF, _UPDATE_PENDING, REG_RD32(DRF_REG(_TIM3, _SR)))){
         REG_WR32(DRF_REG(_TIM3, _SR), ~DRF_DEF(_TIM3, _SR, _UIF, _UPDATE_PENDING));
         /* execute current job */
-        executeStep(1);
+        uint32_t requestedTicks = executeStep((lastCntrReload + 1) / 2);
+        uint32_t cntrReload = 2 * requestedTicks;
+        if (cntrReload == 0) cntrReload = 1;
+        if ((lastCntrReload = REG_RD32(DRF_REG(_TIM3, _CNT))) > cntrReload) {
+            goto VectorB4_begin;
+        }
+        lastCntrReload = cntrReload;
+        REG_WR32(DRF_REG(_TIM3, _ARR), cntrReload);
     }
     halIrqClear(IRQ_TIM3);
 }
@@ -127,8 +136,8 @@ static void setupTimer()
     // Enable Counter
     /* TIM2 runs off APB1, which runs at 42, but 84 due to x2 in the clock graph??? */
     REG_WR32(DRF_REG(_TIM2, _PSC), halClockApb1TimerFreqGet(&halClockConfig) / 10000000 - 1);
-    /* scaled by /168, meaning 0.5 MHz, 2.5 microseconds should be 5? */
-    REG_WR32(DRF_REG(_TIM2, _ARR), 20);
+    // .1us / tick
+    REG_WR32(DRF_REG(_TIM2, _ARR), 19);
     REG_WR32(DRF_REG(_TIM2, _CNT), 0);
     REG_WR32(DRF_REG(_TIM2, _CR1), DRF_DEF(_TIM2, _CR1, _OPM, _ENABLED));
     REG_WR32(DRF_REG(_TIM2, _DIER), DRF_DEF(_TIM2, _DIER, _UIE, _ENABLED));
@@ -140,12 +149,12 @@ static void setupTimer()
     // Enable Counter
     /* TIM3 runs off APB1, which runs at 42, but 84 due to x2 in the clock graph??? */
     /* actual PSC is value + 1 */
-    REG_WR32(DRF_REG(_TIM3, _PSC), 0);
+    REG_WR32(DRF_REG(_TIM3, _PSC), halClockApb1TimerFreqGet(&halClockConfig) / getStepperTimerFreq() / 2 - 1);
     /* 10khz */
-    REG_WR32(DRF_REG(_TIM3, _ARR), halClockApb1TimerFreqGet(&halClockConfig) / 40000);
+    REG_WR32(DRF_REG(_TIM3, _ARR), 1);
     REG_WR32(DRF_REG(_TIM3, _CNT), 0);
-    REG_WR32(DRF_REG(_TIM3, _CR1), DRF_DEF(_TIM3, _CR1, _CEN, _ENABLED));
     REG_WR32(DRF_REG(_TIM3, _DIER), DRF_DEF(_TIM3, _DIER, _UIE, _ENABLED));
+    REG_WR32(DRF_REG(_TIM3, _CR1), DRF_DEF(_TIM3, _CR1, _CEN, _ENABLED));
 }
 
 void platformInit(struct PlatformConfig *config)
@@ -196,5 +205,5 @@ inline struct IOLine platformGetStatusLED(void)
 
 uint32_t getStepperTimerFreq(void)
 {
-    return 40000;
+    return 100000;
 }
