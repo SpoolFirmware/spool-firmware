@@ -13,7 +13,7 @@ class CHeaderWriter:
         self.column = column
 
     def write_line(self, string: str):
-        self.out.write(string+'\n')
+        self.out.write(string.encode("ascii", errors="ignore").decode()+'\n')
 
     def write_right_align(self, left: str, right: str, extra: str = ''):
         extra = ' ' + " ".join(extra.split())
