@@ -24,7 +24,7 @@ const static struct UARTConfig uart1Cfg = {
 };
 
 const static struct IOLine statusLED = { .group = GPIOC, .pin = 13 };
-struct UARTDriver printUart;
+struct UARTDriver printUart = {0};
 
 static void setupTimer(void);
 

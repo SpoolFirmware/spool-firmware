@@ -21,6 +21,10 @@ const static struct HalClockConfig halClockConfig = {
 
 struct UARTDriver printUart = {0};
 
+const static struct UARTConfig uart1Cfg = {
+    .baudrate = 115200,
+};
+
 // const static struct IOLine statusLED = { .group = GPIOA, .pin = 7 };
 const static struct IOLine statusLED = { .group = GPIOE, .pin = 0 };
 
@@ -173,24 +177,41 @@ void platformInit(struct PlatformConfig *config)
 
     // Enable APB1 Peripherials
     uint32_t apb1enr = REG_RD32(DRF_REG(_RCC, _APB1ENR));
+    apb1enr = FLD_SET_DRF(_RCC, _APB1ENR, _USART3EN, _ENABLED, apb1enr);
     apb1enr = FLD_SET_DRF(_RCC, _APB1ENR, _TIM2EN, _ENABLED, apb1enr);
     apb1enr = FLD_SET_DRF(_RCC, _APB1ENR, _TIM3EN, _ENABLED, apb1enr);
     REG_WR32(DRF_REG(_RCC, _APB1ENR), apb1enr);
+
+    /* uint32_t apb2enr = REG_RD32(DRF_REG(_RCC, _APB2ENR)); */
+    /* apb2enr = FLD_SET_DRF(_RCC, _APB2ENR, _USART1EN, _ENABLED, apb2enr); */
+    /* REG_WR32(DRF_REG(_RCC, _APB2ENR), apb2enr); */
 
     halGpioSetMode(statusLED, DRF_DEF(_HAL_GPIO, _MODE, _MODE, _OUTPUT) |
                                   DRF_DEF(_HAL_GPIO, _MODE, _TYPE, _PUSHPULL) |
                                   DRF_DEF(_HAL_GPIO, _MODE, _SPEED, _HIGH));
     for (uint8_t i = 0; i < NR_STEPPERS; ++i) {
-    halGpioSetMode(step[i], DRF_DEF(_HAL_GPIO, _MODE, _MODE, _OUTPUT) |
-                              DRF_DEF(_HAL_GPIO, _MODE, _TYPE, _PUSHPULL) |
-                              DRF_DEF(_HAL_GPIO, _MODE, _SPEED, _VERY_HIGH));
-    halGpioSetMode(en[i], DRF_DEF(_HAL_GPIO, _MODE, _MODE, _OUTPUT) |
-                              DRF_DEF(_HAL_GPIO, _MODE, _TYPE, _PUSHPULL) |
-                              DRF_DEF(_HAL_GPIO, _MODE, _SPEED, _VERY_HIGH));
-    halGpioSetMode(dir[i], DRF_DEF(_HAL_GPIO, _MODE, _MODE, _OUTPUT) |
-                              DRF_DEF(_HAL_GPIO, _MODE, _TYPE, _PUSHPULL) |
-                              DRF_DEF(_HAL_GPIO, _MODE, _SPEED, _VERY_HIGH));
+        halGpioSetMode(step[i],
+                       DRF_DEF(_HAL_GPIO, _MODE, _MODE, _OUTPUT) |
+                           DRF_DEF(_HAL_GPIO, _MODE, _TYPE, _PUSHPULL) |
+                           DRF_DEF(_HAL_GPIO, _MODE, _SPEED, _VERY_HIGH));
+        halGpioSetMode(en[i],
+                       DRF_DEF(_HAL_GPIO, _MODE, _MODE, _OUTPUT) |
+                           DRF_DEF(_HAL_GPIO, _MODE, _TYPE, _PUSHPULL) |
+                           DRF_DEF(_HAL_GPIO, _MODE, _SPEED, _VERY_HIGH));
+        halGpioSetMode(dir[i],
+                       DRF_DEF(_HAL_GPIO, _MODE, _MODE, _OUTPUT) |
+                           DRF_DEF(_HAL_GPIO, _MODE, _TYPE, _PUSHPULL) |
+                           DRF_DEF(_HAL_GPIO, _MODE, _SPEED, _VERY_HIGH));
     }
+
+    struct IOLine uartTx = { .group = GPIOD, .pin = 8 };
+    halGpioSetMode(uartTx, DRF_DEF(_HAL_GPIO, _MODE, _MODE, _AF) |
+                               DRF_DEF(_HAL_GPIO, _MODE, _TYPE, _PUSHPULL) |
+                               DRF_DEF(_HAL_GPIO, _MODE, _SPEED, _VERY_HIGH) |
+                               DRF_NUM(_HAL_GPIO, _MODE, _AF, 7));
+    halUartInit(&printUart, &uart1Cfg, DRF_BASE(DRF_USART3),
+                halClockApb1FreqGet(&halClockConfig));
+    halUartStart(&printUart);
 }
 
 void platformPostInit()
