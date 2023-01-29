@@ -97,6 +97,7 @@ VectorB4_begin:
         uint32_t cntrReload = 2 * requestedTicks;
         if (cntrReload == 0) cntrReload = 1;
         if ((lastCntrReload = REG_RD32(DRF_REG(_TIM3, _CNT))) > cntrReload) {
+            REG_WR32(DRF_REG(_TIM3, _CNT), 0);
             goto VectorB4_begin;
         }
         lastCntrReload = cntrReload;

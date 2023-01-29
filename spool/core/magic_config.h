@@ -8,7 +8,7 @@
 #define STEPPER_A_IDX 0
 #define STEPPER_B_IDX 1
 
-const static uint32_t STEPS_PER_MM = 160;
+const static uint32_t STEPS_PER_MM = 80;
 
 #define VEL     100
 #define JERK    10
