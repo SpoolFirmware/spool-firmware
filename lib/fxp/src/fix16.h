@@ -1,6 +1,10 @@
 #ifndef __libfixmath_fix16_h__
 #define __libfixmath_fix16_h__
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wsign-conversion"
+#pragma GCC diagnostic ignored "-Wconversion"
+
 #ifdef __cplusplus
 extern "C"
 {
@@ -356,5 +360,7 @@ static inline uint32_t fix_abs(fix16_t in)
 }
 #include "fix16.hpp"
 #endif
+
+#pragma GCC diagnostic pop
 
 #endif
