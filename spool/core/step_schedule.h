@@ -16,6 +16,17 @@ enum MotionBlockState {
     BlockStateDecelerating,
 };
 
+/* suboptimal arrangement, do we really care about the axes */
+enum JobType {
+    /* default value is to not run */
+    StepperJobUndef,
+    StepperJobRun,
+    /* starts a sequence of moves, needs to unset the endstops */
+    StepperJobStart,
+    StepperJobHomeX,
+    StepperJobHomeY,
+};
+
 typedef struct MotionBlock {
     uint32_t totalSteps;
     uint32_t accelerationSteps;
@@ -33,12 +44,15 @@ typedef struct MotionBlock {
 
 typedef struct StepperJob {
     motion_block_t blocks[NR_STEPPERS];
+    enum JobType type;
     uint8_t stepDirs;
 } job_t;
-
 
 #define STEP_QUEUE_SIZE 20
 
 QueueHandle_t stepTaskInit(void);
+
+void notifyHomeXISR(void);
+void notifyHomeYISR(void);
 
 portTASK_FUNCTION_PROTO(stepScheduleTask, pvParameters);

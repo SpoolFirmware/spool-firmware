@@ -6,6 +6,7 @@
 #include "FreeRTOS.h"
 #include "task.h"
 #include "dbgprintf.h"
+#include "error.h"
 
 #include "step_schedule.h"
 #include "step_execute.h"
@@ -14,6 +15,13 @@
 #include "spool_config.h"
 
 extern struct UARTDriver printUart;
+
+void empty_buffer(void)
+{
+    int c;
+    while ((c = dbgGetc()) > 0)
+        halUartSendByte(&printUart, (uint8_t)(char)c);
+}
 
 static portTASK_FUNCTION_PROTO(DebugPrintTask, pvParameters);
 static portTASK_FUNCTION(DebugPrintTask, pvParameters)

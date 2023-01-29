@@ -3,6 +3,7 @@
 #include "magic_config.h"
 #include "bitops.h"
 #include "error.h"
+#include "string.h"
 #include <stdbool.h>
 
 static QueueHandle_t queueHandle;
@@ -67,21 +68,49 @@ uint16_t executeStep(uint16_t ticksElapsed)
     static struct StepperJob job = { 0 };
     static uint16_t counter[NR_STEPPERS] = { 0 };
 
-    // Executes Steps *FIRST*
-    uint8_t stepper_mask = 0;
-    for (uint8_t i = 0; i < NR_STEPPERS; i++) {
-        motion_block_t *pBlock = &job.blocks[i];
-        if (pBlock->stepsExecuted < pBlock->totalSteps) {
-            if (counter[i] > ticksElapsed) {
-                counter[i] -= ticksElapsed;
-            } else {
-                counter[i] = 0;
-                pBlock->stepsExecuted += 1;
-                stepper_mask |= BIT(i);
+    /* Check endstops first */
+    for (uint8_t i = 0; i < NR_AXES; ++i) {
+        if (platformGetEndstop(i)) {
+            if (job.type == StepperJobRun) {
+                /* UH OH decide what to do, panic for now */
+                panic();
+            }
+            if (job.type == StepperJobHomeX && i == ENDSTOP_X) {
+                memset(&job, 0, sizeof(job));
+                memset(&counter, 0, sizeof(job));
+                notifyHomeXISR();
+                return 0;
+            }
+            if (job.type == StepperJobHomeY && i == ENDSTOP_Y) {
+                memset(&job, 0, sizeof(job));
+                memset(&counter, 0, sizeof(job));
+                notifyHomeYISR();
+                return 0;
+            }
+            if (job.type == StepperJobStart) {
+                /* ignore endstops on the starting job */
+                break;
             }
         }
     }
-    stepStepper(stepper_mask);
+
+    if (job.type != StepperJobUndef) {
+        // Executes Steps *FIRST*
+        uint8_t stepper_mask = 0;
+        for (uint8_t i = 0; i < NR_STEPPERS; i++) {
+            motion_block_t *pBlock = &job.blocks[i];
+            if (pBlock->stepsExecuted < pBlock->totalSteps) {
+                if (counter[i] > ticksElapsed) {
+                    counter[i] -= ticksElapsed;
+                } else {
+                    counter[i] = 0;
+                    pBlock->stepsExecuted += 1;
+                    stepper_mask |= BIT(i);
+                }
+            }
+        }
+        stepStepper(stepper_mask);
+    }
 
     // Now we can do other things
     if (stepperJobFinished(&job)) {

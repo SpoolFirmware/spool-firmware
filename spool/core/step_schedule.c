@@ -3,13 +3,20 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <math.h>
+#include "error.h"
 #include "platform/platform.h"
 #include "bitops.h"
+#include "dbgprintf.h"
 
 struct StepperJob queueBuf[STEP_QUEUE_SIZE];
 StaticQueue_t stepQueue;
 
 const fix16_t STEPS_PER_MM_FIX = F16(160);
+
+static const struct PrinterState startState = {
+    .x = F16(50),
+    .y = F16(50),
+};
 
 #define MAGIC_PRINTER_STATES 4
 static const struct PrinterState states[MAGIC_PRINTER_STATES] = {
@@ -27,87 +34,46 @@ static const struct PrinterState states[MAGIC_PRINTER_STATES] = {
 /* only touched in scheduleMoveTo */
 static struct PrinterState currentState;
 
+#define STACK_SIZE 1024
+static StaticTask_t stepScheduleTaskBuf;
+static StackType_t stepScheduleStack[STACK_SIZE];
+static TaskHandle_t stepScheduleTaskHandle;
+
 QueueHandle_t stepTaskInit(void)
 {
     QueueHandle_t handle = xQueueCreateStatic(STEP_QUEUE_SIZE,
                                               sizeof(struct StepperJob),
                                               (uint8_t *)queueBuf, &stepQueue);
-    xTaskCreate(stepScheduleTask, "stepSchedule", 1024, (void *)handle,
-                tskIDLE_PRIORITY + 2, (TaskHandle_t *)NULL);
+    stepScheduleTaskHandle = xTaskCreateStatic(
+        stepScheduleTask, "stepSchedule", STACK_SIZE, (void *)handle,
+        tskIDLE_PRIORITY + 2, stepScheduleStack, &stepScheduleTaskBuf);
     return handle;
 }
 
-inline uint16_t abs(int16_t x)
+static void __fillJob(motion_block_t *block, const struct StepperPlan *plan)
 {
-    return (x >= 0) ? x : -x;
-}
-
-static uint32_t fix16_mul_abs(fix16_t a, int32_t b)
-{
-    int64_t product = (int64_t)a * b;
-    fix16_t result = (fix16_t)(product >> 16);
-    result += (fix16_t)((product & 0x8000) >> 15);
-    if (result == fix16_minimum) {
-        // minimum negative number has same representation as
-        // its absolute value in unsigned
-        return 0x80000000;
-    } else {
-        return result >= 0 ? (uint32_t)result : (uint32_t)-result;
-    }
+    block->totalSteps = plan->totalSteps;
+    block->accelerationSteps = plan->accelerationSteps;
+    block->cruiseSteps = plan->cruiseSteps;
+    block->decelerationSteps = plan->accelerationSteps;
+    block->cruiseVel_steps_s = plan->cruiseVel_steps_s;
 }
 
 static void scheduleMoveTo(QueueHandle_t handle,
-                           const struct PrinterState state)
+                           const struct PrinterState state, bool start)
 {
     fix16_t dx = fix16_sub(state.x, currentState.x);
     fix16_t dy = fix16_sub(state.y, currentState.y);
-    /* we may lose steps here, should we accumulate error? */
-    fix16_t aX = fix16_add(dx, dy);
-    fix16_t bX = fix16_sub(dx, dy);
-    fix16_t aVel, bVel, aAccX, bAccX;
-    /* sqrt(vf / JERK) */
 
-    uint8_t dirMask = ((aX >= 0) ? STEPPER_A : 0) | ((bX >= 0) ? STEPPER_B : 0);
+    job_t job = { 0 };
+    struct StepperPlan plan[NR_STEPPERS];
+    planMove(dx, dy, &plan[STEPPER_A_IDX], &plan[STEPPER_B_IDX], &job.stepDirs);
 
-    planVelocity(aX, bX, &aVel, &bVel, &aAccX, &bAccX);
+    for (uint8_t i = 0; i < NR_STEPPERS; ++i) {
+        __fillJob(&job.blocks[i], &plan[i]);
+    }
 
-    uint32_t aXSteps = fix16_mul_abs(aX, STEPS_PER_MM);
-    uint32_t bXSteps = fix16_mul_abs(bX, STEPS_PER_MM);
-    uint32_t aVelSteps = fix16_mul_abs(aVel, STEPS_PER_MM);
-    uint32_t bVelSteps = fix16_mul_abs(bVel, STEPS_PER_MM);
-    uint32_t aAccXSteps = fix16_mul_abs(aAccX, STEPS_PER_MM);
-    uint32_t bAccXSteps = fix16_mul_abs(bAccX, STEPS_PER_MM);
-
-    uint32_t aCruise = aXSteps > 2 * aAccXSteps ? aXSteps - 2 * aAccXSteps : 0;
-    uint32_t bCruise = bXSteps > 2 * bAccXSteps ? bXSteps - 2 * bAccXSteps : 0;
-
-    job_t job = {
-        .blocks = { 
-{
-            .totalSteps = aXSteps,
-            .accelerationSteps = aAccXSteps,
-            .cruiseSteps = aCruise,
-            .decelerationSteps = aAccXSteps,
-
-            .entryVel_steps_s = 0,
-            .cruiseVel_steps_s = aVelSteps,
-            .exitVel_steps_s = 0,
-            .blockState = BlockStateAccelerating,
-                    },
-                    {
-            .totalSteps = bXSteps,
-            .accelerationSteps = bAccXSteps,
-            .cruiseSteps = bCruise,
-            .decelerationSteps = bAccXSteps,
-
-            .entryVel_steps_s = 0,
-            .cruiseVel_steps_s = bVelSteps,
-            .exitVel_steps_s = 0,
-            .blockState = BlockStateAccelerating,
-},
-        },
-        .stepDirs = dirMask,
-    };
+    job.type = start ? StepperJobStart : StepperJobRun;
 
     while (xQueueSend(handle, &job, (unsigned int)-1) != pdTRUE)
         ;
@@ -118,13 +84,64 @@ static void scheduleMoveTo(QueueHandle_t handle,
     currentState = state;
 }
 
+static void scheduleHome(QueueHandle_t handle)
+{
+    job_t job = { 0 };
+    struct StepperPlan plan[NR_STEPPERS];
+    planHomeX(&plan[STEPPER_A_IDX], &plan[STEPPER_B_IDX], &job.stepDirs);
+
+    for (uint8_t i = 0; i < NR_STEPPERS; ++i) {
+        __fillJob(&job.blocks[i], &plan[i]);
+    }
+    job.type = StepperJobHomeX;
+
+    while (xQueueSend(handle, &job, (unsigned int)-1) != pdTRUE)
+        ;
+
+    if (ulTaskNotifyTake(pdFALSE, portMAX_DELAY) == 0) {
+        /* homing X failed */
+        panic();
+    }
+
+    planHomeY(&plan[STEPPER_A_IDX], &plan[STEPPER_B_IDX], &job.stepDirs);
+
+    for (uint8_t i = 0; i < NR_STEPPERS; ++i) {
+        __fillJob(&job.blocks[i], &plan[i]);
+    }
+    job.type = StepperJobHomeY;
+
+    while (xQueueSend(handle, &job, (unsigned int)-1) != pdTRUE)
+        ;
+
+    if (ulTaskNotifyTake(pdFALSE, portMAX_DELAY) == 0) {
+        /* homing Y failed */
+        panic();
+    }
+
+    dbgPrintf("homing completed");
+}
+
 portTASK_FUNCTION(stepScheduleTask, pvParameters)
 {
     QueueHandle_t queue = (QueueHandle_t)pvParameters;
     int x = 0;
 
     enableStepper(STEPPER_A | STEPPER_B);
-    for (;; ++x, x = x % MAGIC_PRINTER_STATES) {
-        scheduleMoveTo(queue, states[x]);
-    }
+    // scheduleHome(queue);
+
+    // scheduleMoveTo(queue, startState, true);
+    // for (;; ++x, x = x % MAGIC_PRINTER_STATES) {
+    //     scheduleMoveTo(queue, states[x], false);
+    // }
+    for(;;);
+}
+
+void notifyHomeXISR(void)
+{
+    vTaskNotifyGiveFromISR(stepScheduleTaskHandle, NULL);
+}
+
+void notifyHomeYISR(void)
+{
+    vTaskNotifyGiveFromISR(stepScheduleTaskHandle, NULL);
 }

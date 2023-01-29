@@ -15,14 +15,14 @@ cc_test(
         "core/magic_config.h",
     ],
     deps = [
-        "//lib/fxp:lib", 
+        "//lib/fxp:lib",
+        "//lib/common:bitops",
         "//lib/munit:lib"
     ],
     copts = [
         "-Wconversion",
         "-Warith-conversion",
     ],
-
 )
 
 cc_binary(

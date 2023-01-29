@@ -35,6 +35,13 @@ const static struct IOLine statusLED = { .group = GPIOE, .pin = 0 };
 #define STEPPER_A BIT(0)
 #define STEPPER_B BIT(1)
 
+#define NR_AXES 2
+
+const static struct IOLine endstops[NR_AXES] = {
+    { .group = GPIOB, .pin = 10 }, /* X */
+    { .group = GPIOE, .pin = 12 }, /* Y*/
+};
+
 const static struct IOLine step[NR_STEPPERS] = {
     /* X */
     { .group = GPIOE, .pin = 9 },
@@ -170,6 +177,7 @@ void platformInit(struct PlatformConfig *config)
     // Enable AHB Peripherials
     uint32_t ahb1enr = REG_RD32(DRF_REG(_RCC, _AHB1ENR));
     ahb1enr = FLD_SET_DRF(_RCC, _AHB1ENR, _GPIOAEN, _ENABLED, ahb1enr);
+    ahb1enr = FLD_SET_DRF(_RCC, _AHB1ENR, _GPIOBEN, _ENABLED, ahb1enr);
     ahb1enr = FLD_SET_DRF(_RCC, _AHB1ENR, _GPIOFEN, _ENABLED, ahb1enr);
     ahb1enr = FLD_SET_DRF(_RCC, _AHB1ENR, _GPIOEEN, _ENABLED, ahb1enr);
     ahb1enr = FLD_SET_DRF(_RCC, _AHB1ENR, _GPIODEN, _ENABLED, ahb1enr);
@@ -204,6 +212,10 @@ void platformInit(struct PlatformConfig *config)
                            DRF_DEF(_HAL_GPIO, _MODE, _SPEED, _VERY_HIGH));
     }
 
+    for (uint8_t i = 0; i < NR_AXES; ++i) {
+        halGpioSetMode(endstops[i], DRF_DEF(_HAL_GPIO, _MODE, _MODE, _INPUT));
+    }
+
     struct IOLine uartTx = { .group = GPIOD, .pin = 8 };
     halGpioSetMode(uartTx, DRF_DEF(_HAL_GPIO, _MODE, _MODE, _AF) |
                                DRF_DEF(_HAL_GPIO, _MODE, _TYPE, _PUSHPULL) |
@@ -228,4 +240,10 @@ inline struct IOLine platformGetStatusLED(void)
 uint32_t getStepperTimerFreq(void)
 {
     return 100000;
+}
+
+__attribute__((always_inline)) 
+inline bool platformGetEndstop(uint8_t axis)
+{
+    return !halGpioRead(endstops[axis]);
 }
