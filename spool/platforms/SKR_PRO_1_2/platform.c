@@ -89,7 +89,7 @@ void VectorB4() {
     if(FLD_TEST_DRF(_TIM3, _SR, _UIF, _UPDATE_PENDING, REG_RD32(DRF_REG(_TIM3, _SR)))){
         REG_WR32(DRF_REG(_TIM3, _SR), ~DRF_DEF(_TIM3, _SR, _UIF, _UPDATE_PENDING));
         /* execute current job */
-        executeStep();
+        executeStep(1);
     }
     halIrqClear(IRQ_TIM3);
 }

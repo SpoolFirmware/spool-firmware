@@ -59,20 +59,32 @@ static uint16_t sCalcInterval(motion_block_t *pBlock)
     return 1;
 }
 
-static uint32_t min(uint32_t a, uint32_t b)
-{
-    return a < b ? a : b;
-}
-
-void executeStep(void)
+uint16_t executeStep(uint16_t ticksElapsed)
 {
     static struct StepperJob job = { 0 };
     static uint16_t counter[NR_STEPPERS] = { 0 };
-    uint8_t stepper_mask = 0;
 
+
+    // Executes Steps *FIRST*
+    uint32_t stepper_mask = 0;
+    for (uint8_t i = 0; i < NR_STEPPERS; i++) {
+        motion_block_t *pBlock = &job.blocks[i];
+        if (pBlock->stepsExecuted < pBlock->totalSteps) {
+            if (counter[i] > ticksElapsed) {
+                counter[i] -= ticksElapsed;
+            } else {
+                counter[i] = 0;
+                pBlock->stepsExecuted += 1;
+                stepper_mask |= BIT(i);
+            }
+        }
+    }
+    stepStepper(stepper_mask);
+
+    // Now we can do other things
     if (stepperJobFinished(&job)) {
         if (xQueueReceiveFromISR(queueHandle, &job, NULL) != pdTRUE) {
-            return;
+            return 0;
         }
         setStepperDir(job.stepDirs);
         for (uint8_t i = 0; i < NR_STEPPERS; ++i) {
@@ -87,8 +99,7 @@ void executeStep(void)
         motion_block_t *pBlock = &job.blocks[i];
         if (pBlock->stepsExecuted < pBlock->totalSteps) {
             if (counter[i] == 0) {
-                pBlock->stepsExecuted += 1;
-                stepper_mask |= BIT(i);
+                // Move the block state if required
                 switch(pBlock->blockState) {
                     case BlockStateAccelerating:
                         if (pBlock->stepsExecuted >= pBlock->accelerationSteps) {
@@ -109,14 +120,14 @@ void executeStep(void)
                     default:
                         break;
                 }
+
+                // Calculate the next step interval
                 counter[i] = sCalcInterval(pBlock);
-                if (counter[i] > 0) counter[i] -= 1;
                 if (counter[i] > 40) counter[i] = 40;
-                pBlock->ticksCurState += counter[i] + 1;
-            } else {
-                counter[i]--;
             }
+            pBlock->ticksCurState += ticksElapsed;
         }
     }
-    stepStepper(stepper_mask);
+
+    return 1;
 }

@@ -10,9 +10,9 @@
 
 const static uint32_t STEPS_PER_MM = 160;
 
-#define VEL 50
+#define VEL     100
 #define JERK    10
-#define ACC     500
+#define ACC     300
 
 const static uint32_t V_MAX_STEPS = VEL * STEPS_PER_MM;
 const static uint32_t ACCEL_STEPS = ACC * STEPS_PER_MM;

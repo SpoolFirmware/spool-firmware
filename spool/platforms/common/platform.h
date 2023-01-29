@@ -16,5 +16,10 @@ void stepStepper(uint8_t stepperMask);
 void disableStepper(uint8_t stepperMask);
 
 void setStepperDir(uint8_t dirMask);
-void executeStep(void);
+
+/*!
+ * @param ticksElapsed  number of ticksElapsed since last invocation.
+ * @returns number of desired ticks till the next step
+ */
+uint16_t executeStep(uint16_t ticksElapsed);
 uint32_t getStepperTimerFreq(void);
