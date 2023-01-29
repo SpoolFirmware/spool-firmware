@@ -5,6 +5,7 @@
 
 #include "FreeRTOS.h"
 #include "task.h"
+#include "dbgprintf.h"
 
 #include "step_schedule.h"
 #include "step_execute.h"
@@ -12,19 +13,24 @@
 #include "hal/stm32/hal.h"
 #include "spool_config.h"
 
-static portTASK_FUNCTION_PROTO(vLEDFlashTask1, pvParameters);
-static portTASK_FUNCTION(vLEDFlashTask1, pvParameters)
+extern struct UARTDriver printUart;
+
+static portTASK_FUNCTION_PROTO(DebugPrintTask, pvParameters);
+static portTASK_FUNCTION(DebugPrintTask, pvParameters)
 {
     (void)pvParameters;
-    struct IOLine led1 = platformGetStatusLED();
 
+    int c;
     for (;;) {
-        // halGpioToggle(led1);
-        // vTaskDelay(25);
+        if ((c = dbgGetc()) > 0) {
+            halUartSendByte(&printUart, (uint8_t)(char)c);
+        } else {
+            vTaskDelay(0);
+        }
     }
 }
 
-void main()
+void main(void)
 {
     struct PlatformConfig platformConfig = { 0 };
     platformInit(&platformConfig);
@@ -32,7 +38,7 @@ void main()
     stepExecuteSetQueue(queue);
     platformPostInit();
 
-    xTaskCreate(vLEDFlashTask1, "LED", configMINIMAL_STACK_SIZE, NULL,
+    xTaskCreate(DebugPrintTask, "dbgPrintf", configMINIMAL_STACK_SIZE, NULL,
                 tskIDLE_PRIORITY + 1, (TaskHandle_t *)NULL);
 
     vTaskStartScheduler();
