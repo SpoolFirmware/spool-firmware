@@ -2,6 +2,7 @@
 
 #include "hal/hal.h"
 #include <stdint.h>
+#include <stddef.h>
 #include <stdbool.h>
 #include "FreeRTOS.h"
 #include "queue.h"
@@ -26,3 +27,6 @@ bool platformGetEndstop(uint8_t axis);
  */
 uint16_t executeStep(uint16_t ticksElapsed);
 uint32_t getStepperTimerFreq(void);
+
+size_t platformRecvCommand(char *pBuffer, size_t bufferSize, TickType_t ticksToWait);
+void platformSendResponse(char *pBuffer, size_t len);

@@ -15,3 +15,7 @@ struct UARTDriver;
 void halUartStart(struct UARTDriver *pDriver);
 void halUartSendByte(struct UARTDriver *pDriver, uint8_t byte);
 void halUartSend(struct UARTDriver *pDriver, const uint8_t *pBuffer, uint32_t len);
+/*!
+ * @return 0 if a byte is recv'd.
+ */
+int halUartRecvByte(struct UARTDriver *pDriver, uint8_t *pByte);

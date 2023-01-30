@@ -1,11 +1,13 @@
+#include <stddef.h>
 #include "platform/platform.h"
 #include "hal/hal.h"
 #include "hal/cortexm/hal.h"
 #include "hal/stm32/hal.h"
+#include "manual/irq.h"
+#include "manual/mcu.h"
+#include "stream_buffer.h"
 
 #include "FreeRTOS.h"
-
-#define IRQ_TIM2 28
 
 const static struct HalClockConfig halClockConfig = {
     .hseFreqHz = 25000000,
@@ -26,12 +28,27 @@ const static struct UARTConfig uart1Cfg = {
 };
 
 const static struct IOLine statusLED = { .group = GPIOC, .pin = 13 };
-struct UARTDriver printUart = {0};
+struct UARTDriver printUart = { 0 };
+
+static char uartCommandBuffer[128];
+static StreamBufferHandle_t cmdmgmtBufferHandle;
+static StaticStreamBuffer_t cmdmgmtBufferMeta;
+
+size_t platformRecvCommand(char *pBuffer, size_t bufferSize,
+                           TickType_t ticksToWait)
+{
+    return xStreamBufferReceive(cmdmgmtBufferHandle, pBuffer, bufferSize,
+                                ticksToWait);
+}
 
 static void setupTimer(void);
 
 void platformPostInit(void)
 {
+    setupTimer();
+
+    halUartStart(&printUart);
+    halIrqEnable(IRQ_USART1);
 }
 
 void enableStepper(uint8_t stepperMask)
@@ -64,24 +81,39 @@ void platformInit(struct PlatformConfig *config)
                                DRF_DEF(_HAL_GPIO, _MODE, _TYPE, _PUSHPULL) |
                                DRF_DEF(_HAL_GPIO, _MODE, _SPEED, _VERY_HIGH) |
                                DRF_NUM(_HAL_GPIO, _MODE, _AF, 7));
+    struct IOLine uartRx = { .group = GPIOA, .pin = 10 };
+    halGpioSetMode(uartRx, DRF_DEF(_HAL_GPIO, _MODE, _MODE, _AF) |
+                               DRF_DEF(_HAL_GPIO, _MODE, _TYPE, _PUSHPULL) |
+                               DRF_DEF(_HAL_GPIO, _MODE, _SPEED, _VERY_HIGH) |
+                               DRF_NUM(_HAL_GPIO, _MODE, _AF, 7));
 
+    // Setup Queues
     halUartInit(&printUart, &uart1Cfg, DRF_BASE(DRF_USART1),
                 halClockApb2FreqGet(&halClockConfig));
-    halUartStart(&printUart);
 
-    setupTimer();
+    cmdmgmtBufferHandle = xStreamBufferCreateStatic(
+        sizeof(uartCommandBuffer), 1, (uint8_t *)uartCommandBuffer,
+        &cmdmgmtBufferMeta);
 }
 
-void VectorB0(void)
+IRQ_HANDLER_TIM2(void)
 {
     if (FLD_TEST_DRF(_TIM2, _SR, _UIF, _UPDATE_PENDING,
-                     REG_RD32(DRF_REG(_TIM2, _SR))))
-    {
+                     REG_RD32(DRF_REG(_TIM2, _SR)))) {
         REG_WR32(DRF_REG(_TIM2, _SR),
                  ~DRF_DEF(_TIM2, _SR, _UIF, _UPDATE_PENDING));
         /* halGpioToggle(statusLED); */
     }
     halIrqClear(IRQ_TIM2);
+}
+
+IRQ_HANDLER_USART1(void)
+{
+    uint8_t byte;
+    if (!halUartRecvByte(&printUart, &byte)) {
+        xStreamBufferSendFromISR(cmdmgmtBufferHandle, &byte, 1, NULL);
+    }
+    halIrqClear(IRQ_USART1);
 }
 
 static void setupTimer(void)

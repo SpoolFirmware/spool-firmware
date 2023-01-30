@@ -1,13 +1,9 @@
 #include "FreeRTOS.h"
-#include "platform/platform.h"
-#include "hal/hal.h"
-#include "hal/cortexm/hal.h"
-#include "hal/stm32/hal.h"
+#include "platform_private.h"
 #include "bitops.h"
 #include "spool_config.h"
-#include "manual/mcu.h"
 
-const static struct HalClockConfig halClockConfig = {
+const struct HalClockConfig halClockConfig = {
     .hseFreqHz = 8000000,
     .q = 7,
     .p = 2,
@@ -19,19 +15,9 @@ const static struct HalClockConfig halClockConfig = {
     .ahbPrescaler = 1,
 };
 
-struct UARTDriver printUart = {0};
-
-const static struct UARTConfig uart1Cfg = {
-    .baudrate = 115200,
-    .useRxInterrupt = 0,
-    .useTxInterrupt = 0,
-};
-
 // const static struct IOLine statusLED = { .group = GPIOA, .pin = 7 };
 const static struct IOLine statusLED = { .group = GPIOE, .pin = 0 };
 
-#define IRQ_TIM2 28
-#define IRQ_TIM3 29
 #define NR_STEPPERS 2
 
 #define STEPPER_A BIT(0)
@@ -101,7 +87,8 @@ static void setStepper(uint8_t stepperMask, uint8_t stepMask)
 }
 
 static uint32_t lastCntrReload = 0;
-void VectorB4() {
+IRQ_HANDLER_TIM3(void)
+{
     if (FLD_TEST_DRF(_TIM3, _SR, _UIF, _UPDATE_PENDING,
                      REG_RD32(DRF_REG(_TIM3, _SR)))) {
 VectorB4_begin:
@@ -134,9 +121,12 @@ void stepStepper(uint8_t stepperMask)
     reloadTimer();
 }
 
-void VectorB0() {
-    if(FLD_TEST_DRF(_TIM2, _SR, _UIF, _UPDATE_PENDING, REG_RD32(DRF_REG(_TIM2, _SR)))){
-        REG_WR32(DRF_REG(_TIM2, _SR), ~DRF_DEF(_TIM2, _SR, _UIF, _UPDATE_PENDING));
+IRQ_HANDLER_TIM2(void)
+{
+    if (FLD_TEST_DRF(_TIM2, _SR, _UIF, _UPDATE_PENDING,
+                     REG_RD32(DRF_REG(_TIM2, _SR)))) {
+        REG_WR32(DRF_REG(_TIM2, _SR),
+                 ~DRF_DEF(_TIM2, _SR, _UIF, _UPDATE_PENDING));
         setStepper(STEPPER_A | STEPPER_B, 0);
     }
     halIrqClear(IRQ_TIM2);
@@ -152,7 +142,8 @@ static void setupTimer()
 
     // Enable Counter
     /* TIM2 runs off APB1, which runs at 42, but 84 due to x2 in the clock graph??? */
-    REG_WR32(DRF_REG(_TIM2, _PSC), halClockApb1TimerFreqGet(&halClockConfig) / 10000000 - 1);
+    REG_WR32(DRF_REG(_TIM2, _PSC),
+             halClockApb1TimerFreqGet(&halClockConfig) / 10000000 - 1);
     // .1us / tick
     REG_WR32(DRF_REG(_TIM2, _ARR), 19);
     REG_WR32(DRF_REG(_TIM2, _CNT), 0);
@@ -166,7 +157,9 @@ static void setupTimer()
     // Enable Counter
     /* TIM3 runs off APB1, which runs at 42, but 84 due to x2 in the clock graph??? */
     /* actual PSC is value + 1 */
-    REG_WR32(DRF_REG(_TIM3, _PSC), halClockApb1TimerFreqGet(&halClockConfig) / getStepperTimerFreq() / 2 - 1);
+    REG_WR32(DRF_REG(_TIM3, _PSC), halClockApb1TimerFreqGet(&halClockConfig) /
+                                           getStepperTimerFreq() / 2 -
+                                       1);
     /* 10khz */
     REG_WR32(DRF_REG(_TIM3, _ARR), 1);
     REG_WR32(DRF_REG(_TIM3, _CNT), 0);
@@ -176,7 +169,6 @@ static void setupTimer()
 
 void platformInit(struct PlatformConfig *config)
 {
-
     halClockInit(&halClockConfig);
 
     // Enable AHB Peripherials
@@ -221,14 +213,7 @@ void platformInit(struct PlatformConfig *config)
         halGpioSetMode(endstops[i], DRF_DEF(_HAL_GPIO, _MODE, _MODE, _INPUT));
     }
 
-    struct IOLine uartTx = { .group = GPIOD, .pin = 8 };
-    halGpioSetMode(uartTx, DRF_DEF(_HAL_GPIO, _MODE, _MODE, _AF) |
-                               DRF_DEF(_HAL_GPIO, _MODE, _TYPE, _PUSHPULL) |
-                               DRF_DEF(_HAL_GPIO, _MODE, _SPEED, _VERY_HIGH) |
-                               DRF_NUM(_HAL_GPIO, _MODE, _AF, 7));
-    halUartInit(&printUart, &uart1Cfg, DRF_BASE(DRF_USART3),
-                halClockApb1FreqGet(&halClockConfig));
-    halUartStart(&printUart);
+    communicationInit();
 }
 
 void platformPostInit()
@@ -236,8 +221,7 @@ void platformPostInit()
     setupTimer();
 }
 
-__attribute__((always_inline)) 
-inline struct IOLine platformGetStatusLED(void)
+__attribute__((always_inline)) inline struct IOLine platformGetStatusLED(void)
 {
     return statusLED;
 }
@@ -247,8 +231,7 @@ uint32_t getStepperTimerFreq(void)
     return 100000;
 }
 
-__attribute__((always_inline)) 
-inline bool platformGetEndstop(uint8_t axis)
+__attribute__((always_inline)) inline bool platformGetEndstop(uint8_t axis)
 {
     return !halGpioRead(endstops[axis]);
 }

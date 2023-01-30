@@ -30,7 +30,9 @@ cc_library(
 cc_library(
     name = "runtime",
     srcs = [
+        "platform_private.h",
         "platform.c",
+        "communication.c",
         "startup/crt1.c",
         "startup/crt0.s",
         "startup/vectors.s",
