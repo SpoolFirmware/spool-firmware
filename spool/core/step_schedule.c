@@ -14,16 +14,16 @@ StaticQueue_t stepQueue;
 const fix16_t STEPS_PER_MM_FIX = F16(160);
 
 static const struct PrinterState startState = {
-    .x = F16(50),
-    .y = F16(50),
+    .x = F16(100),
+    .y = F16(100),
 };
 
 #define MAGIC_PRINTER_STATES 4
 static const struct PrinterState states[MAGIC_PRINTER_STATES] = {
-    { .x = F16(50), .y = F16(0) },
-    { .x = F16(0), .y = F16(50) },
+    { .x = F16(100), .y = F16(50) },
+    { .x = F16(50), .y = F16(100) },
+    { .x = F16(100), .y = F16(100) },
     { .x = F16(50), .y = F16(50) },
-    { .x = F16(0), .y = F16(0) },
 };
 
 /* Records the state of the printer ends up in after the stepper queue
@@ -104,6 +104,8 @@ static void scheduleHome(QueueHandle_t handle)
         panic();
     }
 
+    currentState.x = 0;
+
     planHomeY(&plan[STEPPER_A_IDX], &plan[STEPPER_B_IDX], &job.stepDirs);
 
     for (uint8_t i = 0; i < NR_STEPPERS; ++i) {
@@ -119,7 +121,7 @@ static void scheduleHome(QueueHandle_t handle)
         panic();
     }
 
-    dbgPrintf("homing completed");
+    currentState.y = 0;
 }
 
 portTASK_FUNCTION(stepScheduleTask, pvParameters)
@@ -130,10 +132,10 @@ portTASK_FUNCTION(stepScheduleTask, pvParameters)
     enableStepper(STEPPER_A | STEPPER_B);
     scheduleHome(queue);
 
-    // scheduleMoveTo(queue, startState, true);
-    // for (;; ++x, x = x % MAGIC_PRINTER_STATES) {
-    //     scheduleMoveTo(queue, states[x], false);
-    // }
+    scheduleMoveTo(queue, startState, true);
+    for (;; ++x, x = x % MAGIC_PRINTER_STATES) {
+        scheduleMoveTo(queue, states[x], false);
+    }
     for (;;)
         ;
 }
