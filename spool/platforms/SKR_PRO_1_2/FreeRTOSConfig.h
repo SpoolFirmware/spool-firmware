@@ -63,8 +63,8 @@ your application. */
 #define configTIMER_TASK_STACK_DEPTH            configMINIMAL_STACK_SIZE
 
 /* Interrupt nesting behaviour configuration. */
-#define configKERNEL_INTERRUPT_PRIORITY         (0x7 << 5U)
-#define configMAX_SYSCALL_INTERRUPT_PRIORITY    (0x4 << 5U)
+#define configKERNEL_INTERRUPT_PRIORITY         (0xFF)
+#define configMAX_SYSCALL_INTERRUPT_PRIORITY    (0x00)
 #define configMAX_API_CALL_INTERRUPT_PRIORITY   configMAX_SYSCALL_INTERRUPT_PRIORITY
 
 _Noreturn void __panic(const char *file, int line);

@@ -68,6 +68,7 @@ void communicationInit(void)
 void communicationPostInit(void)
 {
     halUartStart(&cmdUart);
+    halIrqPrioritySet(IRQ_USART1, configMAX_SYSCALL_INTERRUPT_PRIORITY + 1);
     halIrqEnable(IRQ_USART1);
 }
 
