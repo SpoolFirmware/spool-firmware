@@ -82,7 +82,7 @@ class DRFHeaderGenerator:
                 values.append((1, 'RESET'))
             else:
                 values.append((0, 'CLR'))
-                values.append((0, 'SET'))
+                values.append((1, 'SET'))
             for (v, name) in values:
                 self.out.write_define(
                     f'{pr_name}_{fld_name}_{name}',
