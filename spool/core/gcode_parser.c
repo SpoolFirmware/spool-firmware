@@ -1,143 +1,309 @@
 #include <stdint.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include "fix16.h"
+#include <stdbool.h>
+#include "string.h"
+#include "gcode_parser.h"
 
-#define MAX_LINE_LEN 100
-
-enum GcodeType {
-    G0 = 0,
-    G1,
-    GOther,
+enum TokenKind {
+    TokenUndef,
+    TokenG,
+    TokenX,
+    TokenY,
+    TokenZ,
+    TokenE,
+    TokenF,
+    TokenFix16,
 };
 
-typedef struct Gcode {
-    enum GcodeType type;
+struct Token {
+    enum TokenKind kind;
+    union {
+        fix16_t fix16;
+    };
+};
 
-    fix16_t f, x, y, z, e;
-} gcode_t;
+static char currChar;
+static char scratchBuf[MAX_NUM_LEN];
+static struct Token currToken;
 
+/* Tokenizer */
 
-gcode_t initGcode(void) {
-    gcode_t g;
-    memset(&g, 0, sizeof(g));
-    return g;
+static bool isWhitespace()
+{
+    return currChar == ' ' || currChar == '\r' || currChar == '\n' ||
+           currChar == '\t' || currChar == '\v' || currChar == '\f';
 }
 
-void printGcode(gcode_t* p) {
-    if (!p || p->type == GOther) return;
-    char x[13], y[13], z[13], f[13], e[13];
-    fix16_to_str(p->x, x, 10);
-    fix16_to_str(p->y, y, 10);
-    fix16_to_str(p->z, z, 10);
-    fix16_to_str(p->f, f, 10);
-    fix16_to_str(p->e, e, 10);
-
-    printf("G%d: X%x, Y%x, Z%x, F%x, E%x\n", p->type, p->x, p->y, p->z, p->f, p->e);
-    printf("G%d: X%s, Y%s, Z%s, F%s, E%s\n", p->type, x, y, z, f, e);
+static bool isEof()
+{
+    return currChar == '\0';
 }
 
+static status_t skipWhitespaces(void)
+{
+    status_t err;
 
-uint32_t getword(const char* input, char* token, size_t *p_input_pos, char delim) {
-    size_t read_cnt = 0;
-    size_t token_pos = 0;
-
-    while (input[*p_input_pos] != '\0') {
-        if (input[*p_input_pos] == delim || input[*p_input_pos] == '\n') {
-            (*p_input_pos)++;
-            token[token_pos] = '\0';
-            return read_cnt;
+    while (isWhitespace()) {
+        err = receiveChar(&currChar);
+        if (err == StatusGcodeEof) {
+            return StatusOk;
         }
-        read_cnt++;
-        token[token_pos++] = input[*p_input_pos];
-        (*p_input_pos)++;
+        if (STATUS_ERR(err)) {
+            return err;
+        }
     }
-    token[token_pos] = '\0';
 
-    return read_cnt;
+    return StatusOk;
 }
 
+static status_t takeUntilWhitespace(void)
+{
+    status_t err;
 
-enum GcodeType parseGcodeType(const char* str) {
-    if (strcmp(str, "G0") == 0) return G0;
-    if (strcmp(str, "G1") == 0) return G1;
-    return GOther;
+    for (unsigned int i = 0; i < MAX_NUM_LEN; ++i) {
+        if (isWhitespace() || isEof()) {
+            scratchBuf[i] = '\0';
+            return StatusOk;
+        }
+        scratchBuf[i] = currChar;
+        err = receiveChar(&currChar);
+        if (STATUS_ERR(err) && err != StatusGcodeEof) {
+            return err;
+        }
+    }
+    return StatusGcodeTooLong;
 }
 
+static status_t dec(struct Token *t)
+{
+    status_t err;
 
-/*!
- * input, input_size is pointer and size of the input text buffer
- * @return number of characters consumed
- *
- */
-uint32_t getGcode(const char* input, size_t input_size,
-    gcode_t *pGcode) {
-    size_t input_len = strlen(input);
-    size_t ret = input_len < input_size ? input_len : input_size;
-    size_t input_pos = 0;
-    char token[1000];
+    err = takeUntilWhitespace();
+    if (STATUS_ERR(err)) {
+        return err;
+    }
 
-    getword(input, token, &input_pos, ' ');
-    enum GcodeType t = parseGcodeType(token);
-    switch (t) {
-    case G0:
-        pGcode->type = G0;
+    t->kind = TokenFix16;
+    t->fix16 = fix16_from_str(scratchBuf);
+    return StatusOk;
+}
+
+static bool isLetter(void)
+{
+    return ('a' <= currChar && currChar <= 'z') ||
+           ('A' <= currChar && currChar <= 'Z');
+}
+
+static void lowerCase(void)
+{
+    if ('A' <= currChar && currChar <= 'Z') {
+        currChar |= 0x60;
+    }
+}
+
+static status_t letter(struct Token *t)
+{
+    if (!isLetter()) {
+        return StatusInvalidGcodeToken;
+    }
+
+    lowerCase();
+    switch (currChar) {
+    case 'g':
+        t->kind = TokenG;
         break;
-    case 1:
-        pGcode->type = G1;
+    case 'x':
+        t->kind = TokenX;
+        break;
+    case 'y':
+        t->kind = TokenY;
+        break;
+    case 'z':
+        t->kind = TokenZ;
+        break;
+    case 'e':
+        t->kind = TokenE;
+        break;
+    case 'f':
+        t->kind = TokenF;
         break;
     default:
-        pGcode->type = GOther;
-        goto exit;
+        return StatusInvalidGcodeToken;
     }
-
-    while (getword(input, token, &input_pos, ' ')) {
-        switch (token[0]) {
-        case ';':
-            goto exit;
-        case 'F':
-            pGcode->f = fix16_from_str(token+1);
-            break;
-        case 'X':
-            pGcode->x = fix16_from_str(token+1);
-            break;
-        case 'Y':
-            pGcode->y = fix16_from_str(token+1);
-            break;
-        case 'Z':
-            pGcode->z = fix16_from_str(token+1);
-            break;
-        case 'E':
-            pGcode->e = fix16_from_str(token+1);
-            break;
-        } 
-    }
-
-exit:
-    return ret;
+    return receiveChar(&currChar);
 }
 
+static status_t tokenize(struct Token *t)
+{
+    status_t err;
 
-int main(int argc, char** argv) {
-    if (argc != 2) printf("usage: [gcode filename]\n");
-
-    char* fname = argv[1];
-    FILE* fp = fopen(fname, "r");
-    char line[MAX_LINE_LEN] = {0};
-    if (!fp) {
-        perror("open file failed\n");
-        exit(EXIT_FAILURE);
-        
-    }
-    
-    while(fgets(line, MAX_LINE_LEN, fp)) {
-        gcode_t gcode = initGcode();
-        // printf("%s", line);
-        getGcode(line, strlen(line), &gcode);
-        // printGcode(&gcode);
-        // puts("-----------------------");
+    if (isEof()) {
+        return StatusGcodeEof;
     }
 
-    exit(EXIT_SUCCESS);
+    if (isWhitespace()) {
+        err = skipWhitespaces();
+        if (STATUS_ERR(err)) {
+            return err;
+        }
+    }
+    if (('0' <= currChar && currChar <= '9') || currChar == '-') {
+        return dec(t);
+    }
+    return letter(t);
+}
+
+static status_t initTokenizer()
+{
+    return receiveChar(&currChar);
+}
+
+/* Parser */
+
+static status_t getCurrToken(void)
+{
+    if (currToken.kind == TokenUndef) {
+        status_t err = tokenize(&currToken);
+        return err;
+    }
+    return StatusOk;
+}
+
+static void eatToken(void)
+{
+    memset(&currToken, 0, sizeof(currToken));
+}
+
+static status_t eatFix16(fix16_t *n)
+{
+    if (currToken.kind != TokenFix16) {
+        return StatusInvalidGcodeCommand;
+    }
+    *n = currToken.fix16;
+    memset(&currToken, 0, sizeof(currToken));
+    return StatusOk;
+}
+
+/* refactor to be less clunky, note this should not get more
+ * tokens than what is required. 
+ */
+static status_t parseXY(struct GcodeCommand *cmd)
+{
+    status_t err;
+    bool xSet = false;
+    bool ySet = false;
+
+    while (true) {
+        err = getCurrToken();
+        if (err == StatusGcodeEof) {
+            if (xSet || ySet) {
+                return StatusOk;
+            } else {
+                return StatusInvalidGcodeDuplicateAxis;
+            }
+        }
+        if (STATUS_ERR(err)) {
+            return err;
+        }
+
+        switch (currToken.kind) {
+        case TokenX:
+            if (xSet) {
+                return StatusInvalidGcodeDuplicateAxis;
+            }
+            eatToken();
+            xSet = true;
+            err = getCurrToken();
+            if (STATUS_ERR(err)) {
+                return StatusInvalidGcodeMissingToken;
+            }
+            err = eatFix16(&cmd->xy.x);
+            break;
+        case TokenY:
+            if (ySet) {
+                return StatusInvalidGcodeDuplicateAxis;
+            }
+            eatToken();
+            ySet = true;
+            err = getCurrToken();
+            if (STATUS_ERR(err)) {
+                return StatusInvalidGcodeMissingToken;
+            }
+            err = eatFix16(&cmd->xy.y);
+            break;
+        default:
+            if (xSet || ySet) {
+                return StatusOk;
+            }
+            return StatusInvalidGcodeMissingToken;
+        }
+        if (STATUS_ERR(err)) {
+            return err;
+        }
+        if (xSet && ySet) {
+            return StatusOk;
+        }
+    }
+}
+
+static status_t parseCmdG(struct GcodeCommand *cmd)
+{
+    status_t err;
+
+    memset(cmd, 0, sizeof(*cmd));
+    err = getCurrToken();
+    if (STATUS_ERR(err)) {
+        return StatusInvalidGcodeCommand;
+    }
+    switch (currToken.kind) {
+    case TokenFix16:
+        if (!fix16_is_uint(currToken.fix16)) {
+            return StatusInvalidGcodeCommand;
+        }
+        unsigned int cmdNum = (unsigned int)fix16_to_int(currToken.fix16);
+        switch (cmdNum) {
+        case 0:
+            eatToken();
+            cmd->kind = GcodeG0;
+            return parseXY(cmd);
+            break;
+        case 1:
+            eatToken();
+            cmd->kind = GcodeG1;
+            return parseXY(cmd);
+            break;
+        default:
+            return StatusInvalidGcodeCommand;
+        }
+        break;
+    default:
+        return StatusInvalidGcodeCommand;
+    }
+}
+
+status_t parseGcode(struct GcodeCommand *cmd)
+{
+    status_t err = getCurrToken();
+    if (STATUS_ERR(err)) {
+        return err;
+    }
+
+    switch (currToken.kind) {
+    case TokenG:
+        eatToken();
+        return parseCmdG(cmd);
+    default:
+        return StatusInvalidGcodeCommand;
+    }
+}
+
+void resetParser(void)
+{
+    currChar = '\0';
+    memset(scratchBuf, 0, MAX_NUM_LEN);
+    memset(&currToken, 0, sizeof(currToken));
+}
+
+status_t initParser(void)
+{
+    return initTokenizer();
 }

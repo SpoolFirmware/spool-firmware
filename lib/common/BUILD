@@ -15,3 +15,10 @@ cc_library(
     include_prefix = ".",
     visibility = ["//visibility:public"],
 )
+
+cc_library(
+    name = "error",
+    hdrs = ["error.h"],
+    include_prefix = ".",
+    visibility = ["//visibility:public"],
+)

@@ -2,7 +2,15 @@
 
 typedef enum {
     StatusOk,
-    StatusInvalidClockConfig
+    StatusInvalidClockConfig,
+    StatusReadErr,
+    StatusGcodeTooLong,
+    StatusUnsupportedChar,
+    StatusInvalidGcodeToken,
+    StatusInvalidGcodeMissingToken,
+    StatusInvalidGcodeDuplicateAxis,
+    StatusInvalidGcodeCommand,
+    StatusGcodeEof,
 } status_t;
 
 #define STATUS_OK(x) ((x) == StatusOk)

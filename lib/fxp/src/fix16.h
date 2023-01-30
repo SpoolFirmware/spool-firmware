@@ -44,12 +44,19 @@ static const fix16_t fix16_e   = 178145;     /*!< fix16_t value of e */
 static const fix16_t fix16_one = 0x00010000; /*!< fix16_t value of 1 */
 static const fix16_t fix16_eps = 1;          /*!< fix16_t epsilon */
 
+static const fix16_t fix16_uint_mask = 0x7FFF0000; /*!< fix16_t uint mask */
+
 /* Conversion functions between fix16_t and float/integer.
  * These are inlined to allow compiler to optimize away constant numbers
  */
 static inline fix16_t fix16_from_int(int a)     { return a * fix16_one; }
 static inline float   fix16_to_float(fix16_t a) { return (float)a / fix16_one; }
 static inline double  fix16_to_dbl(fix16_t a)   { return (double)a / fix16_one; }
+
+static inline int fix16_is_uint(fix16_t a)
+{
+    return (a & fix16_uint_mask) == a;
+}
 
 static inline int fix16_to_int(fix16_t a)
 {

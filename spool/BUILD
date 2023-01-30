@@ -26,12 +26,15 @@ cc_test(
 )
 
 cc_binary(
-    name = "parser",
+    name = "parser_test",
     srcs = [
+        "core/gcode_parser_test.c",
         "core/gcode_parser.c",
+        "core/gcode_parser.h",
     ],
     deps = [
         "//lib/fxp:lib",
+        "//lib/common:error",
     ],
 )
 
