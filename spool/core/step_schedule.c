@@ -13,11 +13,6 @@ StaticQueue_t stepQueue;
 
 const fix16_t STEPS_PER_MM_FIX = F16(160);
 
-static const struct PrinterState startState = {
-    .x = F16(100),
-    .y = F16(100),
-};
-
 #define MAGIC_PRINTER_STATES 4
 static const struct PrinterState states[MAGIC_PRINTER_STATES] = {
     { .x = F16(100), .y = F16(50) },
@@ -61,7 +56,7 @@ static void __fillJob(motion_block_t *block, const struct StepperPlan *plan)
 }
 
 static void scheduleMoveTo(QueueHandle_t handle,
-                           const struct PrinterState state, bool start)
+                           const struct PrinterState state)
 {
     fix16_t dx = fix16_sub(state.x, currentState.x);
     fix16_t dy = fix16_sub(state.y, currentState.y);
@@ -74,7 +69,7 @@ static void scheduleMoveTo(QueueHandle_t handle,
         __fillJob(&job.blocks[i], &plan[i]);
     }
 
-    job.type = start ? StepperJobStart : StepperJobRun;
+    job.type = StepperJobRun;
 
     while (xQueueSend(handle, &job, (unsigned int)-1) != pdTRUE)
         ;
@@ -132,9 +127,8 @@ portTASK_FUNCTION(stepScheduleTask, pvParameters)
     enableStepper(STEPPER_A | STEPPER_B);
     scheduleHome(queue);
 
-    scheduleMoveTo(queue, startState, true);
     for (;; ++x, x = x % MAGIC_PRINTER_STATES) {
-        scheduleMoveTo(queue, states[x], false);
+        scheduleMoveTo(queue, states[x]);
     }
     for (;;)
         ;

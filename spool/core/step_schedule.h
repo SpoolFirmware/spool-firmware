@@ -21,8 +21,6 @@ enum JobType {
     /* default value is to not run */
     StepperJobUndef = 0,
     StepperJobRun,
-    /* starts a sequence of moves, needs to unset the endstops */
-    StepperJobStart,
     StepperJobHomeX,
     StepperJobHomeY,
 };
