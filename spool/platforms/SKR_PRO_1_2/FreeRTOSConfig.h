@@ -64,7 +64,7 @@ your application. */
 
 /* Interrupt nesting behaviour configuration. */
 #define configKERNEL_INTERRUPT_PRIORITY         (0xFF)
-#define configMAX_SYSCALL_INTERRUPT_PRIORITY    (0x00)
+#define configMAX_SYSCALL_INTERRUPT_PRIORITY    (0x80)
 #define configMAX_API_CALL_INTERRUPT_PRIORITY   configMAX_SYSCALL_INTERRUPT_PRIORITY
 
 _Noreturn void __panic(const char *file, int line);
