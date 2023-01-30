@@ -10,24 +10,24 @@ static size_t head = 0, tail = 0;
 
 void dbgPutc(const char c)
 {
-    portENTER_CRITICAL();
+    uint32_t pri = ulPortRaiseBASEPRI();
     if ((tail + 1) % BUFFER_SIZE != head) {
         print_buffer[tail] = c;
         __asm__("dsb");
         tail = (tail + 1) % BUFFER_SIZE;
     }
-    portEXIT_CRITICAL();
+    vPortSetBASEPRI(pri);
 }
 
 void dbgPuts(const char *c)
 {
-    portENTER_CRITICAL();
+    uint32_t pri = ulPortRaiseBASEPRI();
     while((*c) != '\0' && (tail + 1) % BUFFER_SIZE != head) {
         print_buffer[tail] = *c++;
         __asm__("dsb");
         tail = (tail + 1) % BUFFER_SIZE;
     }
-    portEXIT_CRITICAL();
+    vPortSetBASEPRI(pri);
 }
 
 int dbgGetc(void)
