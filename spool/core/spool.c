@@ -23,6 +23,7 @@ void empty_buffer(void)
         halUartSendByte(&printUart, (uint8_t)(char)c);
 }
 
+TaskHandle_t dbgPrintTaskHandle = NULL;
 static portTASK_FUNCTION_PROTO(DebugPrintTask, pvParameters);
 static portTASK_FUNCTION(DebugPrintTask, pvParameters)
 {
@@ -33,7 +34,7 @@ static portTASK_FUNCTION(DebugPrintTask, pvParameters)
         if ((c = dbgGetc()) > 0) {
             halUartSendByte(&printUart, (uint8_t)(char)c);
         } else {
-            vTaskDelay(0);
+            ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
         }
     }
 }
@@ -47,8 +48,10 @@ void main(void)
     dbgPrintf("initSpoolApp\n");
     platformPostInit();
 
-    xTaskCreate(DebugPrintTask, "dbgPrintf", configMINIMAL_STACK_SIZE, NULL,
-                configMAX_PRIORITIES - 1, (TaskHandle_t *)NULL);
+    // Create the highest priority "printf" task
+    configASSERT(xTaskCreate(DebugPrintTask, "dbgPrintf",
+                             configMINIMAL_STACK_SIZE, NULL,
+                             configMAX_PRIORITIES - 1, &dbgPrintTaskHandle));
 
     vTaskStartScheduler();
     for (;;) {
