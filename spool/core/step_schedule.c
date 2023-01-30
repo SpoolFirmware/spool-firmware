@@ -44,6 +44,7 @@ QueueHandle_t stepTaskInit(void)
     QueueHandle_t handle = xQueueCreateStatic(STEP_QUEUE_SIZE,
                                               sizeof(struct StepperJob),
                                               (uint8_t *)queueBuf, &stepQueue);
+    configASSERT(handle);
     stepScheduleTaskHandle = xTaskCreateStatic(
         stepScheduleTask, "stepSchedule", STACK_SIZE, (void *)handle,
         tskIDLE_PRIORITY + 2, stepScheduleStack, &stepScheduleTaskBuf);
@@ -133,7 +134,8 @@ portTASK_FUNCTION(stepScheduleTask, pvParameters)
     // for (;; ++x, x = x % MAGIC_PRINTER_STATES) {
     //     scheduleMoveTo(queue, states[x], false);
     // }
-    for(;;);
+    for (;;)
+        ;
 }
 
 void notifyHomeXISR(void)

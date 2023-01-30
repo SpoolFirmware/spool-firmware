@@ -6,11 +6,11 @@
 #include "string.h"
 #include <stdbool.h>
 
-static QueueHandle_t queueHandle;
+QueueHandle_t executeQueueHandle;
 
 void stepExecuteSetQueue(QueueHandle_t queueHandle_)
 {
-    queueHandle = queueHandle_;
+    executeQueueHandle = queueHandle_;
 }
 
 static bool stepperJobFinished(const struct StepperJob *pJob)
@@ -77,13 +77,13 @@ uint16_t executeStep(uint16_t ticksElapsed)
             // }
             if (job.type == StepperJobHomeX && i == ENDSTOP_X) {
                 memset(&job, 0, sizeof(job));
-                memset(&counter, 0, sizeof(job));
+                memset(&counter, 0, sizeof(counter));
                 notifyHomeXISR();
                 return 0;
             }
             if (job.type == StepperJobHomeY && i == ENDSTOP_Y) {
                 memset(&job, 0, sizeof(job));
-                memset(&counter, 0, sizeof(job));
+                memset(&counter, 0, sizeof(counter));
                 notifyHomeYISR();
                 return 0;
             }
@@ -114,7 +114,8 @@ uint16_t executeStep(uint16_t ticksElapsed)
 
     // Now we can do other things
     if (stepperJobFinished(&job)) {
-        if (xQueueReceiveFromISR(queueHandle, &job, NULL) != pdTRUE) {
+        configASSERT(executeQueueHandle);
+        if (xQueueReceiveFromISR(executeQueueHandle, &job, NULL) != pdTRUE) {
             return 0;
         }
         setStepperDir(job.stepDirs);

@@ -44,11 +44,11 @@ void main(void)
     platformInit(&platformConfig);
     QueueHandle_t queue = stepTaskInit();
     stepExecuteSetQueue(queue);
+    dbgPrintf("Hello World\n");
     platformPostInit();
 
     xTaskCreate(DebugPrintTask, "dbgPrintf", configMINIMAL_STACK_SIZE, NULL,
                 tskIDLE_PRIORITY + 1, (TaskHandle_t *)NULL);
-    dbgPrintf("Hello World\n");
 
     vTaskStartScheduler();
     for (;;) {
