@@ -71,10 +71,10 @@ uint16_t executeStep(uint16_t ticksElapsed)
     /* Check endstops first */
     for (uint8_t i = 0; i < NR_AXES; ++i) {
         if (platformGetEndstop(i)) {
-            if (job.type == StepperJobRun) {
-                /* UH OH decide what to do, panic for now */
-                panic();
-            }
+            // if (job.type == StepperJobRun) {
+            //     /* UH OH decide what to do, panic for now */
+            //     panic();
+            // }
             if (job.type == StepperJobHomeX && i == ENDSTOP_X) {
                 memset(&job, 0, sizeof(job));
                 memset(&counter, 0, sizeof(job));
@@ -87,10 +87,10 @@ uint16_t executeStep(uint16_t ticksElapsed)
                 notifyHomeYISR();
                 return 0;
             }
-            if (job.type == StepperJobStart) {
-                /* ignore endstops on the starting job */
-                break;
-            }
+            // if (job.type == StepperJobStart) {
+            //     /* ignore endstops on the starting job */
+            //     break;
+            // }
         }
     }
 

@@ -3,8 +3,8 @@
 
 void empty_buffer(void);
 
-_Noreturn __attribute__((noinline)) void __panic(int line) {
-    dbgPrintf("PANIC %d", line);
+_Noreturn void __panic(const char *file, int line) {
+    dbgPrintf("PANIC %s:%d\n", file, line);
     empty_buffer();
     for (volatile int i = line;; i = line);
 }

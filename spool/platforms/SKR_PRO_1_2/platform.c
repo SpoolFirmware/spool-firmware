@@ -100,13 +100,16 @@ static void setStepper(uint8_t stepperMask, uint8_t stepMask)
 
 static uint32_t lastCntrReload = 0;
 void VectorB4() {
+    if (FLD_TEST_DRF(_TIM3, _SR, _UIF, _UPDATE_PENDING,
+                     REG_RD32(DRF_REG(_TIM3, _SR)))) {
 VectorB4_begin:
-    if(FLD_TEST_DRF(_TIM3, _SR, _UIF, _UPDATE_PENDING, REG_RD32(DRF_REG(_TIM3, _SR)))){
-        REG_WR32(DRF_REG(_TIM3, _SR), ~DRF_DEF(_TIM3, _SR, _UIF, _UPDATE_PENDING));
+        REG_WR32(DRF_REG(_TIM3, _SR),
+                 ~DRF_DEF(_TIM3, _SR, _UIF, _UPDATE_PENDING));
         /* execute current job */
         uint32_t requestedTicks = executeStep((lastCntrReload + 1) / 2);
         uint32_t cntrReload = 2 * requestedTicks;
-        if (cntrReload == 0) cntrReload = 1;
+        if (cntrReload == 0)
+            cntrReload = 1;
         if ((lastCntrReload = REG_RD32(DRF_REG(_TIM3, _CNT))) > cntrReload) {
             REG_WR32(DRF_REG(_TIM3, _CNT), 0);
             goto VectorB4_begin;

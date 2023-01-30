@@ -28,6 +28,20 @@ static void testPlanMove(fix16_t dx, fix16_t dy)
     printf("aCruise %u bCruise %u\n", plan[0].cruiseSteps, plan[1].cruiseSteps);
 }
 
+static void testPlanHomeX(void)
+{
+    struct StepperPlan plan[NR_STEPPERS];
+    uint8_t dirMask;
+    planHomeX(&plan[STEPPER_A_IDX], &plan[STEPPER_B_IDX], &dirMask);
+    printf("====================\n");
+    printf("aX %u bX %u\n", plan[0].totalSteps, plan[1].totalSteps);
+    printf("aVel %u bVel %u\n", plan[0].cruiseVel_steps_s,
+           plan[1].cruiseVel_steps_s);
+    printf("aAccX %u bAccX %u\n", plan[0].accelerationSteps,
+           plan[1].accelerationSteps);
+    printf("aCruise %u bCruise %u\n", plan[0].cruiseSteps, plan[1].cruiseSteps);
+}
+
 int main()
 {
     testPlanVelocity(F16(50), F16(0));
@@ -43,5 +57,7 @@ int main()
     testPlanMove(F16(-50), F16(0));
     testPlanMove(F16(0), F16(-50));
     testPlanMove(F16(50), F16(-50));
+
+    testPlanHomeX();
     return 0;
 }

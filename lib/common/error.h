@@ -21,7 +21,7 @@ typedef enum {
   } else {                                                                     \
   }
 
-_Noreturn void __panic(int line);
+_Noreturn void __panic(const char *file, int line);
 
 #define ASSIGN_OR_GOTO(x, expr, l) _ASSIGN_OR_STATEMENT(x, expr, goto l)
 
@@ -31,5 +31,5 @@ _Noreturn void __panic(int line);
 
 #define DEFINE_OR_RETURN(x, expr) _DEFINE_OR_STATEMENT(x, expr, return x)
 
-#define panic() __panic(__LINE__)
+#define panic() __panic(__FILE__, __LINE__)
 

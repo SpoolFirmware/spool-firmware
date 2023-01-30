@@ -78,7 +78,7 @@ void planHomeY(struct StepperPlan *planA, struct StepperPlan *planB,
 
 /* assuming both axes have the same max velocity and acceleration */
 void __planVelocity(fix16_t maxVel, fix16_t aX, fix16_t bX, fix16_t *aVel,
-                  fix16_t *bVel, fix16_t *a2AccX, fix16_t *b2AccX)
+                    fix16_t *bVel, fix16_t *a2AccX, fix16_t *b2AccX)
 {
     if (fix_abs(aX) > fix_abs(bX)) {
         __planVelocity(maxVel, bX, aX, bVel, aVel, b2AccX, a2AccX);
@@ -119,14 +119,16 @@ void __planVelocity(fix16_t maxVel, fix16_t aX, fix16_t bX, fix16_t *aVel,
     // fix16_t det = fix16_sqrt(
     //     fix16_sub(fix16_mul4(t3, t3, aAcc, aAcc), fix16_mul3(F16(4), aAcc, m)));
 
-    fix16_t t1_t_denom = fix16_mul(F16(-2), aAcc);
-
     fix16_t det_divd = fix16_from_float(det / (-2 * aAcc_f));
 
-    fix16_t t1_t_const = fix16_div(fix16_mul(-t3, aAcc), t1_t_denom);
-    fix16_t t1 = t1_t_const + det_divd;
-    if (t1 < 0) {
-        t1 = t1_t_const - det_divd;
+    fix16_t t1_t_const = fix16_div(t3, F16(2));
+    fix16_t t1;
+    fix16_t t1_1 = t1_t_const + det_divd;
+    fix16_t t1_2 = t1_t_const - det_divd;
+    if ((t1_1 >= 0 && t1_1 <= t1_2) || t1_2 < 0) {
+        t1 = t1_1;
+    } else {
+        t1 = t1_2;
     }
 
     fix16_t aVel_ = fix16_mul(t1, aAcc);

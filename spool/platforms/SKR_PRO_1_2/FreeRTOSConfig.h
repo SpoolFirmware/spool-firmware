@@ -67,9 +67,9 @@ your application. */
 #define configMAX_SYSCALL_INTERRUPT_PRIORITY    (0x4 << 5U)
 #define configMAX_API_CALL_INTERRUPT_PRIORITY   configMAX_SYSCALL_INTERRUPT_PRIORITY
 
-void __panic(int);
+_Noreturn void __panic(const char *file, int line);
 /* Define to trap errors during development. */
-#define configASSERT(x) if( ( x ) == 0 ) do{ __panic(__LINE__); }while(0)  //vAssertCalled( __FILE__, __LINE__ )
+#define configASSERT(x) if( ( x ) == 0 ) do{ __panic(__FILE__, __LINE__); }while(0)  //vAssertCalled( __FILE__, __LINE__ )
 
 /* Optional functions - most linkers will remove unused functions anyway. */
 #define INCLUDE_vTaskPrioritySet                1

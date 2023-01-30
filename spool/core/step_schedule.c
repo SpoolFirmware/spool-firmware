@@ -127,7 +127,7 @@ portTASK_FUNCTION(stepScheduleTask, pvParameters)
     int x = 0;
 
     enableStepper(STEPPER_A | STEPPER_B);
-    // scheduleHome(queue);
+    scheduleHome(queue);
 
     // scheduleMoveTo(queue, startState, true);
     // for (;; ++x, x = x % MAGIC_PRINTER_STATES) {

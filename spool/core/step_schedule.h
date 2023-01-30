@@ -19,7 +19,7 @@ enum MotionBlockState {
 /* suboptimal arrangement, do we really care about the axes */
 enum JobType {
     /* default value is to not run */
-    StepperJobUndef,
+    StepperJobUndef = 0,
     StepperJobRun,
     /* starts a sequence of moves, needs to unset the endstops */
     StepperJobStart,
