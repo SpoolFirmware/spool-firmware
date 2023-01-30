@@ -29,6 +29,7 @@ cc_library(
         "list.c",
         "queue.c",
         "tasks.c",
+        "stream_buffer.c",
         "portable/MemMang/heap_1.c",
     ],
     deps=[
