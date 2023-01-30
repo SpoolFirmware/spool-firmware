@@ -23,6 +23,8 @@ struct UARTDriver printUart = {0};
 
 const static struct UARTConfig uart1Cfg = {
     .baudrate = 115200,
+    .useRxInterrupt = 0,
+    .useTxInterrupt = 0,
 };
 
 // const static struct IOLine statusLED = { .group = GPIOA, .pin = 7 };
