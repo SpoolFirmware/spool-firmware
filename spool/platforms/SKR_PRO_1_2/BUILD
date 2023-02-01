@@ -37,6 +37,7 @@ cc_library(
         ":config",
         "//spool/platforms/common:lib",
         "//lib/syslib:lib",
+        "//lib/dbg:lib",
         "//lib/crt/stm32:stm32f4xx",
         "//lib/hal/stm32/stm32f407:lib",
     ],

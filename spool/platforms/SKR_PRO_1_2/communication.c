@@ -1,5 +1,6 @@
 #include "platform_private.h"
 #include "stream_buffer.h"
+#include "dbgprintf.h"
 
 struct UARTDriver printUart = { 0 };
 const static struct UARTConfig uart1Cfg = {
@@ -79,4 +80,16 @@ IRQ_HANDLER_USART1(void)
         xStreamBufferSendFromISR(cmdmgmtBufferHandle, &byte, 1, NULL);
     }
     halIrqClear(IRQ_USART1);
+}
+
+_Noreturn void __panic(const char *file, int line) 
+{
+    dbgPrintf("PANIC %s:%d\n", file, line);
+    dbgEmptyBuffer();
+    for (volatile int i = line;; i = line);
+}
+
+void platformDbgPutc(char c)
+{
+    halUartSendByte(&printUart, (uint8_t)c);
 }
