@@ -96,14 +96,14 @@ def cc_binary_with_platforms(name, platforms, visibility=None, **kwargs):
 
     for p, target in platforms.items():
         with_platform(
-            name = p,
+            name = name + '_' + p,
             srcs = [elf_name, bin_name],
             visibility = visibility,
             platforms = target,
         )
 
     native.filegroup(
-        name = "spool",
-        srcs = platforms.keys(),
+        name = name,
+        srcs = [name + '_' + p for p in platforms.keys()],
         visibility = visibility,
     )
