@@ -8,7 +8,7 @@ cc_library(
         "//lib/common:lib",
         "//lib/freertos:freertos",
         "//spool/lib/hal/common:lib",
-        "//spool/lib/hardware_manual:mcu",
+        "//spool/lib/hardware_manual:manual",
     ],
     visibility=["//spool/lib/hal:__subpackages__"],
 )

@@ -1,8 +1,26 @@
+package(default_visibility = ["//visibility:public"])
+
+constraint_setting(
+    name = "mcu",
+    visibility = ["//visibility:public"],
+)
+
+constraint_value(
+    name = "stm32f401",
+    constraint_setting = ":mcu",
+)
+
+constraint_value(
+    name = "stm32f407",
+    constraint_setting = ":mcu",
+)
+
+
 alias(
-    name="mcu",
+    name="manual",
     actual=select({
-        "//spool/platforms/mcu:stm32f401": "//spool/lib/hardware_manual/STM32:stm32f401",
-        "//spool/platforms/mcu:stm32f407": "//spool/lib/hardware_manual/STM32:stm32f407",
+        ":stm32f401": "//spool/lib/hardware_manual/STM32:stm32f401",
+        ":stm32f407": "//spool/lib/hardware_manual/STM32:stm32f407",
     },
     no_match_error="No matching MCU configuration found"),
     visibility = ["//visibility:public"]

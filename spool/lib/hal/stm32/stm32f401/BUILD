@@ -8,7 +8,7 @@ cc_library(
         "//lib/common:lib",
         "//spool/lib/hal/common:lib",
 
-        "//spool/lib/hardware_manual:mcu",
+        "//spool/lib/hardware_manual:manual",
 
         "//spool/lib/hal/cortexm:lib",
 

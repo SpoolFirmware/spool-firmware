@@ -9,7 +9,7 @@ platform(
     name = "skr_pro_1_2",
     constraint_values = [
         ":platform",
-        "//spool/platforms/mcu:stm32f407",
+        "//spool/lib/hardware_manual:stm32f407",
     ],
     parents = ["@bazel_embedded//platforms:cortex_m4_fpu"],
 )

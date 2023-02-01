@@ -9,7 +9,7 @@ platform(
     name = "stm32f401_mini",
     constraint_values = [
         ":platform",
-        "//spool/platforms/mcu:stm32f401",
+        "//spool/lib/hardware_manual:stm32f401",
     ],
     parents = ["@bazel_embedded//platforms:cortex_m4_fpu"],
 )
