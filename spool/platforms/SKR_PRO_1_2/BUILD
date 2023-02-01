@@ -33,12 +33,10 @@ cc_library(
         "platform_private.h",
         "platform.c",
         "communication.c",
-        "startup/crt1.c",
-        "startup/crt0.s",
-        "startup/vectors.s",
     ],
     deps = [
         ":config",
+        "//lib/crt/stm32:stm32f4xx",
         "//spool/platforms/common:lib",
         "//lib/syslib:lib",
         "//spool/lib/hal/stm32/stm32f407:lib",
