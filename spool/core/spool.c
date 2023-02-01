@@ -12,7 +12,6 @@
 #include "step_execute.h"
 #include "platform/platform.h"
 #include "hal/stm32/hal.h"
-#include "spool_config.h"
 
 extern struct UARTDriver printUart;
 

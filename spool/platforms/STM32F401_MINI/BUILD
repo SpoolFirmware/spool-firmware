@@ -9,7 +9,8 @@ platform(
     name = "stm32f401_mini",
     constraint_values = [
         ":platform",
-        "//spool/platforms/mcu:stm32f401",
+        "//lib/hardware_manual:stm32f401",
+        "//lib/freertos/portable:arm_cm4f",
     ],
     parents = ["@bazel_embedded//platforms:cortex_m4_fpu"],
 )
@@ -17,11 +18,9 @@ platform(
 cc_library(
     name = "config",
     hdrs = [
-        "spool_config.h", 
         "FreeRTOSConfig.h"
     ],
     textual_hdrs = [
-        "spool_config.h",
         "FreeRTOSConfig.h",
     ],
     include_prefix="."
@@ -31,15 +30,13 @@ cc_library(
     name = "runtime",
     srcs = [
         "platform.c",
-        "startup/crt1.c",
-        "startup/crt0.s",
-        "startup/vectors.s",
     ],
     deps = [
         ":config",
         "//spool/platforms/common:lib",
         "//lib/syslib:lib",
-        "//spool/lib/hal/stm32/stm32f401:lib",
+        "//lib/crt/stm32:stm32f4xx",
+        "//lib/hal/stm32/stm32f401:lib",
     ],
     alwayslink = True,
 )

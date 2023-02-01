@@ -6,13 +6,13 @@ constraint_value(
 )
 
 platform(
-    name = "skr_pro_1_2",
+    name = "skr_mini_e3_2_0",
     constraint_values = [
         ":platform",
-        "//lib/hardware_manual:stm32f407",
-        "//lib/freertos/portable:arm_cm4f",
+        "//lib/hardware_manual:stm32f103",
+        "//lib/freertos/portable:arm_cm3",
     ],
-    parents = ["@bazel_embedded//platforms:cortex_m4_fpu"],
+    parents = ["@bazel_embedded//platforms:cortex_m3"],
 )
 
 cc_library(
@@ -29,16 +29,14 @@ cc_library(
 cc_library(
     name = "runtime",
     srcs = [
-        "platform_private.h",
         "platform.c",
-        "communication.c",
     ],
     deps = [
         ":config",
         "//spool/platforms/common:lib",
         "//lib/syslib:lib",
-        "//lib/crt/stm32:stm32f4xx",
-        "//lib/hal/stm32/stm32f407:lib",
+        "//lib/crt/stm32:stm32f1xx",
+        "//lib/hal/stm32/stm32f103:lib",
     ],
     alwayslink = True,
 )

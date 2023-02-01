@@ -7,7 +7,9 @@
 #include "FreeRTOS.h"
 #include "queue.h"
 
-struct PlatformConfig;
+struct PlatformConfig {
+    uint8_t _rsvd;
+};
 
 void platformInit(struct PlatformConfig *config);
 void platformPostInit(void);
