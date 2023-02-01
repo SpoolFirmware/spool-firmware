@@ -9,7 +9,7 @@ platform(
     name = "stm32f401_mini",
     constraint_values = [
         ":platform",
-        "//spool/lib/hardware_manual:stm32f401",
+        "//lib/hardware_manual:stm32f401",
         "//lib/freertos/portable:arm_cm4f",
     ],
     parents = ["@bazel_embedded//platforms:cortex_m4_fpu"],
@@ -36,7 +36,7 @@ cc_library(
         "//spool/platforms/common:lib",
         "//lib/syslib:lib",
         "//lib/crt/stm32:stm32f4xx",
-        "//spool/lib/hal/stm32/stm32f401:lib",
+        "//lib/hal/stm32/stm32f401:lib",
     ],
     alwayslink = True,
 )

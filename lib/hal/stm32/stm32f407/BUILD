@@ -6,10 +6,13 @@ cc_library(
     visibility = ["//spool/platforms:__subpackages__"],
     deps = [
         "//lib/common:lib",
-        "//spool/lib/hal/common:lib",
+        "//lib/hal/common:lib",
 
-        "//spool/lib/hardware_manual:manual",
+        "//lib/hardware_manual:manual",
+        
+        "//lib/hal/cortexm:lib",
 
-        "//spool/lib/hal/cortexm:lib",
+        "//lib/hal/stm32/peripheral/gpio_v2:lib",
+        "//lib/hal/stm32/peripheral/usart_v1:lib",
     ],
 )

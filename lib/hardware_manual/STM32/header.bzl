@@ -39,5 +39,5 @@ def hardware_manual_library(name):
         hdrs = [svd_drf_header, svd_irq_header],
         include_prefix = "manual",
         strip_include_prefix = name,
-        visibility = ["//spool/lib/hardware_manual:__pkg__"],
+        visibility = ["//lib/hardware_manual:__pkg__"],
     )

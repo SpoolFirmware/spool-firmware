@@ -76,7 +76,7 @@ cc_binary_with_platforms(
         "//lib/syslib:lib",
         "//lib/dbg:lib",
         "//lib/fxp:lib",
-        "//spool/lib/hal/common:lib",
+        "//lib/hal/common:lib",
         "//spool/platforms:linker.ld",
         "//spool/platforms:runtime",
     ],

@@ -23,9 +23,9 @@ constraint_value(
 alias(
     name="manual",
     actual=select({
-        ":stm32f103": "//spool/lib/hardware_manual/STM32:stm32f103",
-        ":stm32f401": "//spool/lib/hardware_manual/STM32:stm32f401",
-        ":stm32f407": "//spool/lib/hardware_manual/STM32:stm32f407",
+        ":stm32f103": "//lib/hardware_manual/STM32:stm32f103",
+        ":stm32f401": "//lib/hardware_manual/STM32:stm32f401",
+        ":stm32f407": "//lib/hardware_manual/STM32:stm32f407",
     },
     no_match_error="No matching MCU configuration found"),
     visibility = ["//visibility:public"]

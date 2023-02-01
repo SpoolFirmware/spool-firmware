@@ -7,8 +7,8 @@ cc_library(
     deps=[
         "//lib/common:lib",
         "//lib/freertos:freertos",
-        "//spool/lib/hal/common:lib",
-        "//spool/lib/hardware_manual:manual",
+        "//lib/hal/common:lib",
+        "//lib/hardware_manual:manual",
     ],
-    visibility=["//spool/lib/hal:__subpackages__"],
+    visibility=["//lib/hal:__subpackages__"],
 )

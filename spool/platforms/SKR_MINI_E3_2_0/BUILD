@@ -9,7 +9,7 @@ platform(
     name = "skr_mini_e3_2_0",
     constraint_values = [
         ":platform",
-        "//spool/lib/hardware_manual:stm32f103",
+        "//lib/hardware_manual:stm32f103",
         "//lib/freertos/portable:arm_cm3",
     ],
     parents = ["@bazel_embedded//platforms:cortex_m3"],
@@ -36,7 +36,7 @@ cc_library(
         "//spool/platforms/common:lib",
         "//lib/syslib:lib",
         "//lib/crt/stm32:stm32f1xx",
-        "//spool/lib/hal/stm32/stm32f103:lib",
+        "//lib/hal/stm32/stm32f103:lib",
     ],
     alwayslink = True,
 )
