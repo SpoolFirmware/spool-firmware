@@ -1,6 +1,15 @@
 # This GPIO is used on the STM32F1 family.
 
-"GPIO*":
+_copy:
+  GPIO:
+    from: GPIOA
+
+"GPIO[ABCDEFGH]":
+  "*":
+    _delete:
+      - "*"
+
+"GPIO":
   IDR:
     "IDR*":
       High: [1, "Input is logic high"]

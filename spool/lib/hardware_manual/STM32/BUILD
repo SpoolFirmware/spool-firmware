@@ -7,3 +7,4 @@ filegroup(
 
 hardware_manual_library(name = "stm32f407")
 hardware_manual_library(name = "stm32f401")
+hardware_manual_library(name = "stm32f103")
