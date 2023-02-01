@@ -10,17 +10,17 @@
 
 #include "FreeRTOS.h"
 
-// const static struct HalClockConfig halClockConfig = {
-//     .hseFreqHz = 25000000,
-//     .q = 7,
-//     .p = 4,
-//     .n = 336,
-//     .m = 25,
+const static struct HalClockConfig halClockConfig = {
+    .hseFreqHz = 8000000,
+    .pllXtPre = 1,
+    .usbPre1_5X = 1, // 0 -> 1, 1 -> 1.5
+    .pllMul = 9,
 
-//     .apb2Prescaler = 1,
-//     .apb1Prescaler = 2,
-//     .ahbPrescaler = 1,
-// };
+    .ahbPrescaler = 1,
+    .apb1Prescaler = 2,
+    .apb2Prescaler = 1,
+    .adcPrescaler = 6,
+};
 
 const static struct IOLine statusLED = { .group = DRF_BASE(DRF_GPIOA), .pin = 13 };
 
@@ -41,7 +41,7 @@ void enableStepper(uint8_t stepperMask)
 
 void platformInit(struct PlatformConfig *config)
 {
-    // halClockInit(&halClockConfig);
+    halClockInit(&halClockConfig);
 
 }
 
