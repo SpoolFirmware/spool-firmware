@@ -34,7 +34,7 @@ cc_binary(
     ],
     deps = [
         "//lib/fxp:lib",
-        "//lib/common:error",
+        "//lib/common:error_std",
     ],
 )
 
@@ -55,6 +55,10 @@ cc_binary_with_platforms(
         "core/step_schedule.h",
         "core/step_plan.c",
         "core/step_plan.h",
+        "core/gcode_serial.c",
+        "core/gcode_serial.h",
+        "core/gcode_parser.c",
+        "core/gcode_parser.h",
     ],
     copts = [
         "-Wconversion",

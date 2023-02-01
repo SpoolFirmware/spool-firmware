@@ -5,6 +5,7 @@
 static const fix16_t VEL_FIX = F16(VEL);
 static const fix16_t HOMING_VEL_FIX = F16(HOMING_VEL);
 static const fix16_t ACC_FIX = F16(ACC);
+const static fix16_t STEPS_PER_MM_FIX = F16(STEPS_PER_MM);
 
 struct StepperPlan {
     uint32_t totalSteps;

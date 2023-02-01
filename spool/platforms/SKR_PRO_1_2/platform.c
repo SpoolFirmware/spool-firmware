@@ -186,9 +186,9 @@ void platformInit(struct PlatformConfig *config)
     apb1enr = FLD_SET_DRF(_RCC, _APB1ENR, _TIM3EN, _ENABLED, apb1enr);
     REG_WR32(DRF_REG(_RCC, _APB1ENR), apb1enr);
 
-    /* uint32_t apb2enr = REG_RD32(DRF_REG(_RCC, _APB2ENR)); */
-    /* apb2enr = FLD_SET_DRF(_RCC, _APB2ENR, _USART1EN, _ENABLED, apb2enr); */
-    /* REG_WR32(DRF_REG(_RCC, _APB2ENR), apb2enr); */
+    uint32_t apb2enr = REG_RD32(DRF_REG(_RCC, _APB2ENR));
+    apb2enr = FLD_SET_DRF(_RCC, _APB2ENR, _USART1EN, _ENABLED, apb2enr);
+    REG_WR32(DRF_REG(_RCC, _APB2ENR), apb2enr);
 
     halGpioSetMode(statusLED, DRF_DEF(_HAL_GPIO, _MODE, _MODE, _OUTPUT) |
                                   DRF_DEF(_HAL_GPIO, _MODE, _TYPE, _PUSHPULL) |
@@ -218,6 +218,7 @@ void platformInit(struct PlatformConfig *config)
 void platformPostInit()
 {
     setupTimer();
+    communicationPostInit();
 }
 
 __attribute__((always_inline)) inline struct IOLine platformGetStatusLED(void)

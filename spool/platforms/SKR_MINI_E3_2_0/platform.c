@@ -7,6 +7,7 @@
 #include "manual/irq.h"
 #include "manual/mcu.h"
 #include "stream_buffer.h"
+#include "error.h"
 
 #include "FreeRTOS.h"
 
@@ -22,14 +23,19 @@
 //     .ahbPrescaler = 1,
 // };
 
-const static struct IOLine statusLED = { .group = DRF_BASE(DRF_GPIOA), .pin = 13 };
+const static struct IOLine statusLED = { .group = DRF_BASE(DRF_GPIOA),
+                                         .pin = 13 };
 
 size_t platformRecvCommand(char *pBuffer, size_t bufferSize,
                            TickType_t ticksToWait)
 {
-    return 0;
+    UNIMPLEMENTED("platformRecvCommand unimplemented");
 }
 
+void platformSendResponse(const char *pBuffer, size_t len)
+{
+    UNIMPLEMENTED("platformSendResponse unimplemented");
+}
 
 void platformPostInit(void)
 {
@@ -42,7 +48,6 @@ void enableStepper(uint8_t stepperMask)
 void platformInit(struct PlatformConfig *config)
 {
     // halClockInit(&halClockConfig);
-
 }
 
 __attribute__((always_inline)) inline struct IOLine platformGetStatusLED(void)
@@ -50,8 +55,18 @@ __attribute__((always_inline)) inline struct IOLine platformGetStatusLED(void)
     return statusLED;
 }
 
-_Noreturn void __panic(const char *file, int line) {
-    for (volatile int i = line;; i = line);
+_Noreturn void __panic(const char *file, int line, const char *err)
+{
+    for (volatile int i = line;; i = line)
+        (void)i;
+}
+
+void __warn(const char *file, int line, const char *err)
+{
+}
+
+void __warn_on_err(const char *file, int line, status_t err)
+{
 }
 
 void platformDbgPutc(char c)
