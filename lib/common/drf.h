@@ -112,3 +112,8 @@
 
 #define REG_RD32(reg)	(*((volatile uint32_t*)(reg)))
 #define REG_WR32(reg, val) (*((volatile uint32_t*)(reg)) = (val))
+
+#define REG_FLD_SET_DRF(d,r,f,c)		\
+	(REG_WR32(DRF_REG(d, r), FLD_SET_DRF(d, r, f, c, REG_RD32(DRF_REG(d, r)))))
+#define REG_FLD_TEST_DRF(d,r,f,c)		\
+	(FLD_TEST_DRF(d,r,f,c,REG_RD32(DRF_REG(d,r))))

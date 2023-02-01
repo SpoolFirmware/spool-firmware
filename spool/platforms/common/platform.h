@@ -11,6 +11,7 @@ struct PlatformConfig {
     uint8_t _rsvd;
 };
 
+/* ----------------- Functions to be implemented by platform ------------------*/
 void platformInit(struct PlatformConfig *config);
 void platformPostInit(void);
 struct IOLine platformGetStatusLED(void);
@@ -32,3 +33,5 @@ uint32_t getStepperTimerFreq(void);
 
 size_t platformRecvCommand(char *pBuffer, size_t bufferSize, TickType_t ticksToWait);
 void platformSendResponse(char *pBuffer, size_t len);
+
+void platformDbgPutc(char c);

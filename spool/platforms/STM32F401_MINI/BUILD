@@ -34,6 +34,7 @@ cc_library(
     deps = [
         ":config",
         "//spool/platforms/common:lib",
+        "//lib/dbg:lib",
         "//lib/syslib:lib",
         "//lib/crt/stm32:stm32f4xx",
         "//lib/hal/stm32/stm32f401:lib",

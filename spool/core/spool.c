@@ -13,13 +13,11 @@
 #include "platform/platform.h"
 #include "hal/stm32/hal.h"
 
-extern struct UARTDriver printUart;
-
-void empty_buffer(void)
+void dbgEmptyBuffer(void)
 {
     int c;
     while ((c = dbgGetc()) > 0)
-        halUartSendByte(&printUart, (uint8_t)(char)c);
+        platformDbgPutc((char) c);
 }
 
 TaskHandle_t dbgPrintTaskHandle = NULL;
@@ -31,7 +29,7 @@ static portTASK_FUNCTION(DebugPrintTask, pvParameters)
     int c;
     for (;;) {
         if ((c = dbgGetc()) > 0) {
-            halUartSendByte(&printUart, (uint8_t)(char)c);
+            platformDbgPutc((char) c);
         } else {
             ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
         }
