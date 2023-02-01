@@ -1,8 +1,6 @@
     .syntax unified
     .extern __copy_data
-    .cpu    cortex-m4
-// if FPU
-    .fpu    fpv4-sp-d16
+    .cpu    cortex-m3
 
     .thumb
     .section .text
@@ -10,16 +8,6 @@
 
     .globl _crt0_entry
 _crt0_entry:
-    
-    // FPU Init (From ARM DOCS)
-    // CPACR is located at address 0xE000ED88
-    ldr.w   r0, =0xE000ED88
-    ldr     r1, [r0]
-    // Set bits 20-23 to enable CP10 and CP11 coprocessors
-    orr     r1, r1, #(0xF << 20)
-    str     r1, [r0]
-    dsb
-    isb
 
 /* BSS INIT */
     movs    r0, #0

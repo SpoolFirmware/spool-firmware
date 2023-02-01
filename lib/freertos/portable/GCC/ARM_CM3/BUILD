@@ -1,0 +1,12 @@
+cc_library(
+    name="port",
+    hdrs=["portmacro.h"],
+    srcs=["port.c"],
+    include_prefix=".",
+    deps=[
+        "//lib/freertos:headers",
+        "//spool/platforms:config",
+    ],
+    visibility=["//lib/freertos/portable:__pkg__"],
+    alwayslink=True,
+)

@@ -1,4 +1,4 @@
-_svd: ../svd/stm32f103.svd
+_svd: ../../svd/stm32f103.svd
 
 _derive:
   UART5: UART4
@@ -44,10 +44,6 @@ WWDG:
     _modify:
       EWI:
         name: EWIF
-
-MPU:
-  _strip:
-    - "MPU_"
 
 _include:
  - ./common_patches/i2c/merge_OAR1_ADDx_fields.yaml

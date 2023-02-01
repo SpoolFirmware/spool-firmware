@@ -6,22 +6,21 @@ constraint_value(
 )
 
 platform(
-    name = "skr_pro_1_2",
+    name = "skr_mini_e3_2_0",
     constraint_values = [
         ":platform",
-        "//spool/platforms/mcu:stm32f407",
+        "//spool/lib/hardware_manual:stm32f103",
+        "//lib/freertos/portable:arm_cm3",
     ],
-    parents = ["@bazel_embedded//platforms:cortex_m4_fpu"],
+    parents = ["@bazel_embedded//platforms:cortex_m3"],
 )
 
 cc_library(
     name = "config",
     hdrs = [
-        "spool_config.h", 
         "FreeRTOSConfig.h"
     ],
     textual_hdrs = [
-        "spool_config.h",
         "FreeRTOSConfig.h",
     ],
     include_prefix="."
@@ -30,18 +29,14 @@ cc_library(
 cc_library(
     name = "runtime",
     srcs = [
-        "platform_private.h",
         "platform.c",
-        "communication.c",
-        "startup/crt1.c",
-        "startup/crt0.s",
-        "startup/vectors.s",
     ],
     deps = [
         ":config",
         "//spool/platforms/common:lib",
         "//lib/syslib:lib",
-        "//spool/lib/hal/stm32/stm32f407:lib",
+        "//lib/crt/stm32:stm32f1xx",
+        "//spool/lib/hal/stm32/stm32f103:lib",
     ],
     alwayslink = True,
 )

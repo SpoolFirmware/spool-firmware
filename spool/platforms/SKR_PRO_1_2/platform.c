@@ -1,7 +1,6 @@
 #include "FreeRTOS.h"
 #include "platform_private.h"
 #include "bitops.h"
-#include "spool_config.h"
 
 const struct HalClockConfig halClockConfig = {
     .hseFreqHz = 8000000,

@@ -1,8 +1,9 @@
-ENTRY(Reset_Handler);
 MEMORY {
   flash(rx)   : ORIGIN = 0x08000000, LENGTH = 256k
-  sram(rwx)   : ORIGIN = 0x20000000, LENGTH = 64k
+  sram(rwx)   : ORIGIN = 0x20000000, LENGTH = 48k
 }
+
+ENTRY(Reset_Handler);
 __main_stack_end__ = ORIGIN(sram) + LENGTH(sram);
 
 SECTIONS {

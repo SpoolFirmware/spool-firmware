@@ -28,8 +28,8 @@
 #error "DEFINE CORTEX_NUM_VECTORS"
 #endif
 
-#if (CORTEX_NUM_VECTORS % 8) != 0
-#error "the constant CORTEX_NUM_VECTORS must be a multiple of 8"
+#if (CORTEX_NUM_VECTORS % 4) != 0
+#error "the constant CORTEX_NUM_VECTORS must be a multiple of 4"
 #endif
 
 #if (CORTEX_NUM_VECTORS < 8) || (CORTEX_NUM_VECTORS > 240)

@@ -8,34 +8,17 @@ cc_library(
 )
 
 cc_library(
-    name="port_arm_cm4f",
-    hdrs=["portable/GCC/ARM_CM4F/portmacro.h"],
-    srcs=["portable/GCC/ARM_CM4F/port.c"],
-    includes=["portable/GCC/ARM_CM4F"],
-    strip_include_prefix="portable/GCC/ARM_CM4F",
-    include_prefix=".",
-    deps=[
-        ":headers",
-        "//spool/platforms:config",
-    ],
-    alwayslink=True,
-    visibility=["//visibility:public"],
-)
-
-
-cc_library(
     name="freertos",
     srcs=[
         "list.c",
         "queue.c",
         "tasks.c",
         "stream_buffer.c",
-        "portable/MemMang/heap_1.c",
+        "libs/MemMang/heap_1.c",
     ],
     deps=[
         ":headers",
-        ":port_arm_cm4f",
-        "//spool/platforms:config",
+        "//lib/freertos/portable:lib",
     ],
     alwayslink=True,
     visibility=["//visibility:public"]

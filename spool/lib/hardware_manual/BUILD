@@ -6,6 +6,11 @@ constraint_setting(
 )
 
 constraint_value(
+    name = "stm32f103",
+    constraint_setting = ":mcu",
+)
+
+constraint_value(
     name = "stm32f401",
     constraint_setting = ":mcu",
 )
@@ -15,10 +20,10 @@ constraint_value(
     constraint_setting = ":mcu",
 )
 
-
 alias(
     name="manual",
     actual=select({
+        ":stm32f103": "//spool/lib/hardware_manual/STM32:stm32f103",
         ":stm32f401": "//spool/lib/hardware_manual/STM32:stm32f401",
         ":stm32f407": "//spool/lib/hardware_manual/STM32:stm32f407",
     },

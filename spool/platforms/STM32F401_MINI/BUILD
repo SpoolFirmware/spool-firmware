@@ -10,6 +10,7 @@ platform(
     constraint_values = [
         ":platform",
         "//spool/lib/hardware_manual:stm32f401",
+        "//lib/freertos/portable:arm_cm4f",
     ],
     parents = ["@bazel_embedded//platforms:cortex_m4_fpu"],
 )
@@ -17,11 +18,9 @@ platform(
 cc_library(
     name = "config",
     hdrs = [
-        "spool_config.h", 
         "FreeRTOSConfig.h"
     ],
     textual_hdrs = [
-        "spool_config.h",
         "FreeRTOSConfig.h",
     ],
     include_prefix="."
