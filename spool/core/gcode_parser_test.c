@@ -37,6 +37,9 @@ static void printGcode(struct GcodeCommand *cmd)
     case GcodeG28:
         printf("G28\n");
         return;
+    case GcodeM84:
+        printf("M84\n");
+        return;
     }
 printXYZEF:
     if (cmd->xyzef.x != 0) {

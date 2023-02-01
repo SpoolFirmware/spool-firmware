@@ -123,6 +123,7 @@ portTASK_FUNCTION(stepScheduleTask, pvParameters)
     struct GcodeCommand cmd;
     struct PrinterState state;
 
+    enableStepper(0);
     for (;;) {
         if (xQueueReceive(gcodeCommandQueue, &cmd, portMAX_DELAY) == pdTRUE) {
             switch (cmd.kind) {
@@ -133,8 +134,11 @@ portTASK_FUNCTION(stepScheduleTask, pvParameters)
                 scheduleMoveTo(queue, state);
                 break;
             case GcodeG28:
-                scheduleHome(queue);
                 enableStepper(STEPPER_A | STEPPER_B);
+                scheduleHome(queue);
+                break;
+            case GcodeM84:
+                enableStepper(0);
                 break;
             }
         }

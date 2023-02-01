@@ -10,6 +10,7 @@ enum GcodeKind {
     GcodeG0,
     GcodeG1,
     GcodeG28,
+    GcodeM84,
 };
 
 struct GcodeXYZEF {
@@ -31,7 +32,9 @@ enum TokenKind {
     TokenZ,
     TokenE,
     TokenF,
+    TokenM,
     TokenFix16,
+    TokenNewline,
 };
 
 struct Token {
