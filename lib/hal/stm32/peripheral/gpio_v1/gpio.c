@@ -4,7 +4,7 @@
 
 #define LINE_REG(LINE, REG) ((LINE.group) + (DRF_GPIO_##REG))
 
-void halGpioInit(const struct GPIOConfig *cfg)
+void halGpioInit(const struct HalGPIOConfig *cfg)
 {
     uint32_t groupEnableMask = (1U << 7U) - 1;
     uint32_t maskedEnableBits = cfg->groupEnable & groupEnableMask;

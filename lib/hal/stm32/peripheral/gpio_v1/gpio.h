@@ -14,7 +14,7 @@ enum GPIOGroupEnable {
 
 #define GPIO__COUNT     7U
 
-struct GPIOConfig {
+struct HalGPIOConfig {
     uint32_t groupEnable; //! @ref GPIOGroupEnable
 };
 

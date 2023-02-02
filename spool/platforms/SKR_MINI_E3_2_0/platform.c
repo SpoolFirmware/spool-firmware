@@ -22,32 +22,40 @@ const static struct HalClockConfig halClockConfig = {
     .adcPrescaler = 6,
 };
 
-const static struct IOLine statusLED = { .group = DRF_BASE(DRF_GPIOA), .pin = 13 };
+const static struct HalGPIOConfig gpioConfig = {
+    .groupEnable = EnableGPIOA | EnableGPIOB | EnableGPIOC,
+};
 
-size_t platformRecvCommand(char *pBuffer, size_t bufferSize,
-                           TickType_t ticksToWait)
+const static struct IOLine statusLED = { .group = DRF_BASE(DRF_GPIOA),
+                                         .pin = 1 };
+
+__attribute__((always_inline)) inline struct IOLine platformGetStatusLED(void)
 {
-    return 0;
+    return statusLED;
 }
 
+void platformInit(struct PlatformConfig *config)
+{
+    halClockInit(&halClockConfig);
+    halGpioInit(&gpioConfig);
+
+    halGpioSetMode(statusLED, DRF_DEF(_HAL_GPIO, _MODE, _MODE, _OUTPUT50) |
+                                  DRF_DEF(_HAL_GPIO, _MODE, _TYPE, _PUSH_PULL));
+}
 
 void platformPostInit(void)
 {
+    halGpioSet(statusLED);
 }
 
 void enableStepper(uint8_t stepperMask)
 {
 }
 
-void platformInit(struct PlatformConfig *config)
+size_t platformRecvCommand(char *pBuffer, size_t bufferSize,
+                           TickType_t ticksToWait)
 {
-    halClockInit(&halClockConfig);
-
-}
-
-__attribute__((always_inline)) inline struct IOLine platformGetStatusLED(void)
-{
-    return statusLED;
+    return 0;
 }
 
 void platformDbgPutc(char c)
