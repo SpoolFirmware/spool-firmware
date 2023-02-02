@@ -7,6 +7,7 @@
 #include "manual/irq.h"
 #include "manual/mcu.h"
 #include "stream_buffer.h"
+#include "error.h"
 
 #include "FreeRTOS.h"
 
@@ -55,7 +56,20 @@ void enableStepper(uint8_t stepperMask)
 size_t platformRecvCommand(char *pBuffer, size_t bufferSize,
                            TickType_t ticksToWait)
 {
-    return 0;
+    UNIMPLEMENTED("platformRecvCommand unimplemented");
+}
+
+void platformSendResponse(const char *pBuffer, size_t len)
+{
+    UNIMPLEMENTED("platformSendResponse unimplemented");
+}
+
+void __warn(const char *file, int line, const char *err)
+{
+}
+
+void __warn_on_err(const char *file, int line, status_t err)
+{
 }
 
 void platformDbgPutc(char c)

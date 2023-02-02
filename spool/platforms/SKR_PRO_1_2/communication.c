@@ -1,6 +1,7 @@
 #include "platform_private.h"
 #include "stream_buffer.h"
 #include "dbgprintf.h"
+#include "error.h"
 
 struct UARTDriver printUart = { 0 };
 const static struct UARTConfig uart1Cfg = {
@@ -27,9 +28,9 @@ size_t platformRecvCommand(char *pBuffer, size_t bufferSize,
                                 ticksToWait);
 }
 
-void platformSendResponse(char *pBuffer, size_t len)
+void platformSendResponse(const char *pBuffer, size_t len)
 {
-    halUartSend(&cmdUart, (uint8_t *)pBuffer, len);
+    halUartSend(&cmdUart, (const uint8_t *)pBuffer, len);
 }
 
 void communicationInit(void)
@@ -80,6 +81,16 @@ IRQ_HANDLER_USART1(void)
         xStreamBufferSendFromISR(cmdmgmtBufferHandle, &byte, 1, NULL);
     }
     halIrqClear(IRQ_USART1);
+}
+
+void __warn(const char *file, int line, const char *err)
+{
+    dbgPrintf("WARN %s in %s:%d\n", err, file, line);
+}
+
+void __warn_on_err(const char *file, int line, status_t err)
+{
+    dbgPrintf("WARN ERR %d in %s:%d\n", err, file, line);
 }
 
 void platformDbgPutc(char c)

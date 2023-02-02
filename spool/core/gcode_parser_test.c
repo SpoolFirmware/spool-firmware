@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "gcode_parser.h"
+#include "error.h"
 
 static FILE *f;
 
@@ -29,18 +30,37 @@ static void printGcode(struct GcodeCommand *cmd)
     switch (cmd->kind) {
     case GcodeG0:
         printf("G0 ");
-        break;
+        goto printXYZEF;
     case GcodeG1:
         printf("G1 ");
-        break;
+        goto printXYZEF;
+    case GcodeG28:
+        printf("G28\n");
+        return;
+    case GcodeM84:
+        printf("M84\n");
+        return;
     }
-    if (cmd->xy.x != 0) {
-        fix16_to_str(cmd->xy.x, buf, 10);
+printXYZEF:
+    if (cmd->xyzef.x != 0) {
+        fix16_to_str(cmd->xyzef.x, buf, 10);
         printf("X%s ", buf);
     }
-    if (cmd->xy.y != 0) {
-        fix16_to_str(cmd->xy.y, buf, 10);
-        printf("Y%s", buf);
+    if (cmd->xyzef.y != 0) {
+        fix16_to_str(cmd->xyzef.y, buf, 10);
+        printf("Y%s ", buf);
+    }
+    if (cmd->xyzef.z != 0) {
+        fix16_to_str(cmd->xyzef.z, buf, 10);
+        printf("Z%s ", buf);
+    }
+    if (cmd->xyzef.e != 0) {
+        fix16_to_str(cmd->xyzef.e, buf, 10);
+        printf("E%s ", buf);
+    }
+    if (cmd->xyzef.f != 0) {
+        fix16_to_str(cmd->xyzef.f, buf, 10);
+        printf("F%s ", buf);
     }
     printf("\n");
 }
@@ -48,11 +68,12 @@ static void printGcode(struct GcodeCommand *cmd)
 static status_t parseFile(void)
 {
     status_t err;
+    struct GcodeParser p;
     struct GcodeCommand cmd;
 
-    err = initParser();
+    err = initParser(&p);
     while (err == StatusOk) {
-        err = parseGcode(&cmd);
+        err = parseGcode(&p, &cmd);
         if (err == StatusGcodeEof) {
             return StatusOk;
         }
@@ -63,24 +84,58 @@ static status_t parseFile(void)
     return err;
 }
 
-int main(int argc, char **argv)
+static status_t parseFileWithError(void)
 {
-    if (argc != 2)
-        printf("usage: [gcode filename]\n");
+    status_t err;
+    struct GcodeParser p;
+    struct GcodeCommand cmd;
 
-    char *fname = argv[1];
-    f = fopen(fname, "r");
+    err = initParser(&p);
+    while (err == StatusOk) {
+        err = parseGcode(&p, &cmd);
+        if (err == StatusGcodeEof) {
+            break;
+        }
+        if (STATUS_OK(err))
+            printGcode(&cmd);
+
+        WARN_ON_ERR(err);
+        if (STATUS_ERR(err)) {
+            err = initParser(&p);
+            WARN_ON_ERR(err);
+            if (STATUS_ERR(err))
+                return err;
+        }
+    }
+    return StatusOk;
+}
+
+static void runTest(const char *fileName, status_t t(void))
+{
+    f = fopen(fileName, "r");
     if (!f) {
         perror("open file failed\n");
         exit(EXIT_FAILURE);
     }
 
-    status_t err = parseFile();
+    status_t err = t();
+    fclose(f);
 
     if (STATUS_ERR(err)) {
         printf("%d\n", err);
-        return err;
     }
+}
 
+int main(int argc, char **argv)
+{
+    if (argc < 2)
+        printf("usage: gcode_filename [strict]\n");
+
+    char *fname = argv[1];
+
+    printf("=== Testing parseFile ===\n");
+    runTest(fname, parseFile);
+    printf("=== Testing parseFileWithError ===\n");
+    runTest(fname, parseFileWithError);
     return 0;
 }

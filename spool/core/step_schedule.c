@@ -7,19 +7,10 @@
 #include "platform/platform.h"
 #include "bitops.h"
 #include "dbgprintf.h"
+#include "gcode_parser.h"
 
-struct StepperJob queueBuf[STEP_QUEUE_SIZE];
-StaticQueue_t stepQueue;
-
-const fix16_t STEPS_PER_MM_FIX = F16(160);
-
-#define MAGIC_PRINTER_STATES 4
-static const struct PrinterState states[MAGIC_PRINTER_STATES] = {
-    { .x = F16(100), .y = F16(50) },
-    { .x = F16(50), .y = F16(100) },
-    { .x = F16(100), .y = F16(100) },
-    { .x = F16(50), .y = F16(50) },
-};
+static struct StepperJob queueBuf[STEP_QUEUE_SIZE];
+static StaticQueue_t stepQueue;
 
 /* Records the state of the printer ends up in after the stepper queue
  * finishes. We could have the state be attached to each stepper job.
@@ -28,18 +19,21 @@ static const struct PrinterState states[MAGIC_PRINTER_STATES] = {
  */
 /* only touched in scheduleMoveTo */
 static struct PrinterState currentState;
+static QueueHandle_t gcodeCommandQueue;
 
 #define STACK_SIZE 1024
 static StaticTask_t stepScheduleTaskBuf;
 static StackType_t stepScheduleStack[STACK_SIZE];
 static TaskHandle_t stepScheduleTaskHandle;
 
-QueueHandle_t stepTaskInit(void)
+QueueHandle_t stepTaskInit(QueueHandle_t gcodeCommandQueue_)
 {
     QueueHandle_t handle = xQueueCreateStatic(STEP_QUEUE_SIZE,
                                               sizeof(struct StepperJob),
                                               (uint8_t *)queueBuf, &stepQueue);
     configASSERT(handle);
+    configASSERT(gcodeCommandQueue_);
+    gcodeCommandQueue = gcodeCommandQueue_;
     stepScheduleTaskHandle = xTaskCreateStatic(
         stepScheduleTask, "stepSchedule", STACK_SIZE, (void *)handle,
         tskIDLE_PRIORITY + 2, stepScheduleStack, &stepScheduleTaskBuf);
@@ -63,7 +57,8 @@ static void scheduleMoveTo(QueueHandle_t handle,
 
     job_t job = { 0 };
     struct StepperPlan plan[NR_STEPPERS];
-    planMove(dx, dy, &plan[STEPPER_A_IDX], &plan[STEPPER_B_IDX], &job.stepDirs);
+    planMove(dx, dy, state.feedrate, &plan[STEPPER_A_IDX], &plan[STEPPER_B_IDX],
+             &job.stepDirs);
 
     for (uint8_t i = 0; i < NR_STEPPERS; ++i) {
         __fillJob(&job.blocks[i], &plan[i]);
@@ -71,7 +66,7 @@ static void scheduleMoveTo(QueueHandle_t handle,
 
     job.type = StepperJobRun;
 
-    while (xQueueSend(handle, &job, (unsigned int)-1) != pdTRUE)
+    while (xQueueSend(handle, &job, portMAX_DELAY) != pdTRUE)
         ;
 
     /* TODO, if we want to interrupt the print, we might have to
@@ -91,13 +86,11 @@ static void scheduleHome(QueueHandle_t handle)
     }
     job.type = StepperJobHomeX;
 
-    while (xQueueSend(handle, &job, (unsigned int)-1) != pdTRUE)
+    while (xQueueSend(handle, &job, portMAX_DELAY) != pdTRUE)
         ;
 
-    if (ulTaskNotifyTake(pdFALSE, portMAX_DELAY) == 0) {
-        /* homing X failed */
-        panic();
-    }
+    /* homing X failed */
+    WARN_ON(ulTaskNotifyTake(pdFALSE, portMAX_DELAY) == 0);
 
     currentState.x = 0;
 
@@ -108,13 +101,11 @@ static void scheduleHome(QueueHandle_t handle)
     }
     job.type = StepperJobHomeY;
 
-    while (xQueueSend(handle, &job, (unsigned int)-1) != pdTRUE)
+    while (xQueueSend(handle, &job, portMAX_DELAY) != pdTRUE)
         ;
 
-    if (ulTaskNotifyTake(pdFALSE, portMAX_DELAY) == 0) {
-        /* homing Y failed */
-        panic();
-    }
+    /* homing Y failed */
+    WARN_ON(ulTaskNotifyTake(pdFALSE, portMAX_DELAY) == 0);
 
     currentState.y = 0;
 }
@@ -122,16 +113,32 @@ static void scheduleHome(QueueHandle_t handle)
 portTASK_FUNCTION(stepScheduleTask, pvParameters)
 {
     QueueHandle_t queue = (QueueHandle_t)pvParameters;
-    int x = 0;
+    struct GcodeCommand cmd;
+    struct PrinterState nextState;
 
-    enableStepper(STEPPER_A | STEPPER_B);
-    scheduleHome(queue);
-
-    for (;; ++x, x = x % MAGIC_PRINTER_STATES) {
-        scheduleMoveTo(queue, states[x]);
+    enableStepper(0);
+    for (;;) {
+        if (xQueueReceive(gcodeCommandQueue, &cmd, portMAX_DELAY) == pdTRUE) {
+            switch (cmd.kind) {
+            case GcodeG0:
+            case GcodeG1:
+                nextState.x = cmd.xyzef.x;
+                nextState.y = cmd.xyzef.y;
+                WARN_ON(cmd.xyzef.f < 0);
+                nextState.feedrate = cmd.xyzef.f == 0 ? currentState.feedrate :
+                                                        fix16_abs(cmd.xyzef.f);
+                scheduleMoveTo(queue, nextState);
+                break;
+            case GcodeG28:
+                enableStepper(STEPPER_A | STEPPER_B);
+                scheduleHome(queue);
+                break;
+            case GcodeM84:
+                enableStepper(0);
+                break;
+            }
+        }
     }
-    for (;;)
-        ;
 }
 
 void notifyHomeXISR(void)

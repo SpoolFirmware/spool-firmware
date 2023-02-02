@@ -7,6 +7,7 @@
 #include "manual/irq.h"
 #include "manual/mcu.h"
 #include "stream_buffer.h"
+#include "error.h"
 
 #include "FreeRTOS.h"
 
@@ -40,6 +41,11 @@ size_t platformRecvCommand(char *pBuffer, size_t bufferSize,
 {
     return xStreamBufferReceive(cmdmgmtBufferHandle, pBuffer, bufferSize,
                                 ticksToWait);
+}
+
+void platformSendResponse(const char *pBuffer, size_t len)
+{
+    UNIMPLEMENTED("platformSendResponse unimplemented");
 }
 
 static void setupTimer(void);
@@ -144,6 +150,16 @@ void platformMotorStep(uint8_t motor_mask, uint8_t dir_mask)
 __attribute__((always_inline)) inline struct IOLine platformGetStatusLED(void)
 {
     return statusLED;
+}
+
+void __warn(const char *file, int line, const char *err)
+{
+    dbgPrintf("WARN %s in %s:%d\n", err, file, line);
+}
+
+void __warn_on_err(const char *file, int line, status_t err)
+{
+    dbgPrintf("WARN ERR %d in %s:%d\n", err, file, line);
 }
 
 void platformDbgPutc(char c)

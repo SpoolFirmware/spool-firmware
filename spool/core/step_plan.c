@@ -62,10 +62,12 @@ static void __planMove(fix16_t maxVel, fix16_t dx, fix16_t dy,
                ((bX >= 0) ? STEPPER_B : 0);
 }
 
-void planMove(fix16_t dx, fix16_t dy, struct StepperPlan *planA,
-              struct StepperPlan *planB, uint8_t *dirMask)
+void planMove(fix16_t dx, fix16_t dy, fix16_t feedrate,
+              struct StepperPlan *planA, struct StepperPlan *planB,
+              uint8_t *dirMask)
 {
-    __planMove(VEL_FIX, dx, dy, planA, planB, dirMask);
+    __planMove(fix16_min(feedrate / SECONDS_IN_MIN, VEL_FIX), dx, dy, planA,
+               planB, dirMask);
 }
 
 void planHomeX(struct StepperPlan *planA, struct StepperPlan *planB,

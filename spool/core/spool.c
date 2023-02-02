@@ -12,12 +12,13 @@
 #include "step_execute.h"
 #include "platform/platform.h"
 #include "hal/stm32/hal.h"
+#include "gcode_serial.h"
 
 void dbgEmptyBuffer(void)
 {
     int c;
     while ((c = dbgGetc()) > 0)
-        platformDbgPutc((char) c);
+        platformDbgPutc((char)c);
 }
 
 TaskHandle_t dbgPrintTaskHandle = NULL;
@@ -29,7 +30,7 @@ static portTASK_FUNCTION(DebugPrintTask, pvParameters)
     int c;
     for (;;) {
         if ((c = dbgGetc()) > 0) {
-            platformDbgPutc((char) c);
+            platformDbgPutc((char)c);
         } else {
             ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
         }
@@ -40,8 +41,9 @@ void main(void)
 {
     struct PlatformConfig platformConfig = { 0 };
     platformInit(&platformConfig);
-    QueueHandle_t queue = stepTaskInit();
-    stepExecuteSetQueue(queue);
+    QueueHandle_t gcodeCommandQueue = gcodeSerialInit();
+    QueueHandle_t stepperJobQueue = stepTaskInit(gcodeCommandQueue);
+    stepExecuteSetQueue(stepperJobQueue);
     dbgPrintf("initSpoolApp\n");
     platformPostInit();
 

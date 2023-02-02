@@ -8,6 +8,7 @@
 struct PrinterState {
     fix16_t x;
     fix16_t y;
+    fix16_t feedrate;
 };
 
 enum MotionBlockState {
@@ -48,7 +49,7 @@ typedef struct StepperJob {
 
 #define STEP_QUEUE_SIZE 20
 
-QueueHandle_t stepTaskInit(void);
+QueueHandle_t stepTaskInit(QueueHandle_t gcodeCommandQueue);
 
 void notifyHomeXISR(void);
 void notifyHomeYISR(void);

@@ -1,7 +1,7 @@
 cc_library(
     name = "lib",
-    srcs = glob(["*.c"]),
-    hdrs = glob(["*.h"]),
+    srcs = ["error.c"],
+    hdrs = ["bitops.h", "drf.h", "error.h"],
     include_prefix=".",
     deps = [
         "//lib/dbg:lib",
@@ -17,7 +17,8 @@ cc_library(
 )
 
 cc_library(
-    name = "error",
+    name = "error_std",
+    srcs = ["error_std.c"],
     hdrs = ["error.h"],
     include_prefix = ".",
     visibility = ["//visibility:public"],

@@ -32,6 +32,6 @@ uint16_t executeStep(uint16_t ticksElapsed);
 uint32_t getStepperTimerFreq(void);
 
 size_t platformRecvCommand(char *pBuffer, size_t bufferSize, TickType_t ticksToWait);
-void platformSendResponse(char *pBuffer, size_t len);
+void platformSendResponse(const char *pBuffer, size_t len);
 
 void platformDbgPutc(char c);
