@@ -3,6 +3,10 @@
 #include <math.h>
 #include "magic_config.h"
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic warning "-Wconversion"
+#pragma GCC diagnostic warning "-Warith-conversion"
+
 static inline fix16_t fix16_mul3(fix16_t a, fix16_t b, fix16_t c)
 {
     return fix16_mul(fix16_mul(a, b), c);
@@ -142,3 +146,5 @@ void __planVelocity(fix16_t maxVel, fix16_t aX, fix16_t bX, fix16_t *aVel,
     *a2AccX = double_x1_a;
     *b2AccX = double_x1_b;
 }
+
+#pragma GCC diagnostic pop

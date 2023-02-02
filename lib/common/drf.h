@@ -103,7 +103,6 @@
 #define FLD_SET_DRF_NUM(d,r,f,n,v)              (((v) & ~DRF_SHIFTMASK(DRF##d##r##f)) | DRF_NUM(d,r,f,n))
 #define FLD_IDX_SET_DRF(d,r,f,i,c,v)            (((v) & ~DRF_SHIFTMASK(DRF##d##r##f(i))) | DRF_IDX_DEF(d,r,f,i,c))
 #define FLD_IDX_SET_DRF_NUM(d,r,f,i,n,v)        (((v) & ~DRF_SHIFTMASK(DRF##d##r##f(i))) | DRF_IDX_NUM(d,r,f,i,n))
-#define FLD_SET_DRF_IDX(d,r,f,c,i,v)            (((v) & ~DRF_SHIFTMASK(DRF##d##r##f)) | DRF_DEF(d,r,f,c(i)))
 
 #define FLD_TEST_DRF(d,r,f,c,v)                 ((DRF_VAL(d, r, f, (v)) == DRF##d##r##f##c))
 #define FLD_TEST_DRF_AND(d,r,f,c,v)             ((DRF_VAL(d, r, f, (v)) & DRF##d##r##f##c))

@@ -4,21 +4,28 @@ _copy:
   GPIO:
     from: GPIOA
 
-"GPIO[ABCDEFGH]":
+"GPIO[ABCDEFG]":
   "*":
     _delete:
       - "*"
 
 "GPIO":
   IDR:
+    _array:
+      "IDR*": {}
     "IDR*":
       High: [1, "Input is logic high"]
       Low: [0, "Input is logic low"]
   ODR:
+    _array:
+      "ODR*": {}
     "ODR*":
       High: [1, "Set output to logic high"]
       Low: [0, "Set output to logic low"]
   BSRR:
+    _array:
+      "BR*": {}
+      "BS*": {}
     "BR*":
       _write:
         Reset: [1, "Resets the corresponding ODRx bit"]
@@ -26,36 +33,32 @@ _copy:
       _write:
         Set: [1, "Sets the corresponding ODRx bit"]
   BRR:
+    _array:
+      "BR*": {}
     "BR*":
       _write:
         NoAction: [0, "No action on the corresponding ODx bit"]
         Reset: [1, "Reset the ODx bit"]
   LCKR:
+    _array:
+      "LCK*": {}
     "LCK[0-9],LCK1[0-5]":
       Unlocked: [0, "Port configuration not locked"]
       Locked: [1, "Port configuration locked"]
     "LCKK":
       NotActive: [0, "Port configuration lock key not active"]
       Active: [1, "Port configuration lock key active"]
-  CRH:
+  CR*:
+    _array:
+      CNF*: {}
+      MODE*: {}
     CNF*:
       PushPull: [0, "Analog mode / Push-Pull mode"]
-      OpenDrain: [1, "Floating input (reset state) / Open Drain-Mode"]
+      OpenDrain: [1, "Floating input / Open Drain-Mode"]
       AltPushPull: [2, "Input with pull-up/pull-down / Alternate Function Push-Pull Mode"]
       AltOpenDrain: [3, "Alternate Function Open-Drain Mode"]
     MODE*:
-      Input: [0, "Input mode (reset state)"]
-      Output: [1, "Output mode 10 MHz"]
-      Output2: [2, "Output mode 2 MHz"]
-      Output50: [3, "Output mode 50 MHz"]
-  CRL:
-    CNF*:
-      PushPull: [0, "Analog mode / Push-Pull mode"]
-      OpenDrain: [1, "Floating input (reset state) / Open Drain-Mode"]
-      AltPushPull: [2, "Input with pull-up/pull-down / Alternate Function Push-Pull Mode"]
-      AltOpenDrain: [3, "Alternate Function Open-Drain Mode"]
-    MODE*:
-      Input: [0, "Input mode (reset state)"]
-      Output: [1, "Output mode 10 MHz"]
+      Input: [0, "Input mode"]
+      Output10: [1, "Output mode 10 MHz"]
       Output2: [2, "Output mode 2 MHz"]
       Output50: [3, "Output mode 50 MHz"]

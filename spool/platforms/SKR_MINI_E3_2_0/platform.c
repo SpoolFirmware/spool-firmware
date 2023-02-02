@@ -11,20 +11,47 @@
 
 #include "FreeRTOS.h"
 
-// const static struct HalClockConfig halClockConfig = {
-//     .hseFreqHz = 25000000,
-//     .q = 7,
-//     .p = 4,
-//     .n = 336,
-//     .m = 25,
+const static struct HalClockConfig halClockConfig = {
+    .hseFreqHz = 8000000,
+    .pllXtPre = 1,
+    .usbPre1_5X = 1, // 0 -> 1, 1 -> 1.5
+    .pllMul = 9,
 
-//     .apb2Prescaler = 1,
-//     .apb1Prescaler = 2,
-//     .ahbPrescaler = 1,
-// };
+    .ahbPrescaler = 1,
+    .apb1Prescaler = 2,
+    .apb2Prescaler = 1,
+    .adcPrescaler = 6,
+};
+
+const static struct HalGPIOConfig gpioConfig = {
+    .groupEnable = EnableGPIOA | EnableGPIOB | EnableGPIOC,
+};
 
 const static struct IOLine statusLED = { .group = DRF_BASE(DRF_GPIOA),
-                                         .pin = 13 };
+                                         .pin = 1 };
+
+__attribute__((always_inline)) inline struct IOLine platformGetStatusLED(void)
+{
+    return statusLED;
+}
+
+void platformInit(struct PlatformConfig *config)
+{
+    halClockInit(&halClockConfig);
+    halGpioInit(&gpioConfig);
+
+    halGpioSetMode(statusLED, DRF_DEF(_HAL_GPIO, _MODE, _MODE, _OUTPUT50) |
+                                  DRF_DEF(_HAL_GPIO, _MODE, _TYPE, _PUSH_PULL));
+}
+
+void platformPostInit(void)
+{
+    halGpioSet(statusLED);
+}
+
+void enableStepper(uint8_t stepperMask)
+{
+}
 
 size_t platformRecvCommand(char *pBuffer, size_t bufferSize,
                            TickType_t ticksToWait)
@@ -35,30 +62,6 @@ size_t platformRecvCommand(char *pBuffer, size_t bufferSize,
 void platformSendResponse(const char *pBuffer, size_t len)
 {
     UNIMPLEMENTED("platformSendResponse unimplemented");
-}
-
-void platformPostInit(void)
-{
-}
-
-void enableStepper(uint8_t stepperMask)
-{
-}
-
-void platformInit(struct PlatformConfig *config)
-{
-    // halClockInit(&halClockConfig);
-}
-
-__attribute__((always_inline)) inline struct IOLine platformGetStatusLED(void)
-{
-    return statusLED;
-}
-
-_Noreturn void __panic(const char *file, int line, const char *err)
-{
-    for (volatile int i = line;; i = line)
-        (void)i;
 }
 
 void __warn(const char *file, int line, const char *err)

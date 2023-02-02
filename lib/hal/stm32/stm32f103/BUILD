@@ -11,5 +11,8 @@ cc_library(
         "//lib/hardware_manual:manual",
 
         "//lib/hal/cortexm:lib",
+
+        "//lib/hal/stm32/peripheral/gpio_v1:lib",
+        "//lib/hal/stm32/peripheral/usart_v1:lib",
     ],
 )

@@ -60,10 +60,6 @@ cc_binary_with_platforms(
         "core/gcode_parser.c",
         "core/gcode_parser.h",
     ],
-    copts = [
-        "-Wconversion",
-        "-Warith-conversion",
-    ],
     linkopts = [
         "-T $(execpath //spool/platforms:linker.ld)",
         "-lm",

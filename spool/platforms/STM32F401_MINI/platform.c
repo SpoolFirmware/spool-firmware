@@ -152,14 +152,6 @@ __attribute__((always_inline)) inline struct IOLine platformGetStatusLED(void)
     return statusLED;
 }
 
-_Noreturn void __panic(const char *file, int line, const char *err)
-{
-    dbgPrintf("PANIC %s at %s:%d\n", err, file, line);
-    dbgEmptyBuffer();
-    for (volatile int i = line;; i = line)
-        (void)i;
-}
-
 void __warn(const char *file, int line, const char *err)
 {
     dbgPrintf("WARN %s in %s:%d\n", err, file, line);
