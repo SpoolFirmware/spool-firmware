@@ -29,6 +29,8 @@ cc_library(
 cc_library(
     name = "runtime",
     srcs = [
+        "config_private.h",
+        "comm.c",
         "platform.c",
     ],
     deps = [
