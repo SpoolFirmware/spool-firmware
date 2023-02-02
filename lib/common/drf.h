@@ -90,13 +90,13 @@
 	 (31 - ((DRF_ISBIT(1, drf)) % 32) + ((DRF_ISBIT(0, drf)) % 32)))
 #define DRF_DEF(d, r, f, c) ((DRF##d##r##f##c) << DRF_SHIFT(DRF##d##r##f))
 #define DRF_NUM(d, r, f, n) \
-	(((n)&DRF_MASK(DRF##d##r##f)) << DRF_SHIFT(DRF##d##r##f))
+	((((uint32_t) (n))&DRF_MASK(DRF##d##r##f)) << DRF_SHIFT(DRF##d##r##f))
 #define DRF_SHIFTMASK(drf) (DRF_MASK(drf) << (DRF_SHIFT(drf)))
 #define DRF_VAL(d, r, f, v) \
 	(((v) >> DRF_SHIFT(DRF##d##r##f)) & DRF_MASK(DRF##d##r##f))
 
 #define DRF_IDX_DEF(d,r,f,i,c)          ((DRF##d##r##f##c)<<DRF_SHIFT(DRF##d##r##f(i)))
-#define DRF_IDX_NUM(d,r,f,i,n)          (((n)&DRF_MASK(DRF##d##r##f(i)))<<DRF_SHIFT(DRF##d##r##f(i)))
+#define DRF_IDX_NUM(d,r,f,i,n)          ((((uint32_t) (n))&DRF_MASK(DRF##d##r##f(i)))<<DRF_SHIFT(DRF##d##r##f(i)))
 #define DRF_IDX_VAL(d,r,f,i,v)          (((v)>>DRF_SHIFT(DRF##d##r##f(i)))&DRF_MASK(DRF##d##r##f(i)))
 
 #define FLD_SET_DRF(d,r,f,c,v)                  (((v) & ~DRF_SHIFTMASK(DRF##d##r##f)) | DRF_DEF(d,r,f,c))
