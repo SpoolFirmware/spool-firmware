@@ -1,14 +1,15 @@
 #pragma once
 
 #include <stdint.h>
+#include <stdbool.h>
 
 struct UARTConfig
 {
     uint32_t baudrate;
-    uint8_t useRxInterrupt : 1;
-    uint8_t useTxInterrupt : 1;
-    uint8_t useTx : 1;
-    uint8_t useRx : 1;
+    bool useRxInterrupt : 1;
+    bool useTxInterrupt : 1;
+    bool useTx : 1;
+    bool useRx : 1;
 };
 
 struct UARTDriver;

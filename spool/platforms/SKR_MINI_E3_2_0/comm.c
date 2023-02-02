@@ -3,10 +3,10 @@
 struct UARTDriver dbgUart = { 0 };
 const static struct UARTConfig dbgUartCfg = {
     .baudrate = 115200,
-    .useRxInterrupt = 0,
-    .useTxInterrupt = 0,
-    .useTx = 1,
-    .useRx = 0,
+    .useRxInterrupt = false,
+    .useTxInterrupt = false,
+    .useTx = false,
+    .useRx = false,
 };
 
 void privCommInit(void)

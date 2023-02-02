@@ -25,10 +25,10 @@ const static struct HalClockConfig halClockConfig = {
 
 const static struct UARTConfig uart1Cfg = {
     .baudrate = 115200,
-    .useRxInterrupt = 1,
-    .useTxInterrupt = 0,
-    .useTx = 1,
-    .useRx = 0,
+    .useRxInterrupt = true,
+    .useTxInterrupt = false,
+    .useTx = true,
+    .useRx = false,
 };
 
 const static struct IOLine statusLED = { .group = GPIOC, .pin = 13 };

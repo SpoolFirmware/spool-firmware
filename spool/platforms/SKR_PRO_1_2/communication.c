@@ -6,19 +6,19 @@
 struct UARTDriver printUart = { 0 };
 const static struct UARTConfig uart1Cfg = {
     .baudrate = 115200,
-    .useRxInterrupt = 0,
-    .useTxInterrupt = 0,
-    .useTx = 1,
-    .useRx = 0,
+    .useRxInterrupt = false,
+    .useTxInterrupt = false,
+    .useTx = true,
+    .useRx = false,
 };
 
 struct UARTDriver cmdUart = { 0 };
 const static struct UARTConfig cmdUartCfg = {
     .baudrate = 115200,
-    .useRxInterrupt = 1,
-    .useTxInterrupt = 0,
-    .useTx = 1,
-    .useRx = 0,
+    .useRxInterrupt = true,
+    .useTxInterrupt = false,
+    .useTx = true,
+    .useRx = false,
 };
 
 static char uartCommandBuffer[128];
