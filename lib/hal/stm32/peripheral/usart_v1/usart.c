@@ -17,12 +17,11 @@ void halUartStart(struct UARTDriver *pDriver)
 {
     REG_WR32(pDriver->deviceBase + DRF_USART1_BRR, pDriver->brr);
 
-    uint32_t cr1 = DRF_DEF(_USART1, _CR1, _UE, _ENABLED) |
-                 DRF_DEF(_USART1, _CR1, _TE, _ENABLED) |
-                 DRF_DEF(_USART1, _CR1, _RE, _ENABLED);
-    if (pDriver->cfg.useRxInterrupt) {
-        cr1 |= DRF_DEF(_USART1, _CR1, _RXNEIE, _ENABLED);
-    }
+    uint32_t cr1 = DRF_DEF(_USART1, _CR1, _UE, _ENABLED);
+    cr1 = FLD_SET_DRF_NUM(_USART1, _CR1, _TE, pDriver->cfg.useTx, cr1);
+    cr1 = FLD_SET_DRF_NUM(_USART1, _CR1, _RE, pDriver->cfg.useRx, cr1);
+    cr1 = FLD_SET_DRF_NUM(_USART1, _CR1, _RXNEIE, pDriver->cfg.useRxInterrupt, cr1);
+    // TODO: useTxInterrupt
     REG_WR32(pDriver->deviceBase + DRF_USART1_CR1, cr1);
 
     REG_WR32(pDriver->deviceBase + DRF_USART1_CR2, 0);

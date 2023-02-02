@@ -8,6 +8,8 @@ const static struct UARTConfig uart1Cfg = {
     .baudrate = 115200,
     .useRxInterrupt = 0,
     .useTxInterrupt = 0,
+    .useTx = 1,
+    .useRx = 0,
 };
 
 struct UARTDriver cmdUart = { 0 };
@@ -15,6 +17,8 @@ const static struct UARTConfig cmdUartCfg = {
     .baudrate = 115200,
     .useRxInterrupt = 1,
     .useTxInterrupt = 0,
+    .useTx = 1,
+    .useRx = 0,
 };
 
 static char uartCommandBuffer[128];

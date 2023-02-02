@@ -5,8 +5,10 @@
 struct UARTConfig
 {
     uint32_t baudrate;
-    uint8_t useRxInterrupt;
-    uint8_t useTxInterrupt;
+    uint8_t useRxInterrupt : 1;
+    uint8_t useTxInterrupt : 1;
+    uint8_t useTx : 1;
+    uint8_t useRx : 1;
 };
 
 struct UARTDriver;
