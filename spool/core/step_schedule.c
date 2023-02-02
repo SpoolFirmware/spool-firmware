@@ -12,14 +12,6 @@
 static struct StepperJob queueBuf[STEP_QUEUE_SIZE];
 static StaticQueue_t stepQueue;
 
-#define MAGIC_PRINTER_STATES 4
-static const struct PrinterState states[MAGIC_PRINTER_STATES] = {
-    { .x = F16(100), .y = F16(50) },
-    { .x = F16(50), .y = F16(100) },
-    { .x = F16(100), .y = F16(100) },
-    { .x = F16(50), .y = F16(50) },
-};
-
 /* Records the state of the printer ends up in after the stepper queue
  * finishes. We could have the state be attached to each stepper job.
  * However, if we do not care about displaying the state of the print
@@ -65,7 +57,8 @@ static void scheduleMoveTo(QueueHandle_t handle,
 
     job_t job = { 0 };
     struct StepperPlan plan[NR_STEPPERS];
-    planMove(dx, dy, &plan[STEPPER_A_IDX], &plan[STEPPER_B_IDX], &job.stepDirs);
+    planMove(dx, dy, state.feedrate, &plan[STEPPER_A_IDX], &plan[STEPPER_B_IDX],
+             &job.stepDirs);
 
     for (uint8_t i = 0; i < NR_STEPPERS; ++i) {
         __fillJob(&job.blocks[i], &plan[i]);
@@ -121,7 +114,7 @@ portTASK_FUNCTION(stepScheduleTask, pvParameters)
 {
     QueueHandle_t queue = (QueueHandle_t)pvParameters;
     struct GcodeCommand cmd;
-    struct PrinterState state;
+    struct PrinterState nextState;
 
     enableStepper(0);
     for (;;) {
@@ -129,9 +122,12 @@ portTASK_FUNCTION(stepScheduleTask, pvParameters)
             switch (cmd.kind) {
             case GcodeG0:
             case GcodeG1:
-                state.x = cmd.xyzef.x;
-                state.y = cmd.xyzef.y;
-                scheduleMoveTo(queue, state);
+                nextState.x = cmd.xyzef.x;
+                nextState.y = cmd.xyzef.y;
+                WARN_ON(cmd.xyzef.f < 0);
+                nextState.feedrate = cmd.xyzef.f == 0 ? currentState.feedrate :
+                                                        fix16_abs(cmd.xyzef.f);
+                scheduleMoveTo(queue, nextState);
                 break;
             case GcodeG28:
                 enableStepper(STEPPER_A | STEPPER_B);

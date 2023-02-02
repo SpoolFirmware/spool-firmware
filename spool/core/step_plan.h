@@ -7,6 +7,8 @@ static const fix16_t HOMING_VEL_FIX = F16(HOMING_VEL);
 static const fix16_t ACC_FIX = F16(ACC);
 const static fix16_t STEPS_PER_MM_FIX = F16(STEPS_PER_MM);
 
+#define SECONDS_IN_MIN 60
+
 struct StepperPlan {
     uint32_t totalSteps;
     uint32_t accelerationSteps;
@@ -14,8 +16,9 @@ struct StepperPlan {
     uint32_t cruiseVel_steps_s;
 };
 
-void planMove(fix16_t dx, fix16_t dy, struct StepperPlan *planA,
-              struct StepperPlan *planB, uint8_t *dirMask);
+void planMove(fix16_t dx, fix16_t dy, fix16_t feedrate,
+              struct StepperPlan *planA, struct StepperPlan *planB,
+              uint8_t *dirMask);
 
 void planHomeX(struct StepperPlan *planA, struct StepperPlan *planB,
                uint8_t *dirMask);
