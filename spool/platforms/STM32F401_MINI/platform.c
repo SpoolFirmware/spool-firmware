@@ -146,12 +146,6 @@ __attribute__((always_inline)) inline struct IOLine platformGetStatusLED(void)
     return statusLED;
 }
 
-_Noreturn void __panic(const char *file, int line) {
-    dbgPrintf("PANIC %s:%d\n", file, line);
-    dbgEmptyBuffer();
-    for (volatile int i = line;; i = line);
-}
-
 void platformDbgPutc(char c)
 {
     halUartSendByte(&printUart, (uint8_t)c);

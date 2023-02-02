@@ -56,10 +56,6 @@ cc_binary_with_platforms(
         "core/step_plan.c",
         "core/step_plan.h",
     ],
-    copts = [
-        "-Wconversion",
-        "-Warith-conversion",
-    ],
     linkopts = [
         "-T $(execpath //spool/platforms:linker.ld)",
         "-lm",
