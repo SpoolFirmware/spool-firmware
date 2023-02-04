@@ -10,8 +10,9 @@
 struct PlatformConfig {
     uint8_t _rsvd;
 };
+/* ----------------- Variables to be implemented by platform ---------------- */
 
-/* ----------------- Functions to be implemented by platform ------------------*/
+/* ---------------- Functions to be implemented by platform ----------------- */
 void platformInit(struct PlatformConfig *config);
 void platformPostInit(void);
 struct IOLine platformGetStatusLED(void);
