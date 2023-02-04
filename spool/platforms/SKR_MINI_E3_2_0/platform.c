@@ -67,7 +67,3 @@ void __warn_on_err(const char *file, int line, status_t err)
 {
 }
 
-void platformDbgPutc(char c)
-{
-    (void)c;
-}

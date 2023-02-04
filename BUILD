@@ -12,6 +12,7 @@ refresh_compile_commands(
     # For example, specify a dict of targets and any flags required to build.
     targets = {
         "//spool:spool_skr_mini_e3_2_0": "",
+        "//spool:spool_skr_pro_1_2": "",
         "//lib/fxp:simple_test": "",
         "//spool:step_plan_test": "",
         "//spool:parser_test": "",

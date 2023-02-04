@@ -5,7 +5,7 @@ const static struct UARTConfig dbgUartCfg = {
     .baudrate = 115200,
     .useRxInterrupt = false,
     .useTxInterrupt = false,
-    .useTx = false,
+    .useTx = true,
     .useRx = false,
 };
 
@@ -17,8 +17,16 @@ void privCommInit(void)
     REG_FLD_SET_DRF(_RCC, _APB1ENR, _UART5EN, _ENABLED);
 
     halUartInit(&dbgUart, &dbgUartCfg, DRF_BASE(DRF_UART5), halClockApb1FreqGet(&halClockConfig));
+    halUartStart(&dbgUart);
 }
 
 void privCommPostInit(void)
 {
+}
+
+void platformDbgPutc(char c)
+{
+    if (c == '\n')
+        halUartSendByte(&dbgUart, '\r');
+    halUartSendByte(&dbgUart, (uint8_t) c);
 }

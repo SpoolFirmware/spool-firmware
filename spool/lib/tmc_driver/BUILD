@@ -1,0 +1,12 @@
+cc_library(
+    name="lib",
+    srcs=[
+        "tmc_driver.c",
+        "tmc_2209.h",
+    ],
+    hdrs=["tmc_driver.h"],
+    deps=[
+        "//lib/common:lib",
+    ],
+    visibility=["//visibility:public"],
+)
