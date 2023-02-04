@@ -30,6 +30,8 @@ static portTASK_FUNCTION(DebugPrintTask, pvParameters)
     int c;
     for (;;) {
         if ((c = dbgGetc()) > 0) {
+            if (c == '\n')
+                platformDbgPutc('\r');
             platformDbgPutc((char)c);
         } else {
             ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
