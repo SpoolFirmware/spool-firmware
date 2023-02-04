@@ -17,21 +17,30 @@ void platformInit(struct PlatformConfig *config);
 void platformPostInit(void);
 struct IOLine platformGetStatusLED(void);
 
+// Steppers
 void platformEnableStepper(uint8_t stepperMask);
 void platformDisableStepper(uint8_t stepperMask);
 void platformStepStepper(uint8_t stepperMask);
 void platformSetStepperDir(uint8_t dirMask);
-
-bool platformGetEndstop(uint8_t axis);
-
-/*!
- * @param ticksElapsed  number of ticksElapsed since last invocation.
- * @returns number of desired ticks till the next step
- */
-uint16_t executeStep(uint16_t ticksElapsed);
 uint32_t getStepperTimerFreq(void);
 
+// Sensors
+bool platformGetEndstop(uint8_t axis);
+
+// Communication
 size_t platformRecvCommand(char *pBuffer, size_t bufferSize, TickType_t ticksToWait);
 void platformSendResponse(const char *pBuffer, size_t len);
 
+// DEBUGGING
 void platformDbgPutc(char c);
+
+/* ---------------------- Functions platform needs to call ------------------ */
+/*!
+ * @param ticksElapsed  number of ticksElapsed since last invocation.
+ *
+ * @note    This function should be invoked by the platform in a timer ISR that
+ *          runs at @ref platformGetStepperTimerFreq.
+ *
+ * @returns number of desired ticks till the next step
+ */
+uint16_t executeStep(uint16_t ticksElapsed);
