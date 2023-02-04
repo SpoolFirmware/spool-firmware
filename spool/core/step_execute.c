@@ -101,7 +101,7 @@ uint16_t executeStep(uint16_t ticksElapsed)
                 }
             }
         }
-        stepStepper(stepper_mask);
+        platformStepStepper(stepper_mask);
     }
 
     // Now we can do other things
@@ -110,7 +110,7 @@ uint16_t executeStep(uint16_t ticksElapsed)
         if (xQueueReceiveFromISR(executeQueueHandle, &job, NULL) != pdTRUE) {
             return 0;
         }
-        setStepperDir(job.stepDirs);
+        platformSetStepperDir(job.stepDirs);
         for (uint8_t i = 0; i < NR_STEPPERS; ++i) {
             counter[i] = 0;
             job.blocks[i].blockState = BlockStateAccelerating;

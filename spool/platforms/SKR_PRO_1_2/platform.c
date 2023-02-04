@@ -50,18 +50,25 @@ const static struct IOLine en[NR_STEPPERS] = {
     { .group = GPIOD, .pin = 7 },
 };
 
-void enableStepper(uint8_t stepperMask)
+void platformEnableStepper(uint8_t stepperMask)
 {
     for (uint8_t i = 0; i < NR_STEPPERS; ++i) {
         if (stepperMask & BIT(i)) {
             halGpioClear(en[i]);
-        } else {
+        }
+    }
+}
+
+void platformDisableStepper(uint8_t stepperMask)
+{
+    for (uint8_t i = 0; i < NR_STEPPERS; ++i) {
+        if (stepperMask & BIT(i)) {
             halGpioSet(en[i]);
         }
     }
 }
 
-void setStepperDir(uint8_t dirMask)
+void platformSetStepperDir(uint8_t dirMask)
 {
     for (uint8_t i = 0; i < NR_STEPPERS; ++i) {
         if (dirMask & BIT(i)) {
@@ -114,7 +121,7 @@ static void reloadTimer(void)
                                        DRF_DEF(_TIM2, _CR1, _OPM, _ENABLED));
 }
 
-void stepStepper(uint8_t stepperMask)
+void platformStepStepper(uint8_t stepperMask)
 {
     setStepper(stepperMask, stepperMask);
     reloadTimer();

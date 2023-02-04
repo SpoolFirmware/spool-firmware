@@ -3,6 +3,8 @@
 
 #include "config_private.h"
 
+// TIMER 6 is used for stepper scheduler
+// TIMER 7 is used for stepper pulse width
 
 const struct HalClockConfig halClockConfig = {
     .hseFreqHz = 8000000,
@@ -23,6 +25,11 @@ const static struct HalGPIOConfig gpioConfig = {
 const struct IOLine statusLED = { .group = DRF_BASE(DRF_GPIOA),
                                          .pin = 1 };
 
+static void sSetupStepperTimers(void)
+{
+    // Setup TIMER 6 with 2x
+}
+
 __attribute__((always_inline)) inline struct IOLine platformGetStatusLED(void)
 {
     return statusLED;
@@ -33,30 +40,30 @@ void platformInit(struct PlatformConfig *config)
     halClockInit(&halClockConfig);
     halGpioInit(&gpioConfig);
 
-    halGpioSetMode(statusLED, DRF_DEF(_HAL_GPIO, _MODE, _MODE, _OUTPUT50) |
-                                  DRF_DEF(_HAL_GPIO, _MODE, _TYPE, _PUSH_PULL));
-
     privCommInit();
 }
 
 void platformPostInit(void)
 {
-    halGpioSet(statusLED);
+    privCommPostInit();
 }
 
-void enableStepper(uint8_t stepperMask)
+IRQ_HANDLER_TIM6(void)
+{
+    halIrqClear(IRQ_TIM6);
+}
+
+IRQ_HANDLER_TIM7(void)
+{
+   halIrqClear(IRQ_TIM7);
+}
+
+void platformEnableStepper(uint8_t stepperMask)
 {
 }
 
-size_t platformRecvCommand(char *pBuffer, size_t bufferSize,
-                           TickType_t ticksToWait)
+void platformDisableStepper(uint8_t stepperMask)
 {
-    UNIMPLEMENTED("platformRecvCommand unimplemented");
-}
-
-void platformSendResponse(const char *pBuffer, size_t len)
-{
-    UNIMPLEMENTED("platformSendResponse unimplemented");
 }
 
 void __warn(const char *file, int line, const char *err)

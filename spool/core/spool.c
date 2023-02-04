@@ -43,6 +43,7 @@ void main(void)
 {
     struct PlatformConfig platformConfig = { 0 };
     platformInit(&platformConfig);
+    platformDisableStepper(0xFF);
     QueueHandle_t gcodeCommandQueue = gcodeSerialInit();
     QueueHandle_t stepperJobQueue = stepTaskInit(gcodeCommandQueue);
     stepExecuteSetQueue(stepperJobQueue);

@@ -60,7 +60,11 @@ void platformPostInit(void)
     halIrqEnable(IRQ_USART1);
 }
 
-void enableStepper(uint8_t stepperMask)
+void platformEnableStepper(uint8_t stepperMask)
+{
+}
+
+void platformDisableStepper(uint8_t stepperMask)
 {
 }
 
