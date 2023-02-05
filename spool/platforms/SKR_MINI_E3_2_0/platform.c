@@ -24,12 +24,6 @@ const static struct HalGPIOConfig gpioConfig = {
 
 const struct IOLine statusLED = { .group = DRF_BASE(DRF_GPIOA),
                                          .pin = 1 };
-
-static void sSetupStepperTimers(void)
-{
-    // Setup TIMER 6 with 2x
-}
-
 __attribute__((always_inline)) inline struct IOLine platformGetStatusLED(void)
 {
     return statusLED;
@@ -41,6 +35,7 @@ void platformInit(struct PlatformConfig *config)
     halGpioInit(&gpioConfig);
 
     privCommInit();
+    privStepperInit();
 }
 
 void platformPostInit(void)
@@ -48,22 +43,9 @@ void platformPostInit(void)
     privCommPostInit();
 }
 
-IRQ_HANDLER_TIM6(void)
+bool platformGetEndstop(uint8_t axis)
 {
-    halIrqClear(IRQ_TIM6);
-}
-
-IRQ_HANDLER_TIM7(void)
-{
-   halIrqClear(IRQ_TIM7);
-}
-
-void platformEnableStepper(uint8_t stepperMask)
-{
-}
-
-void platformDisableStepper(uint8_t stepperMask)
-{
+    return false;
 }
 
 void __warn(const char *file, int line, const char *err)

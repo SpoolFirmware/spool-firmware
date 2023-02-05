@@ -22,7 +22,7 @@ void platformEnableStepper(uint8_t stepperMask);
 void platformDisableStepper(uint8_t stepperMask);
 void platformStepStepper(uint8_t stepperMask);
 void platformSetStepperDir(uint8_t dirMask);
-uint32_t getStepperTimerFreq(void);
+uint32_t platformGetStepperTimerFreq(void);
 
 // Sensors
 bool platformGetEndstop(uint8_t axis);

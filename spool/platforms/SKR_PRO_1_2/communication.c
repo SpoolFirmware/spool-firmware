@@ -18,7 +18,7 @@ const static struct UARTConfig cmdUartCfg = {
     .useRxInterrupt = true,
     .useTxInterrupt = false,
     .useTx = true,
-    .useRx = false,
+    .useRx = true,
 };
 
 static char uartCommandBuffer[128];

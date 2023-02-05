@@ -1,7 +1,7 @@
 cc_library(
     name = "lib",
     srcs = ["error.c"],
-    hdrs = ["bitops.h", "drf.h", "error.h"],
+    hdrs = ["bitops.h", "drf.h", "error.h", "misc.h"],
     include_prefix=".",
     deps = [
         "//lib/dbg:lib",

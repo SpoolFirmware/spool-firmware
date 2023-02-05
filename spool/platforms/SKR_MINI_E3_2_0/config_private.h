@@ -3,9 +3,8 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "drf.h"
+#include "misc.h"
 #include "dbgprintf.h"
-#include "error.h"
 
 #include "platform/platform.h"
 
@@ -22,3 +21,4 @@ extern const struct HalClockConfig halClockConfig;
 /* --------------- Function Prototypes --------------------------- */
 void privCommInit(void);
 void privCommPostInit(void);
+void privStepperInit(void);

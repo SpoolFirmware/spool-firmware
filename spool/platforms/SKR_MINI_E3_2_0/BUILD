@@ -31,6 +31,7 @@ cc_library(
     srcs = [
         "config_private.h",
         "comm.c",
+        "stepper.c",
         "platform.c",
     ],
     deps = [

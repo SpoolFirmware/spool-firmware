@@ -26,7 +26,7 @@ static bool stepperJobFinished(const struct StepperJob *pJob)
 
 static uint64_t getFreqSquared(void)
 {
-    return ((uint64_t)getStepperTimerFreq()) * getStepperTimerFreq();
+    return ((uint64_t)platformGetStepperTimerFreq()) * platformGetStepperTimerFreq();
 }
 
 /*!
@@ -43,7 +43,7 @@ static uint16_t sCalcInterval(motion_block_t *pBlock)
     switch (pBlock->blockState) {
     case BlockStateDecelerating: {
         uint64_t initialVel =
-            ((uint64_t)pBlock->cruiseVel_steps_s) * getStepperTimerFreq();
+            ((uint64_t)pBlock->cruiseVel_steps_s) * platformGetStepperTimerFreq();
         if (deltaVel > initialVel) {
             return 10;
         } else {
@@ -52,11 +52,11 @@ static uint16_t sCalcInterval(motion_block_t *pBlock)
     }
     case BlockStateAccelerating: {
         uint64_t initialVel =
-            (uint64_t)pBlock->entryVel_steps_s * getStepperTimerFreq();
+            (uint64_t)pBlock->entryVel_steps_s * platformGetStepperTimerFreq();
         return (uint16_t)(getFreqSquared() / (initialVel + deltaVel));
     }
     case BlockStateCruising:
-        return (uint16_t)(getStepperTimerFreq() / pBlock->cruiseVel_steps_s);
+        return (uint16_t)(platformGetStepperTimerFreq() / pBlock->cruiseVel_steps_s);
     default:
         break;
     }

@@ -57,7 +57,7 @@ void privCommInit(void)
 void privCommPostInit(void)
 {
     halUartStart(&cmdUart);
-    halIrqPrioritySet(IRQ_USART2, configMAX_SYSCALL_INTERRUPT_PRIORITY + 1);
+    halIrqPrioritySet(IRQ_USART2, configMAX_SYSCALL_INTERRUPT_PRIORITY);
     halIrqEnable(IRQ_USART2);
 }
 
