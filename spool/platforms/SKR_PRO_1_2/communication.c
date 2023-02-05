@@ -16,7 +16,7 @@ struct UARTDriver cmdUart = { 0 };
 const static struct UARTConfig cmdUartCfg = {
     .baudrate = 115200,
     .useRxInterrupt = true,
-    .useTxInterrupt = false,
+    .useTxInterrupt = true,
     .useTx = true,
     .useRx = true,
 };
@@ -68,6 +68,7 @@ void communicationPostInit(void)
     halIrqEnable(IRQ_USART1);
 }
 
+// GCODE UART IRQ HANDLER
 IRQ_HANDLER_USART1(void)
 {
     halUartIrqHandler(&cmdUart);

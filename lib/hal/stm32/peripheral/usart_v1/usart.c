@@ -32,7 +32,8 @@ void halUartStart(struct UARTDriver *pDriver)
     cr1 = FLD_SET_DRF_NUM(_USART1, _CR1, _RE, pDriver->cfg.useRx, cr1);
     cr1 = FLD_SET_DRF_NUM(_USART1, _CR1, _RXNEIE, pDriver->cfg.useRxInterrupt,
                           cr1);
-    // TODO: useTxInterrupt
+    cr1 = FLD_SET_DRF_NUM(_USART1, _CR1, _TXEIE, pDriver->cfg.useTxInterrupt,
+                          cr1);
     REG_WR32(pDriver->deviceBase + DRF_USART1_CR1, cr1);
 
     REG_WR32(pDriver->deviceBase + DRF_USART1_CR2, 0);
@@ -46,16 +47,15 @@ void halUartStart(struct UARTDriver *pDriver)
 void halUartSendByte(struct UARTDriver *pDriver, uint8_t byte)
 {
     if (pDriver->cfg.useTxInterrupt) {
-        UNIMPLEMENTED("Send with TxInterrupt");
+        xStreamBufferSend(pDriver->txBuffer, &byte, 1, portMAX_DELAY);
+        REG_WR32(pDriver->deviceBase + DRF_USART1_CR1,
+                 FLD_SET_DRF(_USART1, _CR1, _TXEIE, _ENABLED,
+                             REG_RD32(pDriver->deviceBase + DRF_USART1_CR1)));
     } else {
-        taskENTER_CRITICAL();
-        {
-            while (FLD_TEST_DRF(_USART1, _SR, _TXE, _CLR,
-                                REG_RD32(pDriver->deviceBase + DRF_USART1_SR)))
-                ;
-            REG_WR32(pDriver->deviceBase + DRF_USART1_DR, byte);
-        }
-        taskEXIT_CRITICAL();
+        while (FLD_TEST_DRF(_USART1, _SR, _TXE, _CLR,
+                            REG_RD32(pDriver->deviceBase + DRF_USART1_SR)))
+            ;
+        REG_WR32(pDriver->deviceBase + DRF_USART1_DR, byte);
     }
 }
 
@@ -94,25 +94,30 @@ size_t halUartRecvBytes(struct UARTDriver *pDriver, uint8_t *pBuffer,
                         size_t bufferSize, TickType_t ticksToWait)
 {
     configASSERT(pDriver->cfg.useRxInterrupt); // TODO not supported otherwise
-    return xStreamBufferReceive(pDriver->rxBuffer, pBuffer, bufferSize, ticksToWait);
+    return xStreamBufferReceive(pDriver->rxBuffer, pBuffer, bufferSize,
+                                ticksToWait);
 }
 
 void halUartIrqHandler(struct UARTDriver *pDriver)
 {
     uint32_t sr = REG_RD32(pDriver->deviceBase + DRF_USART1_SR);
     uint8_t byte;
-    if (pDriver->cfg.useRxInterrupt) {
-        if (FLD_TEST_DRF(_USART1, _SR, _RXNE, _SET, sr)) {
-            byte = REG_RD32(pDriver->deviceBase + DRF_USART1_DR);
-            xStreamBufferSendFromISR(pDriver->rxBuffer, &byte, 1, NULL);
-        }
+    if (pDriver->cfg.useRxInterrupt &&
+        FLD_TEST_DRF(_USART1, _SR, _RXNE, _SET, sr)) {
+        byte = REG_RD32(pDriver->deviceBase + DRF_USART1_DR);
+        xStreamBufferSendFromISR(pDriver->rxBuffer, &byte, 1, NULL);
     }
-    if (pDriver->cfg.useTxInterrupt) {
-        if (!xStreamBufferIsEmpty(pDriver->txBuffer) &&
-            FLD_TEST_DRF(_USART1, _SR, _TXE, _SET, sr)) {
+    if (pDriver->cfg.useTxInterrupt &&
+        FLD_TEST_DRF(_USART1, _SR, _TXE, _SET, sr)) {
+        if ((!xStreamBufferIsEmpty(pDriver->txBuffer))) {
             configASSERT(xStreamBufferReceiveFromISR(pDriver->txBuffer, &byte,
                                                      1, NULL) == pdTRUE);
             REG_WR32(pDriver->deviceBase + DRF_USART1_DR, byte);
+        } else {
+            REG_WR32(
+                pDriver->deviceBase + DRF_USART1_CR1,
+                FLD_SET_DRF(_USART1, _CR1, _TXEIE, _DISABLED,
+                            REG_RD32(pDriver->deviceBase + DRF_USART1_CR1)));
         }
     }
 }
