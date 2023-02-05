@@ -77,7 +77,6 @@ cc_binary_with_platforms(
         "//lib/dbg:lib",
         "//lib/fxp:lib",
         "//lib/hal/common:lib",
-        "//spool/lib/tmc_driver:lib",
         "//spool/platforms:linker.ld",
         "//spool/platforms:runtime",
     ],

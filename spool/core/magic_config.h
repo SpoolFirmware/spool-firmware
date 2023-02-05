@@ -14,7 +14,7 @@
 #define JERK 10
 #define ACC  1000
 
-#define HOMING_VEL 5
+#define HOMING_VEL 50
 
 #define MAX_X 200
 #define MAX_Y 200

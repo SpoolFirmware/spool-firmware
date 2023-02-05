@@ -12,15 +12,20 @@
 #define DRF_TMC_SLAVECONF                  0x3
 #define DRF_TMC_SLAVECONF_SENDDELAY        11 : 8
 
-#define DRF_TMC_CHOPCONF                   0x6C
-#define DRF_TMC_CHOPCONF_MRES              27 : 24
-#define DRF_TMC_CHOPCONF_MRES_FULL         8U
-#define DRF_TMC_CHOPCONF_MRES_1            8U
-#define DRF_TMC_CHOPCONF_MRES_2            7U
-#define DRF_TMC_CHOPCONF_MRES_4            6U
-#define DRF_TMC_CHOPCONF_MRES_8            5U
-#define DRF_TMC_CHOPCONF_MRES_16           4U
-#define DRF_TMC_CHOPCONF_MRES_32           3U
-#define DRF_TMC_CHOPCONF_MRES_64           2U
-#define DRF_TMC_CHOPCONF_MRES_128          1U
-#define DRF_TMC_CHOPCONF_MRES_256          0U
+#define DRF_TMC_IHOLDIRUN            0x10
+#define DRF_TMC_IHOLDIRUN_IHOLD      4 : 0
+#define DRF_TMC_IHOLDIRUN_IRUN       12 : 8
+#define DRF_TMC_IHOLDIRUN_IHOLDDELAY 19 : 16
+
+#define DRF_TMC_CHOPCONF           0x6C
+#define DRF_TMC_CHOPCONF_MRES      27 : 24
+#define DRF_TMC_CHOPCONF_MRES_FULL 8U
+#define DRF_TMC_CHOPCONF_MRES_1    8U
+#define DRF_TMC_CHOPCONF_MRES_2    7U
+#define DRF_TMC_CHOPCONF_MRES_4    6U
+#define DRF_TMC_CHOPCONF_MRES_8    5U
+#define DRF_TMC_CHOPCONF_MRES_16   4U
+#define DRF_TMC_CHOPCONF_MRES_32   3U
+#define DRF_TMC_CHOPCONF_MRES_64   2U
+#define DRF_TMC_CHOPCONF_MRES_128  1U
+#define DRF_TMC_CHOPCONF_MRES_256  0U

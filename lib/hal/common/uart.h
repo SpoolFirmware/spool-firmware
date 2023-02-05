@@ -27,3 +27,5 @@ int halUartRecvByteBlocking(struct UARTDriver *pDriver, uint8_t *pByte,
                             TickType_t timeout);
 size_t halUartRecvBytes(struct UARTDriver *pDriver, uint8_t *pBuffer, size_t bufferSize,
                         TickType_t ticksToWait);
+void halUartReset(struct UARTDriver *pDriver, bool resetRx, bool resetTx);
+void halUartWaitForIdle(struct UARTDriver *pDriver);

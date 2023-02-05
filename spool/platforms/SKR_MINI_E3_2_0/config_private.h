@@ -22,3 +22,4 @@ extern const struct HalClockConfig halClockConfig;
 void privCommInit(void);
 void privCommPostInit(void);
 void privStepperInit(void);
+void privStepperPostInit(void);

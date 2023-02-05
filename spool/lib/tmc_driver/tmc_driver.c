@@ -1,6 +1,7 @@
 #include "tmc_driver.h"
 #include "drf.h"
 #include "error.h"
+#include "dbgprintf.h"
 #include "tmc_2209.h"
 
 /* ------------------------- Private Defines -------------------------------- */
@@ -10,7 +11,7 @@
 #define DRF_TMC_ADDRESS_RW_WRITE 1U
 
 /* ------------------------- Private Variables ------------------------------ */
-static const uint8_t sop = 0xaa;
+static const uint8_t sop = 0x55;
 
 /* --------------------- Static Function Prototypes ------------------------- */
 static uint8_t sCalculateCRC(const void *pData, size_t len);
@@ -53,9 +54,13 @@ uint32_t sTmcReadRegister(struct TMCDriver *pDriver, uint8_t regAddr)
                   DRF_DEF(_TMC, _ADDRESS, _RW, _READ);
     txBuffer[3] = sCalculateCRC(txBuffer, sizeof(txBuffer) - 1);
     pDriver->send(pDriver, txBuffer, sizeof(txBuffer));
-    size_t numBytesRecv = pDriver->recv(pDriver, rxBuffer, sizeof(rxBuffer));
-    // TODO Implement
-    return 0;
+    pDriver->recv(pDriver, rxBuffer, sizeof(rxBuffer));
+    uint32_t val = 0;
+    val |= ((uint32_t)rxBuffer[7]) << 24U;
+    val |= ((uint32_t)rxBuffer[8]) << 16U;
+    val |= ((uint32_t)rxBuffer[9]) << 8U;
+    val |= ((uint32_t)rxBuffer[10]) << 0U;
+    return val;
 }
 
 uint8_t sCalculateCRC(const void *pData, size_t len)
@@ -88,22 +93,39 @@ void tmcDriverConstruct(struct TMCDriver *pDriver, uint8_t slaveAddr,
     pDriver->recv = recvFn;
 }
 
+void tmcDriverPreInit(struct TMCDriver *pDriver)
+{
+    // Delay 3*8 bit time
+    sTmcWriteRegister(pDriver, DRF_TMC_SLAVECONF,
+                      DRF_NUM(_TMC, _SLAVECONF, _SENDDELAY, 2));
+}
+
 void tmcDriverInitialize(struct TMCDriver *pDriver)
 {
     if (pDriver == NULL)
         panic();
 
-    // Delay 3*8 bit time
-    sTmcWriteRegister(pDriver, DRF_TMC_SLAVECONF,
-                      DRF_NUM(_TMC, _SLAVECONF, _SENDDELAY, 2));
     uint32_t gconf = sTmcReadRegister(pDriver, DRF_TMC_GCONF);
     gconf = FLD_SET_DRF(_TMC, _GCONF, _PDN_DISABLE, _DISABLED, gconf);
     gconf = FLD_SET_DRF(_TMC, _GCONF, _MSTEP_REG_SELECT, _REG, gconf);
     sTmcWriteRegister(pDriver, DRF_TMC_GCONF, gconf);
 
     uint32_t chopConf = sTmcReadRegister(pDriver, DRF_TMC_CHOPCONF);
-    chopConf = FLD_SET_DRF(_TMC, _CHOPCONF, _MRES, _32, chopConf);
+    chopConf = FLD_SET_DRF(_TMC, _CHOPCONF, _MRES, _16, chopConf);
     sTmcWriteRegister(pDriver, DRF_TMC_CHOPCONF, chopConf);
 
     pDriver->state = TMCDriverInitialized;
+}
+
+void tmcDriverSetMstep(struct TMCDriver *pDriver, uint16_t mstep)
+{
+}
+
+void tmcDriverSetCurrent(struct TMCDriver *pDriver, uint8_t iRun, uint8_t iHold,
+                         uint8_t iHoldDelay)
+{
+    uint32_t iholdirun = DRF_NUM(_TMC, _IHOLDIRUN, _IRUN, iRun) |
+                         DRF_NUM(_TMC, _IHOLDIRUN, _IHOLD, iHold) |
+                         DRF_NUM(_TMC, _IHOLDIRUN, _IHOLDDELAY, iHoldDelay);
+    sTmcWriteRegister(pDriver, DRF_TMC_IHOLDIRUN, iholdirun);
 }

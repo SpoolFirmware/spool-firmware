@@ -22,8 +22,13 @@ const static struct HalGPIOConfig gpioConfig = {
     .groupEnable = EnableGPIOA | EnableGPIOB | EnableGPIOC,
 };
 
-const struct IOLine statusLED = { .group = DRF_BASE(DRF_GPIOA),
-                                         .pin = 1 };
+const static struct IOLine endStops[] = {
+    { .group = DRF_BASE(DRF_GPIOC), .pin = 0 },
+    { .group = DRF_BASE(DRF_GPIOC), .pin = 1 },
+    { .group = DRF_BASE(DRF_GPIOC), .pin = 2 },
+};
+
+const struct IOLine statusLED = { .group = DRF_BASE(DRF_GPIOA), .pin = 1 };
 __attribute__((always_inline)) inline struct IOLine platformGetStatusLED(void)
 {
     return statusLED;
@@ -34,18 +39,28 @@ void platformInit(struct PlatformConfig *config)
     halClockInit(&halClockConfig);
     halGpioInit(&gpioConfig);
 
+    // Initialize comm first, this gives us dbgPrintf
     privCommInit();
     privStepperInit();
+
+    // Configure ENDStops
+    for (size_t i = 0; i < ARRAY_LENGTH(endStops); i++) {
+        halGpioSetMode(endStops[i], DRF_DEF(_HAL_GPIO, _MODE, _MODE, _INPUT) |
+                       DRF_DEF(_HAL_GPIO, _MODE, _TYPE, _FLOATING));
+    }
 }
 
 void platformPostInit(void)
 {
     privCommPostInit();
+    privStepperPostInit();
 }
 
 bool platformGetEndstop(uint8_t axis)
 {
-    return false;
+    if (axis < ARRAY_LENGTH(endStops))
+        return !halGpioRead(endStops[axis]);
+    return true;
 }
 
 void __warn(const char *file, int line, const char *err)
@@ -55,4 +70,3 @@ void __warn(const char *file, int line, const char *err)
 void __warn_on_err(const char *file, int line, status_t err)
 {
 }
-

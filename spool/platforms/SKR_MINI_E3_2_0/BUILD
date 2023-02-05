@@ -39,6 +39,7 @@ cc_library(
         "//spool/platforms/common:lib",
         "//lib/dbg:lib",
         "//lib/syslib:lib",
+        "//spool/lib/tmc_driver:lib",
         "//lib/crt/stm32:stm32f1xx",
         "//lib/hal/stm32/stm32f103:lib",
     ],

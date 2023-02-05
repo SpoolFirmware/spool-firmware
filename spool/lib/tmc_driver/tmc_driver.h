@@ -19,14 +19,19 @@ enum TMCDriverState {
 };
 
 struct TMCDriver {
-    enum TMCDriverState state;
     uint8_t slaveAddr;
     tmc_send_fn send;
     tmc_recv_fn recv;
+    enum TMCDriverState state;
 };
 
 /* ------------------------- Public Interfaces ------------------------------ */
 void tmcDriverConstruct(struct TMCDriver *pDriver, uint8_t slaveAddr,
                         tmc_send_fn sendFn, tmc_recv_fn recvFn);
 
+void tmcDriverPreInit(struct TMCDriver *pDriver);
 void tmcDriverInitialize(struct TMCDriver *pDriver);
+
+void tmcDriverSetMstep(struct TMCDriver *pDriver, uint16_t mstep);
+void tmcDriverSetCurrent(struct TMCDriver *pDriver, uint8_t iRun, uint8_t iHold,
+                         uint8_t iHoldDelay);

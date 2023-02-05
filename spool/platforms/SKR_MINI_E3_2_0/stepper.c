@@ -1,4 +1,5 @@
 #include "config_private.h"
+#include "spool/lib/tmc_driver/tmc_driver.h"
 
 const size_t NR_STEPPERS = 2;
 
@@ -25,11 +26,13 @@ const struct {
     },
 };
 
+struct TMCDriver tmcDrivers[] = { { 0 }, { 0 }, { 0 }, { 0 } };
+
 struct UARTDriver stepperUart = { 0 };
 const static struct UARTConfig stepperUartCfg = {
     .baudrate = 115200,
-    .useRxInterrupt = false,
-    .useTxInterrupt = false,
+    .useRxInterrupt = true,
+    .useTxInterrupt = true,
     .useTx = true,
     .useRx = true,
 };
@@ -63,6 +66,25 @@ static void sSetupStepperTimers(void)
     REG_WR32(DRF_REG(_TIM7, _CR1), 0);
 }
 
+static void sTmcSend(const struct TMCDriver *pDriver, uint8_t *pData,
+                     size_t len)
+{
+    halUartWaitForIdle(&stepperUart);
+    halUartReset(&stepperUart, true, false);
+    halUartSend(&stepperUart, pData, len);
+}
+
+static size_t sTmcRecv(const struct TMCDriver *pDriver, uint8_t *pData,
+                       size_t bufferLen)
+{
+    size_t recvd = 0;
+    while (recvd < bufferLen) {
+        recvd += halUartRecvBytes(&stepperUart, &pData[recvd],
+                                  bufferLen - recvd, portMAX_DELAY);
+    }
+    return recvd;
+}
+
 void privStepperInit(void)
 {
     // Configure GPIO Pins
@@ -78,13 +100,40 @@ void privStepperInit(void)
                        DRF_DEF(_HAL_GPIO, _MODE, _MODE, _OUTPUT50) |
                            DRF_DEF(_HAL_GPIO, _MODE, _TYPE, _PUSH_PULL));
     }
-    sSetupStepperTimers();
 
     REG_FLD_SET_DRF(_RCC, _APB1ENR, _UART4EN, _ENABLED);
+    halGpioSetMode(halGpioLineConstruct(DRF_BASE(DRF_GPIOC), 10),
+                   DRF_DEF(_HAL_GPIO, _MODE, _MODE, _OUTPUT50) |
+                       DRF_DEF(_HAL_GPIO, _MODE, _TYPE, _ALT_PUSH_PULL));
+    halGpioSetMode(halGpioLineConstruct(DRF_BASE(DRF_GPIOC), 11),
+                   DRF_DEF(_HAL_GPIO, _MODE, _MODE, _INPUT) |
+                       DRF_DEF(_HAL_GPIO, _MODE, _TYPE, _FLOATING));
     halUartInit(&stepperUart, &stepperUartCfg, DRF_BASE(DRF_UART4),
                 halClockApb1FreqGet(&halClockConfig));
+
+    // Construct the drivers
+    tmcDriverConstruct(&(tmcDrivers[0]), 0x0, sTmcSend, sTmcRecv);
+    tmcDriverConstruct(&(tmcDrivers[1]), 0x2, sTmcSend, sTmcRecv);
+    tmcDriverConstruct(&(tmcDrivers[2]), 0x1, sTmcSend, sTmcRecv);
+    tmcDriverConstruct(&(tmcDrivers[3]), 0x3, sTmcSend, sTmcRecv);
 }
 
+void privStepperPostInit(void)
+{
+    sSetupStepperTimers();
+    halUartStart(&stepperUart);
+    halIrqPrioritySet(IRQ_UART4, configMAX_SYSCALL_INTERRUPT_PRIORITY);
+    halIrqEnable(IRQ_UART4);
+}
+
+// Stepper UART IRQ
+IRQ_HANDLER_UART4(void)
+{
+    halUartIrqHandler(&stepperUart);
+    halIrqClear(IRQ_UART4);
+}
+
+// Stepper Scheduling
 IRQ_HANDLER_TIM7(void)
 {
     static uint32_t lastCntrReload = 0;
@@ -111,8 +160,21 @@ stepperTimerHandler_begin:
     halIrqClear(IRQ_TIM7);
 }
 
+static uint8_t savedStepperMask = 0;
 void platformEnableStepper(uint8_t stepperMask)
 {
+    if (savedStepperMask == 0 && stepperMask != 0) {
+        REG_WR32(DRF_REG(_TIM7, _CR1), DRF_DEF(_TIM7, _CR1, _CEN, _ENABLED));
+        for (size_t i = 0; i < ARRAY_LENGTH(tmcDrivers); i++) {
+            tmcDriverPreInit(&tmcDrivers[i]);
+        }
+
+        for (size_t i = 0; i < ARRAY_LENGTH(tmcDrivers); i++) {
+            tmcDriverInitialize(&tmcDrivers[i]);
+            // 17/32 ~1A, 9/32 ~.49A, ~1s
+            tmcDriverSetCurrent(&tmcDrivers[i], 16, 8, 4);
+        }
+    }
     for (size_t i = 0; i < ARRAY_LENGTH(steppers); i++) {
         if (stepperMask & BIT(i)) {
             if (steppers[i].invertEn) {
@@ -122,11 +184,12 @@ void platformEnableStepper(uint8_t stepperMask)
             }
         }
     }
-    REG_WR32(DRF_REG(_TIM7, _CR1), DRF_DEF(_TIM7, _CR1, _CEN, _ENABLED));
+    savedStepperMask |= stepperMask;
 }
 
 void platformDisableStepper(uint8_t stepperMask)
 {
+    savedStepperMask &= ~(stepperMask);
     for (size_t i = 0; i < ARRAY_LENGTH(steppers); i++) {
         if (stepperMask & BIT(i)) {
             if (steppers[i].invertEn) {
@@ -135,6 +198,9 @@ void platformDisableStepper(uint8_t stepperMask)
                 halGpioClear(steppers[i].en);
             }
         }
+    }
+    if (savedStepperMask == 0) {
+        REG_WR32(DRF_REG(_TIM7, _CR1), DRF_DEF(_TIM7, _CR1, _CEN, _DISABLED));
     }
 }
 

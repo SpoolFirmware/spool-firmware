@@ -5,7 +5,6 @@
 #include "manual/mcu.h"
 #include "task.h"
 
-
 void sUartNotify(struct UARTDriver *pDriver)
 {
     REG_WR32(pDriver->deviceBase + DRF_USART1_CR1,
@@ -136,4 +135,24 @@ void halUartIrqHandler(struct UARTDriver *pDriver)
                             REG_RD32(pDriver->deviceBase + DRF_USART1_CR1)));
         }
     }
+}
+
+void halUartReset(struct UARTDriver *pDriver, bool resetRx, bool resetTx)
+{
+    if (resetRx) {
+        REG_WR32(pDriver->deviceBase + DRF_USART1_SR, ~DRF_DEF(_USART1, _SR, _RXNE, _SET));
+        if (pDriver->cfg.useRxInterrupt) {
+            xStreamBufferReset(pDriver->rxBuffer);
+        }
+    }
+    if (resetTx && pDriver->cfg.useTxInterrupt) {
+        xStreamBufferReset(pDriver->txBuffer);
+    }
+}
+
+void halUartWaitForIdle(struct UARTDriver *pDriver)
+{
+    while (FLD_TEST_DRF(_USART1, _SR, _TC, _CLR,
+                        REG_RD32(pDriver->deviceBase + DRF_USART1_SR)))
+        ;
 }
