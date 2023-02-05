@@ -4,5 +4,8 @@ cc_library(
     srcs = glob(["*.c"]),
     include_prefix = "hal",
     alwayslink=True,
+    deps = [
+        "//lib/freertos:freertos",
+    ],
     visibility = ["//visibility:public"],
 )

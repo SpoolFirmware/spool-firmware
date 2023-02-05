@@ -21,15 +21,10 @@ const static struct UARTConfig cmdUartCfg = {
     .useRx = true,
 };
 
-static char uartCommandBuffer[128];
-static StreamBufferHandle_t cmdmgmtBufferHandle;
-static StaticStreamBuffer_t cmdmgmtBufferMeta;
-
 size_t platformRecvCommand(char *pBuffer, size_t bufferSize,
                            TickType_t ticksToWait)
 {
-    return xStreamBufferReceive(cmdmgmtBufferHandle, pBuffer, bufferSize,
-                                ticksToWait);
+    return halUartRecvBytes(&cmdUart, (uint8_t *)pBuffer, bufferSize, ticksToWait);
 }
 
 void platformSendResponse(const char *pBuffer, size_t len)
@@ -64,11 +59,6 @@ void communicationInit(void)
                        DRF_NUM(_HAL_GPIO, _MODE, _AF, 7));
     halUartInit(&cmdUart, &cmdUartCfg, DRF_BASE(DRF_USART1),
                 halClockApb2FreqGet(&halClockConfig));
-
-    // Setup cmdStream
-    cmdmgmtBufferHandle = xStreamBufferCreateStatic(
-        sizeof(uartCommandBuffer), 1, (uint8_t *)uartCommandBuffer,
-        &cmdmgmtBufferMeta);
 }
 
 void communicationPostInit(void)
@@ -80,10 +70,7 @@ void communicationPostInit(void)
 
 IRQ_HANDLER_USART1(void)
 {
-    uint8_t byte;
-    if (!halUartRecvByte(&cmdUart, &byte)) {
-        xStreamBufferSendFromISR(cmdmgmtBufferHandle, &byte, 1, NULL);
-    }
+    halUartIrqHandler(&cmdUart);
     halIrqClear(IRQ_USART1);
 }
 
