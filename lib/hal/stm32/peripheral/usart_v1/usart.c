@@ -3,8 +3,15 @@
 #include "drf.h"
 #include "usart.h"
 #include "manual/mcu.h"
-
 #include "task.h"
+
+
+void sUartNotify(struct UARTDriver *pDriver)
+{
+    REG_WR32(pDriver->deviceBase + DRF_USART1_CR1,
+             FLD_SET_DRF(_USART1, _CR1, _TXEIE, _ENABLED,
+                         REG_RD32(pDriver->deviceBase + DRF_USART1_CR1)));
+}
 
 void halUartInit(struct UARTDriver *pDriver, const struct UARTConfig *pCfg,
                  size_t deviceBase, uint32_t clkSpeed)
@@ -32,8 +39,6 @@ void halUartStart(struct UARTDriver *pDriver)
     cr1 = FLD_SET_DRF_NUM(_USART1, _CR1, _RE, pDriver->cfg.useRx, cr1);
     cr1 = FLD_SET_DRF_NUM(_USART1, _CR1, _RXNEIE, pDriver->cfg.useRxInterrupt,
                           cr1);
-    cr1 = FLD_SET_DRF_NUM(_USART1, _CR1, _TXEIE, pDriver->cfg.useTxInterrupt,
-                          cr1);
     REG_WR32(pDriver->deviceBase + DRF_USART1_CR1, cr1);
 
     REG_WR32(pDriver->deviceBase + DRF_USART1_CR2, 0);
@@ -48,14 +53,25 @@ void halUartSendByte(struct UARTDriver *pDriver, uint8_t byte)
 {
     if (pDriver->cfg.useTxInterrupt) {
         xStreamBufferSend(pDriver->txBuffer, &byte, 1, portMAX_DELAY);
-        REG_WR32(pDriver->deviceBase + DRF_USART1_CR1,
-                 FLD_SET_DRF(_USART1, _CR1, _TXEIE, _ENABLED,
-                             REG_RD32(pDriver->deviceBase + DRF_USART1_CR1)));
+        sUartNotify(pDriver);
     } else {
         while (FLD_TEST_DRF(_USART1, _SR, _TXE, _CLR,
                             REG_RD32(pDriver->deviceBase + DRF_USART1_SR)))
             ;
         REG_WR32(pDriver->deviceBase + DRF_USART1_DR, byte);
+    }
+}
+
+void halUartSend(struct UARTDriver *pDriver, const uint8_t *pBuffer,
+                 uint32_t len)
+{
+    if (pDriver->cfg.useTxInterrupt) {
+        xStreamBufferSend(pDriver->txBuffer, pBuffer, len, portMAX_DELAY);
+        sUartNotify(pDriver);
+    } else {
+        for (uint32_t i = 0; i < len; i++) {
+            halUartSendByte(pDriver, pBuffer[i]);
+        }
     }
 }
 

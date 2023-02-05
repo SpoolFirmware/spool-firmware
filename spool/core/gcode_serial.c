@@ -47,7 +47,6 @@ status_t receiveChar(char *c)
 portTASK_FUNCTION(gcodeSerialTask, pvParameters)
 {
     QueueHandle_t queue = (QueueHandle_t)pvParameters;
-    platformSendResponse(OK, sizeof(OK) - 1);
     status_t err = initParser(&gcodeParser);
     struct GcodeCommand cmd;
 

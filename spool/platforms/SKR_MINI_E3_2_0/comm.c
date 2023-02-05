@@ -15,13 +15,10 @@ struct UARTDriver cmdUart = { 0 };
 const static struct UARTConfig cmdUartCfg = {
     .baudrate = 115200,
     .useRxInterrupt = true,
-    .useTxInterrupt = false,
+    .useTxInterrupt = true,
     .useTx = true,
     .useRx = true,
 };
-static char uartCommandBuffer[128];
-static StreamBufferHandle_t cmdmgmtBufferHandle;
-static StaticStreamBuffer_t cmdmgmtBufferMeta;
 
 void privCommInit(void)
 {
@@ -41,17 +38,11 @@ void privCommInit(void)
                        DRF_DEF(_HAL_GPIO, _MODE, _TYPE, _ALT_PUSH_PULL));
     halGpioSetMode(halGpioLineConstruct(DRF_BASE(DRF_GPIOA), 3),
                    DRF_DEF(_HAL_GPIO, _MODE, _MODE, _INPUT) |
-                       DRF_DEF(_HAL_GPIO, _MODE, _TYPE, _PULL_UP_DN));
+                       DRF_DEF(_HAL_GPIO, _MODE, _TYPE, _FLOATING));
     // Enable UART2
     REG_FLD_SET_DRF(_RCC, _APB1ENR, _USART2EN, _ENABLED);
     halUartInit(&cmdUart, &cmdUartCfg, DRF_BASE(DRF_USART2),
                 halClockApb1FreqGet(&halClockConfig));
-    // Set to "Pull Up"
-    halGpioSet(halGpioLineConstruct(DRF_BASE(DRF_GPIOA), 3));
-    // Setup cmdStream
-    cmdmgmtBufferHandle = xStreamBufferCreateStatic(
-        sizeof(uartCommandBuffer), 1, (uint8_t *)uartCommandBuffer,
-        &cmdmgmtBufferMeta);
 }
 
 void privCommPostInit(void)
@@ -64,8 +55,8 @@ void privCommPostInit(void)
 size_t platformRecvCommand(char *pBuffer, size_t bufferSize,
                            TickType_t ticksToWait)
 {
-    return xStreamBufferReceive(cmdmgmtBufferHandle, pBuffer, bufferSize,
-                                ticksToWait);
+    return halUartRecvBytes(&cmdUart, (uint8_t *)pBuffer, bufferSize,
+                            ticksToWait);
 }
 
 void platformSendResponse(const char *pBuffer, size_t len)
@@ -80,9 +71,6 @@ void platformDbgPutc(char c)
 
 IRQ_HANDLER_USART2(void)
 {
-    uint8_t byte;
-    if (!halUartRecvByte(&cmdUart, &byte)) {
-        xStreamBufferSendFromISR(cmdmgmtBufferHandle, &byte, 1, NULL);
-    }
+    halUartIrqHandler(&cmdUart);
     halIrqClear(IRQ_USART1);
 }
