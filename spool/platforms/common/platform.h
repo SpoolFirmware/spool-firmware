@@ -26,6 +26,7 @@ uint32_t platformGetStepperTimerFreq(void);
 
 // Sensors
 bool platformGetEndstop(uint8_t axis);
+uint16_t platformReadTemp(uint8_t idx);
 
 // Communication
 size_t platformRecvCommand(char *pBuffer, size_t bufferSize, TickType_t ticksToWait);

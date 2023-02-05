@@ -39,6 +39,15 @@ static portTASK_FUNCTION(DebugPrintTask, pvParameters)
     }
 }
 
+static portTASK_FUNCTION_PROTO(TestTask, pvParameters);
+static portTASK_FUNCTION(TestTask, pvParameters)
+{
+    (void)pvParameters;
+    for (;;) {
+        vTaskDelay(100);
+    }
+}
+
 void main(void)
 {
     struct PlatformConfig platformConfig = { 0 };
@@ -54,6 +63,7 @@ void main(void)
     configASSERT(xTaskCreate(DebugPrintTask, "dbgPrintf",
                              configMINIMAL_STACK_SIZE, NULL,
                              configMAX_PRIORITIES - 1, &dbgPrintTaskHandle));
+    xTaskCreate(TestTask, "testTask", 256, NULL, tskIDLE_PRIORITY + 1, NULL);
 
     vTaskStartScheduler();
     for (;;) {

@@ -31,6 +31,7 @@ cc_library(
     srcs = [
         "platform_private.h",
         "platform.c",
+        "thermal.c",
         "communication.c",
     ],
     deps = [

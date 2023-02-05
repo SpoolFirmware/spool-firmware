@@ -11,3 +11,6 @@ extern const struct HalClockConfig halClockConfig;
 
 void communicationInit(void);
 void communicationPostInit(void);
+
+void thermalInit(void);
+void thermalPostInit(void);

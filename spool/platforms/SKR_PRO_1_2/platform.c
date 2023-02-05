@@ -219,12 +219,14 @@ void platformInit(struct PlatformConfig *config)
     }
 
     communicationInit();
+    thermalInit();
 }
 
-void platformPostInit()
+void platformPostInit(void)
 {
     setupTimer();
     communicationPostInit();
+    thermalPostInit();
 }
 
 __attribute__((always_inline)) inline struct IOLine platformGetStatusLED(void)
