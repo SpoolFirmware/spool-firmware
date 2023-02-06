@@ -14,5 +14,6 @@ cc_library(
 
         "//lib/hal/stm32/peripheral/gpio_v1:lib",
         "//lib/hal/stm32/peripheral/usart_v1:lib",
+        "//lib/hal/stm32/peripheral/tim_v1:lib",
     ],
 )

@@ -37,33 +37,35 @@ const static struct UARTConfig stepperUartCfg = {
     .useRx = true,
 };
 
+struct TimerDriver stepperExecTimerDriver = { 0 };
+struct TimerConfig stepperExecTimerCfg = {
+    .interruptEnable = true,
+};
+
+struct TimerDriver stepperPulseTimerDriver = { 0 };
+struct TimerConfig stepperPulseTimerCfg = {
+    .interruptEnable = true,
+};
+
 static void sSetupStepperTimers(void)
 {
-    // Setup TIMER 6 with 2x
+    // pulse timer is at 1ns / count
     REG_FLD_SET_DRF(_RCC, _APB1ENR, _TIM6EN, _ENABLED);
-    REG_WR32(DRF_REG(_TIM6, _PSC),
-             halClockApb1TimerFreqGet(&halClockConfig) / 10000000 - 1);
-    REG_WR32(DRF_REG(_TIM6, _ARR), 19);
-    REG_WR32(DRF_REG(_TIM6, _CR1), 0);
-    REG_WR32(DRF_REG(_TIM6, _CNT), 0);
-    REG_WR32(DRF_REG(_TIM6, _CR1), DRF_DEF(_TIM6, _CR1, _OPM, _ENABLED));
-    REG_WR32(DRF_REG(_TIM6, _DIER), DRF_DEF(_TIM6, _DIER, _UIE, _ENABLED));
+    stepperPulseTimerCfg.clkDomainFrequency = halClockApb1TimerFreqGet(&halClockConfig);
+    stepperPulseTimerCfg.timerTargetFrequency = 1000000000;
+    halTimerConstruct(&stepperPulseTimerDriver, DRF_BASE(DRF_TIM6));
+    halTimerStart(&stepperPulseTimerDriver, &stepperPulseTimerCfg);
     halIrqPrioritySet(IRQ_TIM6, configMAX_SYSCALL_INTERRUPT_PRIORITY);
     halIrqEnable(IRQ_TIM6);
 
     // Step Executor Timer
     REG_FLD_SET_DRF(_RCC, _APB1ENR, _TIM7EN, _ENABLED);
+    stepperExecTimerCfg.clkDomainFrequency = halClockApb1TimerFreqGet(&halClockConfig);
+    stepperExecTimerCfg.timerTargetFrequency = platformGetStepperTimerFreq() * 2;
+    halTimerConstruct(&stepperExecTimerDriver, DRF_BASE(DRF_TIM7));
+    halTimerStart(&stepperExecTimerDriver, &stepperPulseTimerCfg);
     halIrqPrioritySet(IRQ_TIM7, configMAX_SYSCALL_INTERRUPT_PRIORITY);
     halIrqEnable(IRQ_TIM7);
-
-    /* actual PSC is value + 1 */
-    REG_WR32(DRF_REG(_TIM7, _PSC), (halClockApb1TimerFreqGet(&halClockConfig) /
-                                    (platformGetStepperTimerFreq() * 2)) -
-                                       1);
-    REG_WR32(DRF_REG(_TIM7, _ARR), 1);
-    REG_WR32(DRF_REG(_TIM7, _CNT), 0);
-    REG_WR32(DRF_REG(_TIM7, _DIER), DRF_DEF(_TIM7, _DIER, _UIE, _ENABLED));
-    REG_WR32(DRF_REG(_TIM7, _CR1), 0);
 }
 
 static void sTmcSend(const struct TMCDriver *pDriver, uint8_t *pData,
@@ -138,11 +140,9 @@ IRQ_HANDLER_TIM7(void)
 {
     static uint32_t lastCntrReload = 0;
     size_t loopCntr = 0;
-    if (FLD_TEST_DRF(_TIM7, _SR, _UIF, _UPDATE_PENDING,
-                     REG_RD32(DRF_REG(_TIM7, _SR)))) {
+    if (halTimerPending(&stepperExecTimerDriver)) {
 stepperTimerHandler_begin:
-        REG_WR32(DRF_REG(_TIM7, _SR),
-                 ~DRF_DEF(_TIM7, _SR, _UIF, _UPDATE_PENDING));
+        halTimerIrqClear(&stepperExecTimerDriver);
         /* execute current job */
         uint32_t requestedTicks = executeStep((lastCntrReload + 1) / 2);
         uint32_t cntrReload = 2 * requestedTicks;
@@ -155,7 +155,7 @@ stepperTimerHandler_begin:
             }
         }
         lastCntrReload = cntrReload;
-        REG_WR32(DRF_REG(_TIM7, _ARR), cntrReload);
+        halTimerChangeReloadValue(&stepperExecTimerDriver, cntrReload);
     }
     halIrqClear(IRQ_TIM7);
 }
@@ -164,7 +164,8 @@ static uint8_t savedStepperMask = 0;
 void platformEnableStepper(uint8_t stepperMask)
 {
     if (savedStepperMask == 0 && stepperMask != 0) {
-        REG_WR32(DRF_REG(_TIM7, _CR1), DRF_DEF(_TIM7, _CR1, _CEN, _ENABLED));
+        halTimerStartContinous(&stepperExecTimerDriver, 1);
+
         for (size_t i = 0; i < ARRAY_LENGTH(tmcDrivers); i++) {
             tmcDriverPreInit(&tmcDrivers[i]);
         }
@@ -200,7 +201,7 @@ void platformDisableStepper(uint8_t stepperMask)
         }
     }
     if (savedStepperMask == 0) {
-        REG_WR32(DRF_REG(_TIM7, _CR1), DRF_DEF(_TIM7, _CR1, _CEN, _DISABLED));
+        halTimerStop(&stepperExecTimerDriver);
     }
 }
 
@@ -236,16 +237,13 @@ static void clrStepper(uint8_t stepperMask)
 void platformStepStepper(uint8_t stepperMask)
 {
     setStepper(stepperMask);
-    REG_WR32(DRF_REG(_TIM6, _CR1), DRF_DEF(_TIM6, _CR1, _CEN, _ENABLED) |
-                                       DRF_DEF(_TIM6, _CR1, _OPM, _ENABLED));
+    halTimerStartOneShot(&stepperPulseTimerDriver, 200 - 1); // 0.2us
 }
 
 IRQ_HANDLER_TIM6(void)
 {
-    if (FLD_TEST_DRF(_TIM6, _SR, _UIF, _UPDATE_PENDING,
-                     REG_RD32(DRF_REG(_TIM6, _SR)))) {
-        REG_WR32(DRF_REG(_TIM6, _SR),
-                 ~DRF_DEF(_TIM6, _SR, _UIF, _UPDATE_PENDING));
+    if (halTimerPending(&stepperPulseTimerDriver)) {
+        halTimerIrqClear(&stepperPulseTimerDriver);
         clrStepper(0xFF);
     }
     halIrqClear(IRQ_TIM6);
