@@ -11,6 +11,8 @@ void halTimerConstruct(struct TimerDriver *pDriver, size_t deviceBase)
 void halTimerStart(struct TimerDriver *pDriver,
                    const struct TimerConfig *pConfig)
 {
+    if (pDriver->base == 0) panic();
+
     uint32_t preScaler =
         pConfig->clkDomainFrequency / pConfig->timerTargetFrequency;
     if (preScaler > 1) {
@@ -29,6 +31,7 @@ void halTimerStart(struct TimerDriver *pDriver,
 
 void halTimerStop(struct TimerDriver *pDriver)
 {
+    if (pDriver->base == 0) panic();
     REG_WR32(pDriver->base + DRF_TIM1_CR1, 0);
 }
 
@@ -46,6 +49,8 @@ void halTimerIrqClear(const struct TimerDriver *pDriver)
 
 void halTimerStartContinous(struct TimerDriver *pDriver, uint32_t reloadValue)
 {
+    if (pDriver->base == 0) panic();
+
     if (reloadValue == 0)
         panic();
 
@@ -66,6 +71,8 @@ void halTimerChangeReloadValue(struct TimerDriver *pDriver,
 
 void halTimerStartOneShot(struct TimerDriver *pDriver, uint32_t reloadValue)
 {
+    if (pDriver->base == 0) panic();
+
     if (reloadValue == 0)
         panic();
 

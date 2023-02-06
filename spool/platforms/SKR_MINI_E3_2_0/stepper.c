@@ -52,7 +52,7 @@ static void sSetupStepperTimers(void)
     // pulse timer is at 1ns / count
     REG_FLD_SET_DRF(_RCC, _APB1ENR, _TIM6EN, _ENABLED);
     stepperPulseTimerCfg.clkDomainFrequency = halClockApb1TimerFreqGet(&halClockConfig);
-    stepperPulseTimerCfg.timerTargetFrequency = 1000000000;
+    stepperPulseTimerCfg.timerTargetFrequency = 1000000;
     halTimerConstruct(&stepperPulseTimerDriver, DRF_BASE(DRF_TIM6));
     halTimerStart(&stepperPulseTimerDriver, &stepperPulseTimerCfg);
     halIrqPrioritySet(IRQ_TIM6, configMAX_SYSCALL_INTERRUPT_PRIORITY);
@@ -63,7 +63,7 @@ static void sSetupStepperTimers(void)
     stepperExecTimerCfg.clkDomainFrequency = halClockApb1TimerFreqGet(&halClockConfig);
     stepperExecTimerCfg.timerTargetFrequency = platformGetStepperTimerFreq() * 2;
     halTimerConstruct(&stepperExecTimerDriver, DRF_BASE(DRF_TIM7));
-    halTimerStart(&stepperExecTimerDriver, &stepperPulseTimerCfg);
+    halTimerStart(&stepperExecTimerDriver, &stepperExecTimerCfg);
     halIrqPrioritySet(IRQ_TIM7, configMAX_SYSCALL_INTERRUPT_PRIORITY);
     halIrqEnable(IRQ_TIM7);
 }
@@ -89,6 +89,8 @@ static size_t sTmcRecv(const struct TMCDriver *pDriver, uint8_t *pData,
 
 void privStepperInit(void)
 {
+    sSetupStepperTimers();
+
     // Configure GPIO Pins
     platformDisableStepper(0xFF);
     for (size_t i = 0; i < ARRAY_LENGTH(steppers); i++) {
@@ -122,7 +124,6 @@ void privStepperInit(void)
 
 void privStepperPostInit(void)
 {
-    sSetupStepperTimers();
     halUartStart(&stepperUart);
     halIrqPrioritySet(IRQ_UART4, configMAX_SYSCALL_INTERRUPT_PRIORITY);
     halIrqEnable(IRQ_UART4);
@@ -237,7 +238,7 @@ static void clrStepper(uint8_t stepperMask)
 void platformStepStepper(uint8_t stepperMask)
 {
     setStepper(stepperMask);
-    halTimerStartOneShot(&stepperPulseTimerDriver, 200 - 1); // 0.2us
+    halTimerStartOneShot(&stepperPulseTimerDriver, 2-1); // 2us
 }
 
 IRQ_HANDLER_TIM6(void)
