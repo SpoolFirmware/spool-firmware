@@ -253,5 +253,5 @@ IRQ_HANDLER_TIM6(void)
 
 uint32_t platformGetStepperTimerFreq(void)
 {
-    return 50000;
+    return 100000;
 }

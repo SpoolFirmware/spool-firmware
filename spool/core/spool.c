@@ -45,6 +45,8 @@ static portTASK_FUNCTION(TestTask, pvParameters)
     (void)pvParameters;
     for (;;) {
         vTaskDelay(100);
+        /* uint16_t temp = platformReadTemp(0); */
+        /* dbgPrintf("temp = %d\n", temp); */
     }
 }
 
