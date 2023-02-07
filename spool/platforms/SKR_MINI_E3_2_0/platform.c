@@ -63,6 +63,15 @@ bool platformGetEndstop(uint8_t axis)
     return true;
 }
 
+uint16_t platformReadTemp(uint8_t idx)
+{
+    return 0;
+}
+
+void platformSetHeater(uint8_t idx, uint8_t pwm)
+{
+}
+
 void __warn(const char *file, int line, const char *err)
 {
 }

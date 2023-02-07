@@ -45,7 +45,7 @@ test_suite(
 
 cc_binary_with_platforms(
     name = "spool",
-    srcs = [
+    srcs = glob([
         "core/magic_config.h",
         "core/rtos_support.c",
         "core/spool.c",
@@ -59,14 +59,17 @@ cc_binary_with_platforms(
         "core/gcode_serial.h",
         "core/gcode_parser.c",
         "core/gcode_parser.h",
-    ],
+        "thermal/**/*.h",
+        "thermal/thermal.c",
+        "thermal/thermistor/*.c",
+    ]),
     linkopts = [
         "-T $(execpath //spool/platforms:linker.ld)",
         "-lm",
     ],
     platforms = {
         # targets are called :spool_$platform, e.g. spool_stm32f401_mini
-        "stm32f401_mini": "//spool/platforms/STM32F401_MINI:stm32f401_mini",
+        # "stm32f401_mini": "//spool/platforms/STM32F401_MINI:stm32f401_mini",
         "skr_pro_1_2": "//spool/platforms/SKR_PRO_1_2:skr_pro_1_2",
         "skr_mini_e3_2_0": "//spool/platforms/SKR_MINI_E3_2_0:skr_mini_e3_2_0",
     },

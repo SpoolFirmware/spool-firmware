@@ -17,6 +17,15 @@ const struct HalClockConfig halClockConfig = {
 // const static struct IOLine statusLED = { .group = GPIOA, .pin = 7 };
 const static struct IOLine statusLED = { .group = GPIOE, .pin = 0 };
 
+const static struct IOLine heater0 = { .group = GPIOB, .pin = 1 };
+
+struct TimerConfig pwmTimerCfg = {
+    .timerTargetFrequency = 5000,
+    .clkDomainFrequency = 0,
+    .interruptEnable = false,
+};
+struct TimerDriver pwmTimer0 = { 0 };
+
 #define NR_STEPPERS 2
 
 #define STEPPER_A BIT(0)
@@ -194,6 +203,7 @@ void platformInit(struct PlatformConfig *config)
 
     uint32_t apb2enr = REG_RD32(DRF_REG(_RCC, _APB2ENR));
     apb2enr = FLD_SET_DRF(_RCC, _APB2ENR, _USART1EN, _ENABLED, apb2enr);
+    apb2enr = FLD_SET_DRF(_RCC, _APB2ENR, _TIM1EN, _ENABLED, apb2enr);
     REG_WR32(DRF_REG(_RCC, _APB2ENR), apb2enr);
 
     halGpioSetMode(statusLED, DRF_DEF(_HAL_GPIO, _MODE, _MODE, _OUTPUT) |
@@ -218,6 +228,27 @@ void platformInit(struct PlatformConfig *config)
         halGpioSetMode(endstops[i], DRF_DEF(_HAL_GPIO, _MODE, _MODE, _INPUT));
     }
 
+    /* TODO-codetector Cleanup */
+    halTimerConstruct(&pwmTimer0, DRF_BASE(DRF_TIM1));
+    pwmTimerCfg.clkDomainFrequency = halClockApb2TimerFreqGet(&halClockConfig);
+    halTimerStart(&pwmTimer0, &pwmTimerCfg);
+    halGpioSetMode(heater0, DRF_DEF(_HAL_GPIO, _MODE, _MODE, _AF) |
+                                DRF_DEF(_HAL_GPIO, _MODE, _TYPE, _PUSHPULL) |
+                                DRF_DEF(_HAL_GPIO, _MODE, _SPEED, _VERY_HIGH) |
+                                DRF_NUM(_HAL_GPIO, _MODE, _AF, 1));
+
+    REG_WR32(DRF_REG(_TIM1, _CCER), 0);
+    REG_WR32(DRF_REG(_TIM1, _CCMR2_OUTPUT),
+             DRF_DEF(_TIM1, _CCMR2_OUTPUT, _OC3M, _PWM_MODE1) |
+             DRF_DEF(_TIM1, _CCMR2_OUTPUT, _OC3PE, _ENABLED));
+    REG_WR32(DRF_REG(_TIM1, _CCER),
+             /* DRF_DEF(_TIM1, _CCER, _CC3NP, _SET) | */
+             DRF_DEF(_TIM1, _CCER, _CC3NE, _SET));
+    REG_WR32(DRF_REG(_TIM1, _CCR3), 0);
+    REG_WR32(DRF_REG(_TIM1, _BDTR), DRF_DEF(_TIM1, _BDTR, _MOE, _ENABLED));
+    halTimerStartContinous(&pwmTimer0, 100-1);
+    /* TODO ^ END */
+
     communicationInit();
     thermalInit();
 }
@@ -227,6 +258,11 @@ void platformPostInit(void)
     setupTimer();
     communicationPostInit();
     thermalPostInit();
+}
+
+void platformSetHeater(uint8_t idx, uint8_t pwm)
+{
+    REG_WR32(DRF_REG(_TIM1, _CCR3), pwm);
 }
 
 __attribute__((always_inline)) inline struct IOLine platformGetStatusLED(void)
