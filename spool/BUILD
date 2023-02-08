@@ -46,20 +46,20 @@ test_suite(
 cc_binary_with_platforms(
     name = "spool",
     srcs = glob([
-        "core/magic_config.h",
+        "thermal/*.h",
+        "thermal/*.c",
+
+        "core/*.h",
+    ]) + 
+    [
         "core/rtos_support.c",
         "core/spool.c",
         "core/step_execute.c",
-        "core/step_execute.h",
         "core/step_schedule.c",
-        "core/step_schedule.h",
         "core/step_plan.c",
-        "core/step_plan.h",
         "core/gcode_serial.c",
-        "core/gcode_serial.h",
         "core/gcode_parser.c",
-        "core/gcode_parser.h",
-    ]),
+    ],
     linkopts = [
         "-T $(execpath //spool/platforms:linker.ld)",
         "-lm",

@@ -7,12 +7,14 @@
 #include "FreeRTOS.h"
 #include "task.h"
 #include "dbgprintf.h"
-#include "error.h"
+#include "misc.h"
+
+#include "platform/platform.h"
+
+#include "thermal/thermal.h"
 
 #include "step_schedule.h"
 #include "step_execute.h"
-#include "platform/platform.h"
-#include "hal/stm32/hal.h"
 #include "gcode_serial.h"
 
 void dbgEmptyBuffer(void)
@@ -40,25 +42,6 @@ static portTASK_FUNCTION(DebugPrintTask, pvParameters)
     }
 }
 
-
-static portTASK_FUNCTION_PROTO(TestTask, pvParameters);
-static portTASK_FUNCTION(TestTask, pvParameters)
-{
-    (void)pvParameters;
-    for (;;) {
-        vTaskDelay(100);
-        fix16_t tempC_f = platformReadTemp(0);
-        int tempC = fix16_to_int(tempC_f);
-
-        dbgPrintf("temp = %d\n", tempC);
-        if (tempC_f < F16(40)) {
-            platformSetHeater(0, 100);
-        } else {
-            platformSetHeater(0, 0);
-        }
-    }
-}
-
 void main(void)
 {
     struct PlatformConfig platformConfig = { 0 };
@@ -74,7 +57,7 @@ void main(void)
     configASSERT(xTaskCreate(DebugPrintTask, "dbgPrintf",
                              configMINIMAL_STACK_SIZE, NULL,
                              configMAX_PRIORITIES - 1, &dbgPrintTaskHandle));
-    xTaskCreate(TestTask, "testTask", 512, NULL, tskIDLE_PRIORITY + 1, NULL);
+    xTaskCreate(ThermalTask, "testTask", 512, NULL, configMAX_PRIORITIES - 2, NULL);
 
     vTaskStartScheduler();
     for (;;) {
