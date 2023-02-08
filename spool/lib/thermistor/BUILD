@@ -1,0 +1,13 @@
+cc_library(
+    name="lib",
+    srcs=glob([
+        "*.h",
+        "*.c",
+    ]),
+    hdrs=["thermistors.h"],
+    deps=[
+        "//lib/fxp:lib",
+        "//lib/common:lib",
+    ],
+    visibility=["//visibility:public"],
+)

@@ -6,6 +6,7 @@
 #include <stdbool.h>
 #include "FreeRTOS.h"
 #include "queue.h"
+#include "fix16.h"
 
 struct PlatformConfig {
     uint8_t _rsvd;
@@ -26,7 +27,7 @@ uint32_t platformGetStepperTimerFreq(void);
 
 // Sensors
 bool platformGetEndstop(uint8_t axis);
-uint16_t platformReadTemp(uint8_t idx);
+fix16_t platformReadTemp(uint8_t idx);
 void platformSetHeater(uint8_t idx, uint8_t pwm);
 
 // Communication

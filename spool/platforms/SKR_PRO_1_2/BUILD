@@ -34,9 +34,12 @@ cc_library(
         "thermal.c",
         "communication.c",
     ],
+    copts = ["-Ispool"],
     deps = [
         ":config",
         "//spool/platforms/common:lib",
+        "//spool/lib/thermistor:lib",
+
         "//lib/syslib:lib",
         "//lib/dbg:lib",
         "//lib/crt/stm32:stm32f4xx",

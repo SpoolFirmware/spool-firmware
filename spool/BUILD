@@ -59,14 +59,13 @@ cc_binary_with_platforms(
         "core/gcode_serial.h",
         "core/gcode_parser.c",
         "core/gcode_parser.h",
-        "thermal/**/*.h",
-        "thermal/thermal.c",
-        "thermal/thermistor/*.c",
     ]),
     linkopts = [
         "-T $(execpath //spool/platforms:linker.ld)",
         "-lm",
     ],
+    stamp = 1,
+    copts = ["-Ispool"],
     platforms = {
         # targets are called :spool_$platform, e.g. spool_stm32f401_mini
         # "stm32f401_mini": "//spool/platforms/STM32F401_MINI:stm32f401_mini",
@@ -80,6 +79,7 @@ cc_binary_with_platforms(
         "//lib/dbg:lib",
         "//lib/fxp:lib",
         "//lib/hal/common:lib",
+        "//spool/lib/thermistor:lib",
         "//spool/platforms:linker.ld",
         "//spool/platforms:runtime",
     ],

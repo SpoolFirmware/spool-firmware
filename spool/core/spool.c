@@ -2,6 +2,7 @@
 // Created by codetector on 1/14/23.
 //
 #include <stdint.h>
+#include "fix16.h"
 
 #include "FreeRTOS.h"
 #include "task.h"
@@ -13,8 +14,6 @@
 #include "platform/platform.h"
 #include "hal/stm32/hal.h"
 #include "gcode_serial.h"
-
-#include "../thermal/thermistor/thermistors.h"
 
 void dbgEmptyBuffer(void)
 {
@@ -45,35 +44,14 @@ static portTASK_FUNCTION(DebugPrintTask, pvParameters)
 static portTASK_FUNCTION_PROTO(TestTask, pvParameters);
 static portTASK_FUNCTION(TestTask, pvParameters)
 {
-    const struct ThermistorTable *pTable = &t100k_4k7_table;
     (void)pvParameters;
     for (;;) {
         vTaskDelay(100);
-        uint32_t rawTemp = platformReadTemp(0);
-        int tempC = -99;
+        fix16_t tempC_f = platformReadTemp(0);
+        int tempC = fix16_to_int(tempC_f);
 
-        uint16_t scaledTemp = (uint16_t)((rawTemp * pTable->rawMax) / 4096);
-        int lowerBound = 0;
-
-        for (int i = 0; i < pTable->numEntries - 1; i++) {
-            if (pTable->pTable[i].rawValue > scaledTemp) {
-                break;
-            }
-            lowerBound = i;
-        }
-
-        const int diffDegC = pTable->pTable[lowerBound + 1].degC -
-                             pTable->pTable[lowerBound].degC;
-        const uint16_t diffRaw = pTable->pTable[lowerBound + 1].rawValue -
-                                 pTable->pTable[lowerBound].rawValue;
-
-        int measuredOffset = scaledTemp - pTable->pTable[lowerBound].rawValue;
-
-        tempC = pTable->pTable[lowerBound].degC +
-                (int)(measuredOffset * diffDegC / diffRaw);
-
-        dbgPrintf("temp(%d) = %d -> %d\n", lowerBound, rawTemp, tempC);
-        if (tempC < 0) {
+        dbgPrintf("temp = %d\n", tempC);
+        if (tempC_f < F16(40)) {
             platformSetHeater(0, 100);
         } else {
             platformSetHeater(0, 0);

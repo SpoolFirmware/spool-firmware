@@ -34,6 +34,7 @@ cc_library(
         "stepper.c",
         "platform.c",
     ],
+    copts = ["-Ispool"],
     deps = [
         ":config",
         "//spool/platforms/common:lib",

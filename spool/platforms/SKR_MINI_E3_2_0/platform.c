@@ -63,9 +63,9 @@ bool platformGetEndstop(uint8_t axis)
     return true;
 }
 
-uint16_t platformReadTemp(uint8_t idx)
+fix16_t platformReadTemp(uint8_t idx)
 {
-    return 0;
+    return F16(0);
 }
 
 void platformSetHeater(uint8_t idx, uint8_t pwm)

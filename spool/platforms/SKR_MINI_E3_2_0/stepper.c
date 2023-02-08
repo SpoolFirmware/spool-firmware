@@ -1,5 +1,5 @@
 #include "config_private.h"
-#include "spool/lib/tmc_driver/tmc_driver.h"
+#include "lib/tmc_driver/tmc_driver.h"
 
 const size_t NR_STEPPERS = 2;
 
