@@ -23,7 +23,7 @@ void dumpSerialBuffer(void)
         ;
 }
 
-QueueHandle_t gcodeSerialInit(void)
+QueueHandle_t gcodeSerialInit(TaskHandle_t *out)
 {
     QueueHandle_t handle =
         xQueueCreateStatic(GCODE_QUEUE_SIZE, sizeof(struct GcodeCommand),
@@ -33,6 +33,7 @@ QueueHandle_t gcodeSerialInit(void)
         gcodeSerialTask, "gcodeSerial", STACK_SIZE, (void *)handle,
         /* TODO figure out priorities */
         tskIDLE_PRIORITY + 2, gcodeSerialStack, &gcodeSerialTaskBuf);
+    *out = gcodeSerialTaskHandle;
     return handle;
 }
 

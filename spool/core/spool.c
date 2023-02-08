@@ -14,6 +14,7 @@
 #include "thermal/thermal.h"
 
 #include "step_schedule.h"
+#include "step_plan_ng.h"
 #include "step_execute.h"
 #include "gcode_serial.h"
 
@@ -57,8 +58,12 @@ void main(void)
     struct PlatformConfig platformConfig = { 0 };
     platformInit(&platformConfig);
     platformDisableStepper(0xFF);
-    QueueHandle_t gcodeCommandQueue = gcodeSerialInit();
-    QueueHandle_t stepperJobQueue = stepTaskInit(gcodeCommandQueue);
+    /* unused */
+    TaskHandle_t _gcodeSerial, _stepSchedule;
+    QueueHandle_t gcodeCommandQueue = gcodeSerialInit(&_gcodeSerial);
+    QueueHandle_t stepperJobQueue =
+        stepTaskInit(gcodeCommandQueue, &_stepSchedule);
+    initPlanner();
     stepExecuteSetQueue(stepperJobQueue);
     dbgPrintf("initSpoolApp\n");
     platformPostInit();

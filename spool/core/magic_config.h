@@ -21,7 +21,9 @@
 
 #define ENDSTOP_X 0
 #define ENDSTOP_Y 1
-#define NR_AXES 2
+#define X_AXIS    0
+#define Y_AXIS    1
+#define NR_AXES   2
 
 const static uint32_t V_MAX_STEPS = VEL * STEPS_PER_MM;
 const static uint32_t ACCEL_STEPS = ACC * STEPS_PER_MM;

@@ -4,6 +4,6 @@
 #include "task.h"
 #include "queue.h"
 
-QueueHandle_t gcodeSerialInit(void);
+QueueHandle_t gcodeSerialInit(TaskHandle_t *out);
 
 portTASK_FUNCTION_PROTO(gcodeSerialTask, pvParameters);

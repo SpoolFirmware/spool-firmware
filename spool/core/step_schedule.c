@@ -1,5 +1,5 @@
 #include "step_schedule.h"
-#include "step_plan.h"
+#include "step_plan_ng.h"
 #include <stdint.h>
 #include <stdbool.h>
 #include <math.h>
@@ -8,6 +8,7 @@
 #include "bitops.h"
 #include "dbgprintf.h"
 #include "gcode_parser.h"
+#include "number.h"
 
 static struct StepperJob queueBuf[STEP_QUEUE_SIZE];
 static StaticQueue_t stepQueue;
@@ -26,7 +27,7 @@ static StaticTask_t stepScheduleTaskBuf;
 static StackType_t stepScheduleStack[STACK_SIZE];
 static TaskHandle_t stepScheduleTaskHandle;
 
-QueueHandle_t stepTaskInit(QueueHandle_t gcodeCommandQueue_)
+QueueHandle_t stepTaskInit(QueueHandle_t gcodeCommandQueue_, TaskHandle_t *out)
 {
     QueueHandle_t handle = xQueueCreateStatic(STEP_QUEUE_SIZE,
                                               sizeof(struct StepperJob),
@@ -40,34 +41,22 @@ QueueHandle_t stepTaskInit(QueueHandle_t gcodeCommandQueue_)
     return handle;
 }
 
-static void __fillJob(motion_block_t *block, const struct StepperPlan *plan)
-{
-    block->totalSteps = plan->totalSteps;
-    block->accelerationSteps = plan->accelerationSteps;
-    block->cruiseSteps = plan->cruiseSteps;
-    block->decelerationSteps = plan->accelerationSteps;
-    block->cruiseVel_steps_s = plan->cruiseVel_steps_s;
-}
+#define SECONDS_PER_MIN 60
 
-static void scheduleMoveTo(QueueHandle_t handle,
-                           const struct PrinterState state)
+static void scheduleMoveTo(const struct PrinterState state)
 {
     fix16_t dx = fix16_sub(state.x, currentState.x);
     fix16_t dy = fix16_sub(state.y, currentState.y);
+    const int32_t max_v[NR_STEPPERS] = {
+        state.feedrate / SECONDS_PER_MIN * STEPS_PER_MM,
+        state.feedrate / SECONDS_PER_MIN * STEPS_PER_MM
+    };
 
-    job_t job = { 0 };
-    struct StepperPlan plan[NR_STEPPERS];
-    planMove(dx, dy, state.feedrate, &plan[STEPPER_A_IDX], &plan[STEPPER_B_IDX],
-             &job.stepDirs);
+    int32_t plan[NR_STEPPERS];
+    const fix16_t dir[NR_AXES] = { dx, dy };
 
-    for (uint8_t i = 0; i < NR_STEPPERS; ++i) {
-        __fillJob(&job.blocks[i], &plan[i]);
-    }
-
-    job.type = StepperJobRun;
-
-    while (xQueueSend(handle, &job, portMAX_DELAY) != pdTRUE)
-        ;
+    planCoreXy(dir, plan);
+    __enqueuePlan(StepperJobRun, plan, max_v, state.continuousMode);
 
     /* TODO, if we want to interrupt the print, we might have to
      * set the timeout to some other reasonable value, or have
@@ -75,77 +64,147 @@ static void scheduleMoveTo(QueueHandle_t handle,
     currentState = state;
 }
 
-static void scheduleHome(QueueHandle_t handle)
+static void scheduleHome(void)
 {
-    job_t job = { 0 };
-    struct StepperPlan plan[NR_STEPPERS];
-    planHomeX(&plan[STEPPER_A_IDX], &plan[STEPPER_B_IDX], &job.stepDirs);
+    int32_t plan[NR_STEPPERS];
+    const static fix16_t home_x[NR_AXES] = { -MAX_X, 0 };
+    const static fix16_t home_y[NR_AXES] = { 0, -MAX_Y };
+    const static int32_t max_v[NR_STEPPERS] = { HOMING_VEL * STEPS_PER_MM,
+                                                HOMING_VEL * STEPS_PER_MM };
 
-    for (uint8_t i = 0; i < NR_STEPPERS; ++i) {
-        __fillJob(&job.blocks[i], &plan[i]);
-    }
-    job.type = StepperJobHomeX;
+    planCoreXy(home_x, plan);
+    __enqueuePlan(StepperJobHomeX, plan, max_v, false);
 
-    while (xQueueSend(handle, &job, portMAX_DELAY) != pdTRUE)
-        ;
-
-    /* homing X failed */
-    WARN_ON(ulTaskNotifyTake(pdFALSE, portMAX_DELAY) == 0);
+    planCoreXy(home_y, plan);
+    __enqueuePlan(StepperJobHomeY, plan, max_v, false);
 
     currentState.x = 0;
-
-    planHomeY(&plan[STEPPER_A_IDX], &plan[STEPPER_B_IDX], &job.stepDirs);
-
-    for (uint8_t i = 0; i < NR_STEPPERS; ++i) {
-        __fillJob(&job.blocks[i], &plan[i]);
-    }
-    job.type = StepperJobHomeY;
-
-    while (xQueueSend(handle, &job, portMAX_DELAY) != pdTRUE)
-        ;
-
-    /* homing Y failed */
-    WARN_ON(ulTaskNotifyTake(pdFALSE, portMAX_DELAY) == 0);
-
     currentState.y = 0;
+    currentState.continuousMode = false;
 }
+
+uint32_t getRequiredSpace(enum GcodeKind kind)
+{
+    switch (kind) {
+    case GcodeG0:
+    case GcodeG1:
+    case GcodeM84:
+        return 1;
+    case GcodeG28:
+        return 2;
+    }
+    WARN();
+    return 0;
+}
+
+static void enqueueAvailableGcode(bool continuousMode)
+{
+    static bool commandAvailable = false;
+    static struct GcodeCommand cmd;
+    static struct PrinterState nextState = { 0 };
+
+    while (plannerAvailableSpace() > 0) {
+        if (!commandAvailable) {
+            if (xQueueReceive(gcodeCommandQueue, &cmd,
+                              plannerSize() == 0 ? portMAX_DELAY : 0) !=
+                pdTRUE) {
+                return;
+            }
+            commandAvailable = true;
+        }
+        if (plannerAvailableSpace() < getRequiredSpace(cmd.kind)) {
+            return;
+        }
+        switch (cmd.kind) {
+        case GcodeG0:
+        case GcodeG1:
+            nextState.x = cmd.xyzef.x;
+            nextState.y = cmd.xyzef.y;
+            WARN_ON(cmd.xyzef.f < 0);
+            nextState.feedrate = cmd.xyzef.f == 0 ? currentState.feedrate :
+                                                    fix16_abs(cmd.xyzef.f);
+            nextState.continuousMode = continuousMode;
+            scheduleMoveTo(nextState);
+            break;
+        case GcodeG28:
+            /* TODO, make this a stepper job */
+            enableStepper(STEPPER_A | STEPPER_B);
+            scheduleHome();
+            break;
+        case GcodeM84:
+            /* TODO, make this a stepper job */
+            enableStepper(0);
+            break;
+        }
+        commandAvailable = false;
+    }
+}
+
+static void sendStepperJob(QueueHandle_t queue, const struct PlannerJob *j)
+{
+    job_t job = { 0 };
+    for_each_stepper(i) {
+        motion_block_t *mb = &job.blocks[i];
+        const struct PlannerBlock *pb = &j->steppers[i];
+        mb->totalSteps = (uint32_t)abs(pb->x);
+        mb->accelerationSteps = (uint32_t)abs(pb->accelerationX);
+        mb->decelerationSteps = (uint32_t)abs(pb->decelerationX);
+        mb->cruiseSteps =
+            mb->totalSteps - mb->accelerationSteps - mb->decelerationSteps;
+        mb->entryVel_steps_s = (uint32_t)sqrtf((float)pb->viSq);
+        mb->cruiseVel_steps_s = (uint32_t)sqrtf((float)pb->vSq);
+        mb->exitVel_steps_s = (uint32_t)sqrtf((float)pb->vfSq);
+        if (pb->x >= 0) {
+            job.stepDirs |= BIT(i);
+        }
+    }
+    job.type = j->type;
+    switch (j->type) {
+    case StepperJobRun:
+        while (xQueueSend(queue, &job, portMAX_DELAY) != pdTRUE)
+            ;
+        break;
+    case StepperJobHomeX:
+        while (xQueueSend(queue, &job, portMAX_DELAY) != pdTRUE)
+            ;
+        WARN_ON(ulTaskNotifyTakeIndexed(1, pdFALSE, portMAX_DELAY) == 0);
+        break;
+    case StepperJobHomeY:
+        while (xQueueSend(queue, &job, portMAX_DELAY) != pdTRUE)
+            ;
+        WARN_ON(ulTaskNotifyTakeIndexed(1, pdFALSE, portMAX_DELAY) == 0);
+        break;
+    case StepperJobUndef:
+    default:
+        WARN();
+    }
+}
+
+#define CONTINUOUS_THRESHOLD 5
 
 portTASK_FUNCTION(stepScheduleTask, pvParameters)
 {
     QueueHandle_t queue = (QueueHandle_t)pvParameters;
-    struct GcodeCommand cmd;
-    struct PrinterState nextState;
+    bool continuousMode = false;
+    struct PlannerJob j;
 
     for (;;) {
-        if (xQueueReceive(gcodeCommandQueue, &cmd, portMAX_DELAY) == pdTRUE) {
-            switch (cmd.kind) {
-            case GcodeG0:
-            case GcodeG1:
-                nextState.x = cmd.xyzef.x;
-                nextState.y = cmd.xyzef.y;
-                WARN_ON(cmd.xyzef.f < 0);
-                nextState.feedrate = cmd.xyzef.f == 0 ? currentState.feedrate :
-                                                        fix16_abs(cmd.xyzef.f);
-                scheduleMoveTo(queue, nextState);
-                break;
-            case GcodeG28:
-                platformEnableStepper(STEPPER_A | STEPPER_B);
-                scheduleHome(queue);
-                break;
-            case GcodeM84:
-                platformDisableStepper(0xFF);
-                break;
-            }
+        continuousMode = uxQueueSpacesAvailable(gcodeCommandQueue) <
+                         CONTINUOUS_THRESHOLD;
+        enqueueAvailableGcode(continuousMode);
+        if (plannerSize() > 0) {
+            __dequeuePlan(&j);
+            sendStepperJob(queue, &j);
         }
     }
 }
 
 void notifyHomeXISR(void)
 {
-    vTaskNotifyGiveFromISR(stepScheduleTaskHandle, NULL);
+    vTaskNotifyGiveIndexedFromISR(stepScheduleTaskHandle, 1, NULL);
 }
 
 void notifyHomeYISR(void)
 {
-    vTaskNotifyGiveFromISR(stepScheduleTaskHandle, NULL);
+    vTaskNotifyGiveIndexedFromISR(stepScheduleTaskHandle, 1, NULL);
 }

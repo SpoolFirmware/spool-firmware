@@ -1,5 +1,4 @@
 #include <stdint.h>
-#include <stdio.h>
 #include "string.h"
 #include "gcode_parser.h"
 
@@ -317,7 +316,7 @@ static status_t assertAndEatToken(struct GcodeParser *s, enum TokenKind k,
 
 struct ParserState;
 typedef status_t parse_fun_t(struct GcodeParser *, struct GcodeCommand *t,
-                           struct ParserState *);
+                             struct ParserState *);
 struct ParserState {
     parse_fun_t *f;
 };
