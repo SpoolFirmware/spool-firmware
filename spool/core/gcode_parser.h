@@ -2,6 +2,7 @@
 #include <stdbool.h>
 #include "fix16.h"
 #include "error.h"
+#include "bitops.h"
 
 /* sign, 5 char decimal, decimal point, 5 char fraction, NULL */
 #define MAX_NUM_LEN 13
@@ -15,6 +16,7 @@ enum GcodeKind {
 
 struct GcodeXYZEF {
     fix16_t x, y, z, e, f;
+    bool xSet : 1, ySet : 1, zSet : 1, eSet : 1, fSet : 1;
 };
 
 struct GcodeCommand {

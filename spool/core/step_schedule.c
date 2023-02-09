@@ -14,21 +14,6 @@
 static struct StepperJob queueBuf[STEP_QUEUE_SIZE];
 static StaticQueue_t stepQueue;
 
-/* HOMING CONSTANTS */
-const static fix16_t home_x[] = { -F16(MAX_X), 0, 0 };
-STATIC_ASSERT(ARRAY_SIZE(home_x) == NR_AXES);
-const static fix16_t home_y[] = { 0, -F16(MAX_Y), 0 };
-STATIC_ASSERT(ARRAY_SIZE(home_y) == NR_AXES);
-/* TODO fix z inversion */
-const static fix16_t home_z[] = { 0, 0, F16(MAX_Z) };
-STATIC_ASSERT(ARRAY_SIZE(home_z) == NR_AXES);
-const static int32_t home_max_v[] = {
-    HOMING_VEL * STEPS_PER_MM,
-    HOMING_VEL *STEPS_PER_MM,
-    HOMING_VEL *STEPS_PER_MM_Z,
-};
-STATIC_ASSERT(ARRAY_SIZE(home_max_v) == NR_STEPPERS);
-
 /* Records the state of the printer ends up in after the stepper queue
  * finishes. We could have the state be attached to each stepper job.
  * However, if we do not care about displaying the state of the print
@@ -64,6 +49,9 @@ static void scheduleMoveTo(const struct PrinterState state)
     BUG_ON(state.x < 0);
     BUG_ON(state.y < 0);
     BUG_ON(state.z < 0);
+    BUG_ON(state.x > F16(MAX_X));
+    BUG_ON(state.y < F16(MAX_Y));
+    BUG_ON(state.z < F16(MAX_Z));
     fix16_t dx = fix16_sub(state.x, currentState.x);
     fix16_t dy = fix16_sub(state.y, currentState.y);
     fix16_t dz = fix16_sub(state.z, currentState.z);
@@ -89,6 +77,20 @@ static void scheduleMoveTo(const struct PrinterState state)
 
 static void scheduleHome(void)
 {
+    /* HOMING CONSTANTS */
+    const static fix16_t home_x[] = { -F16(MAX_X), 0, 0 };
+    STATIC_ASSERT(ARRAY_SIZE(home_x) == NR_AXES);
+    const static fix16_t home_y[] = { 0, -F16(MAX_Y), 0 };
+    STATIC_ASSERT(ARRAY_SIZE(home_y) == NR_AXES);
+    /* TODO fix z inversion */
+    const static fix16_t home_z[] = { 0, 0, F16(MAX_Z) };
+    STATIC_ASSERT(ARRAY_SIZE(home_z) == NR_AXES);
+    const static int32_t home_max_v[] = {
+        HOMING_VEL * STEPS_PER_MM,
+        HOMING_VEL * STEPS_PER_MM,
+        HOMING_VEL_Z * STEPS_PER_MM_Z,
+    };
+    STATIC_ASSERT(ARRAY_SIZE(home_max_v) == NR_STEPPERS);
     int32_t plan[NR_STEPPERS];
 
     planCoreXy(home_x, plan);
@@ -146,12 +148,13 @@ static void enqueueAvailableGcode()
         switch (cmd.kind) {
         case GcodeG0:
         case GcodeG1:
-            nextState.x = cmd.xyzef.x;
-            nextState.y = cmd.xyzef.y;
-            nextState.z = cmd.xyzef.z;
+            nextState.x = cmd.xyzef.xSet ? cmd.xyzef.x : currentState.x;
+            nextState.y = cmd.xyzef.ySet ? cmd.xyzef.y : currentState.y;
+            nextState.z = cmd.xyzef.zSet ? cmd.xyzef.x : currentState.z;
+
             WARN_ON(cmd.xyzef.f < 0);
-            nextState.feedrate = cmd.xyzef.f == 0 ? currentState.feedrate :
-                                                    fix16_abs(cmd.xyzef.f);
+            nextState.feedrate = cmd.xyzef.fSet ? fix16_abs(cmd.xyzef.f) :
+                                                  currentState.feedrate;
             nextState.continuousMode = continuousMode;
             scheduleMoveTo(nextState);
             break;

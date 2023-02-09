@@ -22,6 +22,7 @@
 #define ACC  1000
 
 #define HOMING_VEL 50
+#define HOMING_VEL_Z 5
 
 #define MAX_X 200
 #define MAX_Y 200

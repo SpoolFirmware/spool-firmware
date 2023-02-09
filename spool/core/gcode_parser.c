@@ -342,18 +342,23 @@ static status_t parseXYZEF(struct GcodeParser *s, struct GcodeCommand *cmd,
     switch (t.kind) {
     case TokenX:
         target = &cmd->xyzef.x;
+        cmd->xyzef.xSet = true;
         break;
     case TokenY:
         target = &cmd->xyzef.y;
+        cmd->xyzef.ySet = true;
         break;
     case TokenZ:
         target = &cmd->xyzef.z;
+        cmd->xyzef.zSet = true;
         break;
     case TokenE:
         target = &cmd->xyzef.e;
+        cmd->xyzef.eSet = true;
         break;
     case TokenF:
         target = &cmd->xyzef.f;
+        cmd->xyzef.fSet = true;
         break;
     case TokenNewline:
         ASSERT_OR_RETURN(eatToken(s));
