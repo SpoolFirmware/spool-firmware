@@ -66,6 +66,10 @@ DisableFormat: false
 ExperimentalAutoDetectBinPacking: false
 FixNamespaceComments: false
 
+ForEachMacros:
+  - 'for_each_stepper'
+  - 'for_each_axis'
+
 IncludeBlocks: Preserve
 IncludeCategories:
   - Regex: '.*'

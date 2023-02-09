@@ -23,7 +23,7 @@ void dumpSerialBuffer(void)
         ;
 }
 
-QueueHandle_t gcodeSerialInit(void)
+QueueHandle_t gcodeSerialInit()
 {
     QueueHandle_t handle =
         xQueueCreateStatic(GCODE_QUEUE_SIZE, sizeof(struct GcodeCommand),
