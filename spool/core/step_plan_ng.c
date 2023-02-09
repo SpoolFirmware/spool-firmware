@@ -11,7 +11,7 @@
 #include "number.h"
 
 struct StepperPlanBuf {
-    uint32_t idle;
+    uint32_t size;
     /* consumer */
     uint32_t head;
     /* producer */
@@ -49,10 +49,7 @@ void initPlanner()
 
 uint32_t plannerSize(void)
 {
-    if (stepperPlanBuf.head <= stepperPlanBuf.tail) {
-        return stepperPlanBuf.tail - stepperPlanBuf.head;
-    }
-    return MOTION_LOOKAHEAD - 1 - stepperPlanBuf.head + stepperPlanBuf.tail;
+    return stepperPlanBuf.size;
 }
 
 uint32_t plannerAvailableSpace(void)
@@ -79,6 +76,7 @@ void planCoreXy(const fix16_t movement[NR_AXES], int32_t plan[NR_STEPPERS])
 void __dequeuePlan(struct PlannerJob *out)
 {
     BUG_ON(plannerSize() == 0);
+    stepperPlanBuf.size--;
     stepperPlanBuf.head = (stepperPlanBuf.head + 1) % MOTION_LOOKAHEAD;
     // memcpy(out, &stepperPlanBuf.buf[stepperPlanBuf.head], sizeof(*out));
     *out = stepperPlanBuf.buf[stepperPlanBuf.head];
@@ -239,9 +237,8 @@ void __enqueuePlan(enum JobType k, const int32_t plan[NR_STEPPERS],
                    const int32_t max_v[NR_STEPPERS], bool more_entries)
 {
     BUG_ON(plannerAvailableSpace() == 0);
-    stepperPlanBuf.head = MOTION_LOOKAHEAD - 1;
     const struct PlannerJob *prev;
-    if ((stepperPlanBuf.head + 1) % MOTION_LOOKAHEAD == stepperPlanBuf.tail) {
+    if (plannerSize() == 0) {
         prev = &empty;
     } else {
         prev = &stepperPlanBuf
@@ -258,6 +255,7 @@ void __enqueuePlan(enum JobType k, const int32_t plan[NR_STEPPERS],
     populateBlock(prev, tail, more_entries);
     reversePass();
     stepperPlanBuf.tail = (stepperPlanBuf.tail + 1) % MOTION_LOOKAHEAD;
+    stepperPlanBuf.size++;
 }
 
 #if 0

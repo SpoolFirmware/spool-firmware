@@ -16,7 +16,7 @@ const static int32_t VEL_CHANGE_THRESHOLD = 10;
 
 const static int32_t STEPPER_ACC[NR_STEPPERS] = {
     ACC * STEPS_PER_MM,
-    ACC *STEPS_PER_MM,
+    ACC * STEPS_PER_MM,
 };
 
 const static int32_t STEPPER_STEPS_PER_MM[NR_STEPPERS] = {
