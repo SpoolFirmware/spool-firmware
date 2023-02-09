@@ -4,6 +4,7 @@
 #include "compiler.h"
 #include "error.h"
 #include "number.h"
+#include "dbgprintf.h"
 
 struct StepperPlanBuf {
     uint32_t size;
@@ -172,6 +173,9 @@ static bool recalculate(const struct PlannerJob *next, struct PlannerJob *curr)
                    curr->steppers[i].vfSq != 0) {
             /* not sure if this would happen. it shouldn't */
             WARN();
+            dbgPrintf("currx%d nextx%d vfSq%d next viSq%d\n", curr->steppers[i].x,
+                      next->steppers[i].x, curr->steppers[i].vfSq,
+                      next->steppers[i].viSq);
             dirty = true;
             curr->steppers[i].vfSq = 0;
         }

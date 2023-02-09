@@ -50,8 +50,8 @@ static void scheduleMoveTo(const struct PrinterState state)
     BUG_ON(state.y < 0);
     BUG_ON(state.z < 0);
     BUG_ON(state.x > F16(MAX_X));
-    BUG_ON(state.y < F16(MAX_Y));
-    BUG_ON(state.z < F16(MAX_Z));
+    BUG_ON(state.y > F16(MAX_Y));
+    BUG_ON(state.z > F16(MAX_Z));
     fix16_t dx = fix16_sub(state.x, currentState.x);
     fix16_t dy = fix16_sub(state.y, currentState.y);
     fix16_t dz = fix16_sub(state.z, currentState.z);
@@ -150,7 +150,7 @@ static void enqueueAvailableGcode()
         case GcodeG1:
             nextState.x = cmd.xyzef.xSet ? cmd.xyzef.x : currentState.x;
             nextState.y = cmd.xyzef.ySet ? cmd.xyzef.y : currentState.y;
-            nextState.z = cmd.xyzef.zSet ? cmd.xyzef.x : currentState.z;
+            nextState.z = cmd.xyzef.zSet ? cmd.xyzef.z : currentState.z;
 
             WARN_ON(cmd.xyzef.f < 0);
             nextState.feedrate = cmd.xyzef.fSet ? fix16_abs(cmd.xyzef.f) :
