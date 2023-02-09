@@ -46,7 +46,9 @@ static portTASK_FUNCTION(DebugPrintTask, pvParameters)
 /* Timer Task Support */
 static StaticTask_t TimerTaskTCBBuffer;
 static StackType_t TimerTaskStack[configTIMER_TASK_STACK_DEPTH];
-void vApplicationGetTimerTaskMemory(StaticTask_t **ppxTimerTaskTCBBuffer, StackType_t **ppxTimerTaskStackBuffer, uint32_t *pulTimerTaskStackSize)
+void vApplicationGetTimerTaskMemory(StaticTask_t **ppxTimerTaskTCBBuffer,
+                                    StackType_t **ppxTimerTaskStackBuffer,
+                                    uint32_t *pulTimerTaskStackSize)
 {
     *ppxTimerTaskTCBBuffer = &TimerTaskTCBBuffer;
     *ppxTimerTaskStackBuffer = TimerTaskStack;
@@ -58,11 +60,8 @@ void main(void)
     struct PlatformConfig platformConfig = { 0 };
     platformInit(&platformConfig);
     platformDisableStepper(0xFF);
-    /* unused */
-    TaskHandle_t _gcodeSerial, _stepSchedule;
-    QueueHandle_t gcodeCommandQueue = gcodeSerialInit(&_gcodeSerial);
-    QueueHandle_t stepperJobQueue =
-        stepTaskInit(gcodeCommandQueue, &_stepSchedule);
+    QueueHandle_t gcodeCommandQueue = gcodeSerialInit();
+    QueueHandle_t stepperJobQueue = stepTaskInit(gcodeCommandQueue);
     initPlanner();
     stepExecuteSetQueue(stepperJobQueue);
     dbgPrintf("initSpoolApp\n");

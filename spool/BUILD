@@ -28,26 +28,6 @@ cc_test(
     ],
 )
 
-cc_test(
-    name = "step_plan_test",
-    size = "small",
-    srcs = [
-        "core/magic_config.h",
-        "core/step_plan.c",
-        "core/step_plan.h",
-        "core/step_plan_test.c",
-    ],
-    copts = [
-        "-Wconversion",
-        "-Warith-conversion",
-    ],
-    deps = [
-        "//lib/common:bitops",
-        "//lib/fxp:lib",
-        "//lib/munit:lib",
-    ],
-)
-
 cc_binary(
     name = "parser_test",
     srcs = [
@@ -79,7 +59,7 @@ cc_binary_with_platforms(
         "core/spool.c",
         "core/step_execute.c",
         "core/step_schedule.c",
-        "core/step_plan.c",
+        "core/step_plan_ng.c",
         "core/gcode_serial.c",
         "core/gcode_parser.c",
     ],

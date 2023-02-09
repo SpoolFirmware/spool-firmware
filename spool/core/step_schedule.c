@@ -43,7 +43,7 @@ static StaticTask_t stepScheduleTaskBuf;
 static StackType_t stepScheduleStack[STACK_SIZE];
 static TaskHandle_t stepScheduleTaskHandle;
 
-QueueHandle_t stepTaskInit(QueueHandle_t gcodeCommandQueue_, TaskHandle_t *out)
+QueueHandle_t stepTaskInit(QueueHandle_t gcodeCommandQueue_)
 {
     QueueHandle_t handle = xQueueCreateStatic(STEP_QUEUE_SIZE,
                                               sizeof(struct StepperJob),
@@ -157,12 +157,12 @@ static void enqueueAvailableGcode()
             break;
         case GcodeG28:
             /* TODO, make this a stepper job */
-            enableStepper(STEPPER_A | STEPPER_B | STEPPER_C);
+            platformEnableStepper(STEPPER_A | STEPPER_B | STEPPER_C);
             scheduleHome();
             break;
         case GcodeM84:
             /* TODO, make this a stepper job */
-            enableStepper(0);
+            platformEnableStepper(0);
             break;
         }
         commandAvailable = false;
