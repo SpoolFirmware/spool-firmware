@@ -8,6 +8,7 @@
 struct PrinterState {
     fix16_t x;
     fix16_t y;
+    fix16_t z;
     fix16_t feedrate;
     bool continuousMode;
 };
@@ -45,5 +46,6 @@ QueueHandle_t stepTaskInit(QueueHandle_t gcodeCommandQueue, TaskHandle_t *out);
 
 void notifyHomeXISR(void);
 void notifyHomeYISR(void);
+void notifyHomeZISR(void);
 
 portTASK_FUNCTION_PROTO(stepScheduleTask, pvParameters);

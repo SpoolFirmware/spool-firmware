@@ -1,13 +1,8 @@
 #include "step_plan_ng.h"
 #include <math.h>
-
 #include "string.h"
 #include "compiler.h"
-#if 0
-#include "semphr.h"
-#endif
 #include "error.h"
-// #include <stdio.h>
 #include "number.h"
 
 struct StepperPlanBuf {
@@ -23,24 +18,6 @@ struct StepperPlanBuf {
 
 static struct StepperPlanBuf stepperPlanBuf;
 const static struct PlannerJob empty;
-#if 0
-static TaskHandle_t p;
-static TaskHandle_t c;
-static StaticSemaphore_t planBufMutexBuf;
-static SemaphoreHandle_t planBufMutex;
-
-void initPlanner(TaskHandle_t p_, TaskHandle_t c_)
-{
-    p = p_;
-    c = c_;
-    for (uint8_t i = 0; i < MOTION_LOOKAHEAD; ++i)
-        xTaskNotifyGive(p);
-
-    planBufMutex = xSemaphoreCreateMutexStatic(&planBufMutexBuf);
-    BUG_ON(planBufMutex == NULL);
-    stepperPlanBuf.head = MOTION_LOOKAHEAD - 1;
-}
-#endif
 
 void initPlanner()
 {
@@ -65,7 +42,9 @@ void planCoreXy(const fix16_t movement[NR_AXES], int32_t plan[NR_STEPPERS])
     fix16_t aX = fix16_add(movement[X_AXIS], movement[Y_AXIS]);
     fix16_t bX = fix16_sub(movement[X_AXIS], movement[Y_AXIS]);
     for_each_stepper(i) {
-        plan[i] = 0;
+        if (i < X_AND_Y)
+            continue;
+        plan[i] = fix16_mul_int32(movement[i], STEPPER_STEPS_PER_MM[i]);
     }
     plan[STEPPER_A_IDX] =
         fix16_mul_int32(aX, STEPPER_STEPS_PER_MM[STEPPER_A_IDX]);
@@ -78,7 +57,6 @@ void __dequeuePlan(struct PlannerJob *out)
     BUG_ON(plannerSize() == 0);
     stepperPlanBuf.size--;
     stepperPlanBuf.head = (stepperPlanBuf.head + 1) % MOTION_LOOKAHEAD;
-    // memcpy(out, &stepperPlanBuf.buf[stepperPlanBuf.head], sizeof(*out));
     *out = stepperPlanBuf.buf[stepperPlanBuf.head];
 }
 
@@ -124,8 +102,6 @@ static void populateBlock(const struct PlannerJob *prev, struct PlannerJob *new,
             s->viSq = min(prev->steppers[i].vfSq, s->vSq);
         } else /* prev block needs to halt */
             s->viSq = 0;
-        // printf("viSq %d, v%d, prev%d\n", s->viSq, s->vSq,
-        //        prev->steppers[i].vfSq);
 
         if (!continuous)
             continue;
@@ -154,9 +130,6 @@ static void calcReverse(struct PlannerJob *curr)
         int32_t accelerationX = ((int32_t)(s->vSq - s->viSq)) / (2 * s->a);
         int32_t decelerationX = ((int32_t)(s->vfSq - s->vSq)) / (2 * -s->a);
         int32_t sum = accelerationX + decelerationX;
-        // if (s->vfSq > s->vSq) {
-        //     printf("x %d vf %d v %d\n", s->x, s->vfSq, s->vSq);
-        // }
 
         if (int32_less_abs(s->x, sum)) {
             if (int32_less_abs(s->x, accelerationX - decelerationX)) {
@@ -194,8 +167,6 @@ static bool recalculate(const struct PlannerJob *next, struct PlannerJob *curr)
                 !int32_same_sign(curr->steppers[i].x, next->steppers[i].x) &&
                 next->steppers[i].viSq != 0);
 
-            // printf("recalc vf %d next vi %d\n", curr->steppers[i].vfSq,
-            //        next->steppers[i].viSq);
             curr->steppers[i].vfSq = next->steppers[i].viSq;
         } else if (!int32_same_sign(curr->steppers[i].x, next->steppers[i].x) &&
                    curr->steppers[i].vfSq != 0) {
@@ -257,26 +228,3 @@ void __enqueuePlan(enum JobType k, const int32_t plan[NR_STEPPERS],
     stepperPlanBuf.tail = (stepperPlanBuf.tail + 1) % MOTION_LOOKAHEAD;
     stepperPlanBuf.size++;
 }
-
-#if 0
-void dequeuePlan(struct PlannerJob *out)
-{
-    ulTaskNotifyTake(pdFALSE, portMAX_DELAY);
-    xSemaphoreTake(planBufMutex, portMAX_DELAY);
-    __dequeuePlan(out);
-    xSemaphoreGive(planBufMutex);
-    xTaskNotifyGive(p);
-}
-
-void enqueuePlan(const int32_t plan[NR_STEPPERS],
-                 const int32_t max_v[NR_STEPPERS], bool more_entries)
-{
-    ulTaskNotifyTake(pdFALSE, portMAX_DELAY);
-    xSemaphoreTake(planBufMutex, portMAX_DELAY);
-
-    __enqueuePlan(plan, max_v, more_entries);
-
-    xSemaphoreGive(planBufMutex);
-    xTaskNotifyGive(c);
-}
-#endif
