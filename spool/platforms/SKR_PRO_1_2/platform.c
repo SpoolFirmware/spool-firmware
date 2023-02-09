@@ -18,9 +18,10 @@ const struct HalClockConfig halClockConfig = {
 const static struct IOLine statusLED = { .group = GPIOE, .pin = 0 };
 
 const static struct IOLine heater0 = { .group = GPIOB, .pin = 1 };
+const static struct IOLine fan0 = { .group = GPIOC, .pin = 8 };
 
 struct TimerConfig pwmTimerCfg = {
-    .timerTargetFrequency = 5000,
+    .timerTargetFrequency = 1000,
     .clkDomainFrequency = 0,
     .interruptEnable = false,
 };
@@ -189,9 +190,10 @@ void platformInit(struct PlatformConfig *config)
     uint32_t ahb1enr = REG_RD32(DRF_REG(_RCC, _AHB1ENR));
     ahb1enr = FLD_SET_DRF(_RCC, _AHB1ENR, _GPIOAEN, _ENABLED, ahb1enr);
     ahb1enr = FLD_SET_DRF(_RCC, _AHB1ENR, _GPIOBEN, _ENABLED, ahb1enr);
-    ahb1enr = FLD_SET_DRF(_RCC, _AHB1ENR, _GPIOFEN, _ENABLED, ahb1enr);
-    ahb1enr = FLD_SET_DRF(_RCC, _AHB1ENR, _GPIOEEN, _ENABLED, ahb1enr);
+    ahb1enr = FLD_SET_DRF(_RCC, _AHB1ENR, _GPIOCEN, _ENABLED, ahb1enr);
     ahb1enr = FLD_SET_DRF(_RCC, _AHB1ENR, _GPIODEN, _ENABLED, ahb1enr);
+    ahb1enr = FLD_SET_DRF(_RCC, _AHB1ENR, _GPIOEEN, _ENABLED, ahb1enr);
+    ahb1enr = FLD_SET_DRF(_RCC, _AHB1ENR, _GPIOFEN, _ENABLED, ahb1enr);
     REG_WR32(DRF_REG(_RCC, _AHB1ENR), ahb1enr);
 
     // Enable APB1 Peripherials
@@ -229,13 +231,17 @@ void platformInit(struct PlatformConfig *config)
     }
 
     /* TODO-codetector Cleanup */
-    halTimerConstruct(&pwmTimer0, DRF_BASE(DRF_TIM1));
-    pwmTimerCfg.clkDomainFrequency = halClockApb2TimerFreqGet(&halClockConfig);
-    halTimerStart(&pwmTimer0, &pwmTimerCfg);
     halGpioSetMode(heater0, DRF_DEF(_HAL_GPIO, _MODE, _MODE, _AF) |
                                 DRF_DEF(_HAL_GPIO, _MODE, _TYPE, _PUSHPULL) |
                                 DRF_DEF(_HAL_GPIO, _MODE, _SPEED, _VERY_HIGH) |
                                 DRF_NUM(_HAL_GPIO, _MODE, _AF, 1));
+    halGpioSetMode(fan0, DRF_DEF(_HAL_GPIO, _MODE, _MODE, _OUTPUT) |
+                                DRF_DEF(_HAL_GPIO, _MODE, _TYPE, _PUSHPULL) |
+                                DRF_DEF(_HAL_GPIO, _MODE, _SPEED, _VERY_HIGH) |
+                                DRF_NUM(_HAL_GPIO, _MODE, _AF, 1));
+    halTimerConstruct(&pwmTimer0, DRF_BASE(DRF_TIM1));
+    pwmTimerCfg.clkDomainFrequency = halClockApb2TimerFreqGet(&halClockConfig);
+    halTimerStart(&pwmTimer0, &pwmTimerCfg);
 
     REG_WR32(DRF_REG(_TIM1, _CCER), 0);
     REG_WR32(DRF_REG(_TIM1, _CCMR2_OUTPUT),
@@ -263,6 +269,15 @@ void platformPostInit(void)
 void platformSetHeater(uint8_t idx, uint8_t pwm)
 {
     REG_WR32(DRF_REG(_TIM1, _CCR3), pwm);
+}
+
+void platformSetFan(uint8_t idx, uint8_t pwm)
+{
+    if (pwm) {
+        halGpioSet(fan0);
+    } else {
+        halGpioClear(fan0);
+    }
 }
 
 __attribute__((always_inline)) inline struct IOLine platformGetStatusLED(void)

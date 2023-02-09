@@ -42,6 +42,16 @@ static portTASK_FUNCTION(DebugPrintTask, pvParameters)
     }
 }
 
+/* Timer Task Support */
+static StaticTask_t TimerTaskTCBBuffer;
+static StackType_t TimerTaskStack[configTIMER_TASK_STACK_DEPTH];
+void vApplicationGetTimerTaskMemory(StaticTask_t **ppxTimerTaskTCBBuffer, StackType_t **ppxTimerTaskStackBuffer, uint32_t *pulTimerTaskStackSize)
+{
+    *ppxTimerTaskTCBBuffer = &TimerTaskTCBBuffer;
+    *ppxTimerTaskStackBuffer = TimerTaskStack;
+    *pulTimerTaskStackSize = configTIMER_TASK_STACK_DEPTH;
+}
+
 void main(void)
 {
     struct PlatformConfig platformConfig = { 0 };
@@ -57,7 +67,7 @@ void main(void)
     configASSERT(xTaskCreate(DebugPrintTask, "dbgPrintf",
                              configMINIMAL_STACK_SIZE, NULL,
                              configMAX_PRIORITIES - 1, &dbgPrintTaskHandle));
-    xTaskCreate(ThermalTask, "testTask", 512, NULL, configMAX_PRIORITIES - 2, NULL);
+    thermalManagerStart();
 
     vTaskStartScheduler();
     for (;;) {

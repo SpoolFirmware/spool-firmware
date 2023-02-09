@@ -14,6 +14,7 @@ cc_library(
         "queue.c",
         "tasks.c",
         "stream_buffer.c",
+        "timers.c",
         "libs/MemMang/heap_1.c",
     ],
     deps=[

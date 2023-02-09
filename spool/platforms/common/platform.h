@@ -29,6 +29,7 @@ uint32_t platformGetStepperTimerFreq(void);
 bool platformGetEndstop(uint8_t axis);
 fix16_t platformReadTemp(uint8_t idx);
 void platformSetHeater(uint8_t idx, uint8_t pwm);
+void platformSetFan(uint8_t idx, uint8_t pwm);
 
 // Communication
 size_t platformRecvCommand(char *pBuffer, size_t bufferSize, TickType_t ticksToWait);

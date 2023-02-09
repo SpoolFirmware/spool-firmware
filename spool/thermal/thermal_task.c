@@ -8,6 +8,8 @@
 #include "platform/platform.h"
 #include "core/spool.h"
 
+#include "timers.h"
+
 typedef struct {
     // Target State
     fix16_t setPoint;
@@ -24,6 +26,8 @@ typedef struct {
     fix16_t outputSum;
 } pid_t;
 
+static void thermalCallback(TimerHandle_t timerHandle);
+
 fix16_t updateLoop(pid_t *pPid, fix16_t input)
 {
     fix16_t error = fix16_sub(pPid->setPoint, input);
@@ -33,39 +37,49 @@ fix16_t updateLoop(pid_t *pPid, fix16_t input)
     pPid->outputSum = fix16_add(pPid->outputSum, fix16_mul(pPid->ki, error));
     
     // P on Observed Rate of Change
-    pPid->outputSum = fix16_sub(pPid->outputSum, fix16_mul(pPid->kp, dInput));
+    /* pPid->outputSum = fix16_sub(pPid->outputSum, fix16_mul(pPid->kp, dInput)); */
 
     // Cap OutputSum
     pPid->outputSum = fix16_clamp(pPid->outputSum, pPid->outputMin, pPid->outputMax);
 
-    output = pPid->outputSum;
+    // P on Error
+    output = fix16_mul(pPid->kp, error);
+
+    output = fix16_add(output, pPid->outputSum);
     output = fix16_sub(output, fix16_mul(pPid->kd, dInput));
+
+    output = fix16_clamp(output, pPid->outputMin, pPid->outputMax);
+
     // Kd? lol not happening rn
     pPid->lastInput = input;
     return output;
 }
 
 pid_t myPid = {
-    .setPoint = F16(40),
-    .kp = F16(15),
-    .ki = F16(0),
-    .kd = F16(0),
+    .setPoint = F16(10),
+    .kp = F16(12),
+    .ki = F16(1.2),
+    .kd = F16(100),
 
     .outputMin = F16(0),
     .outputMax = F16(100),
 };
 
-portTASK_FUNCTION(ThermalTask, pvParameters)
+static void thermalCallback(TimerHandle_t timerHandle)
 {
-    (void)pvParameters;
-    for (;;) {
-        vTaskDelay(MS2T(100));
-        fix16_t tempC_f = platformReadTemp(0);
-        int tempC = fix16_to_int(tempC_f);
+    vTaskDelay(pdMS_TO_TICKS(50));
+    fix16_t tempC_f = platformReadTemp(0);
+    int tempC = fix16_to_int(tempC_f);
 
-        int control = fix16_to_int(updateLoop(&myPid, tempC_f));
+    int control = fix16_to_int(updateLoop(&myPid, tempC_f));
 
-        dbgPrintf("temp = %d action: %d\n", tempC, control);
-        platformSetHeater(0, control);
+    platformSetHeater(0, control);
+    dbgPrintf("temp = %d action: %d\n", tempC, control);
+}
+
+void thermalManagerStart(void)
+{
+    if (xTimerCreate("", pdMS_TO_TICKS(50), pdTRUE, NULL, thermalCallback) == NULL) {
+        panic();
     }
 }
