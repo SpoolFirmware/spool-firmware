@@ -7,14 +7,19 @@ def _transition_impl(settings, attr):
     # Attaching the special prefix "//comand_line_option" to the name of a native
     # flag makes the flag available to transition on. The result of this transition
     # is to set --platforms
+
+    build_type = "opt"
+    if settings["//command_line_option:compilation_mode"] == "dbg":
+        build_type = "dbg"
+
     return {
         "//command_line_option:platforms": attr.platforms,
-        "//command_line_option:compilation_mode": "opt"
+        "//command_line_option:compilation_mode": "dbg"
     }
 
 platforms_transition = transition(
     implementation = _transition_impl,
-    inputs = [],
+    inputs = ["//command_line_option:compilation_mode"],
     # We declare which flags the transition will be writing. The returned dict(s)
     # of flags must have keyset(s) that contains exactly this list.
     outputs = ["//command_line_option:platforms", "//command_line_option:compilation_mode"],
