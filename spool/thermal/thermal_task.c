@@ -79,7 +79,7 @@ static void thermalCallback(TimerHandle_t timerHandle)
 
 void thermalManagerStart(void)
 {
-    if (xTimerCreate("", pdMS_TO_TICKS(50), pdTRUE, NULL, thermalCallback) == NULL) {
+    if (xTimerCreate("thermalManager", pdMS_TO_TICKS(50), pdTRUE, NULL, thermalCallback) == NULL) {
         panic();
     }
 }
