@@ -18,5 +18,3 @@ void __warn_on_err(const char *file, int line, status_t err)
 {
     printf("WARN ERR %d in %s:%d\n", err, file, line);
 }
-
-#define dbgPrintf printf

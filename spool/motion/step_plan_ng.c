@@ -133,21 +133,23 @@ static void calcReverse(struct PlannerJob *curr)
         int32_t sum = accelerationX + decelerationX;
 
         if (int32_less_abs(s->x, sum)) {
-            if (int32_less_abs(s->x, accelerationX - decelerationX)) {
+            int32_t direct = accelerationX - decelerationX;
+            if (int32_less_abs(s->x, direct)) {
                 /* cannot decelerate to desired speed */
                 s->accelerationX = 0;
                 s->decelerationX = s->x;
-                s->viSq =
-                    (uint32_t)ASSERT_GE0(s->x * 2 * s->a + (int32_t)s->vfSq);
+                s->viSq = (uint32_t)max(
+                    0, ASSERT_GE0(s->x * 2 * s->a + (int32_t)s->vfSq));
                 s->vSq = s->viSq;
                 s->v = (int32_t)sqrtf((float)s->viSq);
             } else {
-                s->accelerationX = accelerationX * s->x / sum;
-                s->decelerationX = decelerationX * s->x / sum;
-
-                s->vSq = (uint32_t)ASSERT_GE0(s->accelerationX * 2 * s->a +
-                                              (int32_t)s->viSq);
-                s->vfSq = (uint32_t)ASSERT_GE0(s->decelerationX * -2 * s->a +
+                s->accelerationX = (direct + s->x) / 2;
+                s->decelerationX = s->x - s->accelerationX;
+                s->vSq =
+                    (uint32_t)max(0, ASSERT_GE0(s->accelerationX * 2 * s->a +
+                                                (int32_t)s->viSq));
+                /* here, due to integer math, vfSq may dip slightly below 0*/
+                s->vfSq = (uint32_t)max(0, s->decelerationX * -2 * s->a +
                                                (int32_t)s->vSq);
             }
         } else {
@@ -173,9 +175,9 @@ static bool recalculate(const struct PlannerJob *next, struct PlannerJob *curr)
                    curr->steppers[i].vfSq != 0) {
             /* not sure if this would happen. it shouldn't */
             WARN();
-            dbgPrintf("currx%d nextx%d vfSq%d next viSq%d\n", curr->steppers[i].x,
-                      next->steppers[i].x, curr->steppers[i].vfSq,
-                      next->steppers[i].viSq);
+            dbgPrintf("currx%d nextx%d vfSq%d next viSq%d\n",
+                      curr->steppers[i].x, next->steppers[i].x,
+                      curr->steppers[i].vfSq, next->steppers[i].viSq);
             dirty = true;
             curr->steppers[i].vfSq = 0;
         }
@@ -186,8 +188,10 @@ static bool recalculate(const struct PlannerJob *next, struct PlannerJob *curr)
 static void reversePass(void)
 {
     uint32_t i = stepperPlanBuf.tail;
+    uint32_t size = plannerSize();
     struct PlannerJob *next = NULL;
-    while (i != stepperPlanBuf.head) {
+
+    while (size > 0) {
         if (next == NULL) {
             next = &stepperPlanBuf.buf[i];
         } else {
@@ -205,6 +209,7 @@ static void reversePass(void)
         } else {
             i--;
         }
+        size--;
     }
 }
 

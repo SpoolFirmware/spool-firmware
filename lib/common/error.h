@@ -82,6 +82,9 @@ void __warn_on_err(const char *file, int line, status_t err);
             __warn_on_err(__FILE__, __LINE__, _err); \
     } while (0)
 
+#define PR_WARN(s, ...) \
+    dbgPrintf("WARN at %s:%s " s, __FILE__, __LINE__, __VA_ARGS__)
+
 #define __ASSERT_GE0(x) x >= 0
 
 #define ASSERT_EXPR(name, expr, assertion) \
@@ -91,6 +94,6 @@ void __warn_on_err(const char *file, int line, status_t err);
         name;                              \
     })
 
-#define ASSERT_GE0(x) ASSERT_EXPR(assert__COUNTER__, x, __ASSERT_GE0)
+#define ASSERT_GE0(x) ASSERT_EXPR(__assert_val, x, __ASSERT_GE0)
 
 #define STATIC_ASSERT(x) _Static_assert(x, #x)

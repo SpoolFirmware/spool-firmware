@@ -6,7 +6,7 @@ cc_library(
         "compiler.h",
         "drf.h",
         "error.h",
-	"misc.h",
+	    "misc.h",
         "number.h",
     ],
     include_prefix = ".",
@@ -17,30 +17,15 @@ cc_library(
 )
 
 cc_library(
-    name = "bitops",
-    hdrs = ["bitops.h"],
-    include_prefix = ".",
-    visibility = ["//visibility:public"],
-)
-
-cc_library(
-    name = "error_std",
-    srcs = ["error_std.c"],
-    hdrs = ["error.h"],
-    include_prefix = ".",
-    visibility = ["//visibility:public"],
-)
-
-cc_library(
-    name = "compiler",
-    hdrs = ["compiler.h"],
-    include_prefix = ".",
-    visibility = ["//visibility:public"],
-)
-
-cc_library(
-    name = "number",
-    hdrs = ["number.h"],
+    name = "headers",
+    hdrs = [
+        "bitops.h",
+        "compiler.h",
+        "drf.h",
+        "error.h",
+	    "misc.h",
+        "number.h",
+    ],
     include_prefix = ".",
     visibility = ["//visibility:public"],
 )

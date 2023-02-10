@@ -129,7 +129,7 @@ static void runTest(const char *fileName, status_t t(void))
 int main(int argc, char **argv)
 {
     if (argc < 2)
-        printf("usage: gcode_filename [strict]\n");
+        printf("usage: gcode_filename\n");
 
     char *fname = argv[1];
 

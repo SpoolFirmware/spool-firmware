@@ -32,7 +32,7 @@ void testPlanContinuous(const struct Move *move)
     printf("(x,y) %f, %f => (a,b) %d, %d\n", fix16_to_float(move->x),
            fix16_to_float(move->y), plan[0], plan[1]);
 
-    __enqueuePlan(plan, max_v, true);
+    __enqueuePlan(StepperJobRun, plan, max_v, true);
 }
 
 void printPlan(void)
