@@ -10,9 +10,9 @@ cc_test(
     size = "small",
     srcs = [
         "core/magic_config.h",
-        "core/step_plan_ng.c",
-        "core/step_plan_ng.h",
-        "core/step_plan_ng_test.c",
+        "motion/step_plan_ng.c",
+        "motion/step_plan_ng.h",
+        "motion/step_plan_ng_test.c",
     ],
     copts = [
         "-Wconversion",
@@ -31,9 +31,9 @@ cc_test(
 cc_binary(
     name = "parser_test",
     srcs = [
-        "core/gcode_parser.c",
-        "core/gcode_parser.h",
-        "core/gcode_parser_test.c",
+        "gcode/gcode_parser.c",
+        "gcode/gcode_parser.h",
+        "gcode/gcode_parser_test.c",
     ],
     deps = [
         "//lib/common:error_std",
@@ -51,17 +51,20 @@ cc_binary_with_platforms(
     srcs = glob([
         "thermal/*.h",
         "thermal/*.c",
+        "motion/*.h",
+        "gcode/*.h",
 
         "core/*.h",
     ]) + 
     [
         "core/rtos_support.c",
         "core/spool.c",
-        "core/step_execute.c",
-        "core/step_schedule.c",
-        "core/step_plan_ng.c",
-        "core/gcode_serial.c",
-        "core/gcode_parser.c",
+        "motion/motion.c",
+        "motion/step_execute.c",
+        "motion/step_schedule.c",
+        "motion/step_plan_ng.c",
+        "gcode/gcode_serial.c",
+        "gcode/gcode_parser.c",
     ],
     linkopts = [
         "-T $(execpath //spool/platforms:linker.ld)",

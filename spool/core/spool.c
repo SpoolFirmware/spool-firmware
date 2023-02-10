@@ -13,10 +13,8 @@
 
 #include "thermal/thermal.h"
 
-#include "step_schedule.h"
-#include "step_plan_ng.h"
-#include "step_execute.h"
-#include "gcode_serial.h"
+#include "motion/motion.h"
+#include "gcode/gcode_serial.h"
 
 void dbgEmptyBuffer(void)
 {
@@ -59,11 +57,8 @@ void main(void)
 {
     struct PlatformConfig platformConfig = { 0 };
     platformInit(&platformConfig);
-    platformDisableStepper(0xFF);
     QueueHandle_t gcodeCommandQueue = gcodeSerialInit();
-    QueueHandle_t stepperJobQueue = stepTaskInit(gcodeCommandQueue);
-    initPlanner();
-    stepExecuteSetQueue(stepperJobQueue);
+    motionInit(gcodeCommandQueue);
     dbgPrintf("initSpoolApp\n");
     platformPostInit();
 

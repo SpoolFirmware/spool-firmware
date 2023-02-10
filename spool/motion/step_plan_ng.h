@@ -1,6 +1,6 @@
 #pragma once
 #include "fix16.h"
-#include "magic_config.h"
+#include "core/magic_config.h"
 #include <stdbool.h>
 #include "error.h"
 #include "compiler.h"

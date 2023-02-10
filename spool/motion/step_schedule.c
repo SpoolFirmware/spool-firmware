@@ -7,7 +7,7 @@
 #include "platform/platform.h"
 #include "bitops.h"
 #include "dbgprintf.h"
-#include "gcode_parser.h"
+#include "gcode/gcode_parser.h"
 #include "number.h"
 #include "compiler.h"
 

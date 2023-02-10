@@ -2,7 +2,7 @@
 #include "FreeRTOS.h"
 #include "task.h"
 #include "queue.h"
-#include "magic_config.h"
+#include "core/magic_config.h"
 #include "step_plan_ng.h"
 
 struct PrinterState {

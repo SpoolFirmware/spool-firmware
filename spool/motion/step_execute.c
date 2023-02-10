@@ -1,6 +1,6 @@
 #include "step_execute.h"
 #include "step_schedule.h"
-#include "magic_config.h"
+#include "core/magic_config.h"
 #include "bitops.h"
 #include "error.h"
 #include "string.h"
