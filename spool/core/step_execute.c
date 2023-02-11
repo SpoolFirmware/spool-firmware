@@ -1,17 +1,13 @@
+#include <stdbool.h>
+
+#include "misc.h"
+#include "string.h"
+
+#include "spool.h"
+
 #include "step_execute.h"
 #include "step_schedule.h"
 #include "magic_config.h"
-#include "bitops.h"
-#include "error.h"
-#include "string.h"
-#include <stdbool.h>
-
-QueueHandle_t executeQueueHandle;
-
-void stepExecuteSetQueue(QueueHandle_t queueHandle_)
-{
-    executeQueueHandle = queueHandle_;
-}
 
 static bool stepperJobFinished(const struct StepperJob *pJob)
 {
@@ -106,8 +102,7 @@ uint16_t executeStep(uint16_t ticksElapsed)
 
     // Now we can do other things
     if (stepperJobFinished(&job)) {
-        configASSERT(executeQueueHandle);
-        if (xQueueReceiveFromISR(executeQueueHandle, &job, NULL) != pdTRUE) {
+        if (xQueueReceiveFromISR(StepperExecutionQueue, &job, NULL) != pdTRUE) {
             return 0;
         }
         platformSetStepperDir(job.stepDirs);

@@ -17,6 +17,12 @@
 #include "step_execute.h"
 #include "gcode_serial.h"
 
+/* ----------- Global Task Input Queues --------------- */
+QueueHandle_t ThermalTaskQueue;
+QueueHandle_t ParserTaskQueue;
+QueueHandle_t MotionPlannerTaskQueue;
+QueueHandle_t StepperExecutionQueue;
+
 void dbgEmptyBuffer(void)
 {
     int c;
@@ -45,31 +51,48 @@ static portTASK_FUNCTION(DebugPrintTask, pvParameters)
 /* Timer Task Support */
 static StaticTask_t TimerTaskTCBBuffer;
 static StackType_t TimerTaskStack[configTIMER_TASK_STACK_DEPTH];
-void vApplicationGetTimerTaskMemory(StaticTask_t **ppxTimerTaskTCBBuffer, StackType_t **ppxTimerTaskStackBuffer, uint32_t *pulTimerTaskStackSize)
+void vApplicationGetTimerTaskMemory(StaticTask_t **ppxTimerTaskTCBBuffer,
+                                    StackType_t **ppxTimerTaskStackBuffer,
+                                    uint32_t *pulTimerTaskStackSize)
 {
     *ppxTimerTaskTCBBuffer = &TimerTaskTCBBuffer;
     *ppxTimerTaskStackBuffer = TimerTaskStack;
     *pulTimerTaskStackSize = configTIMER_TASK_STACK_DEPTH;
 }
 
+void vApplicationMallocFailedHook(void)
+{
+    dbgPrintf("NOMEM, %d free\n", xPortGetFreeHeapSize());
+}
+
 void main(void)
 {
+    // Platform Init
     struct PlatformConfig platformConfig = { 0 };
     platformInit(&platformConfig);
-    platformDisableStepper(0xFF);
-    QueueHandle_t gcodeCommandQueue = gcodeSerialInit();
-    QueueHandle_t stepperJobQueue = stepTaskInit(gcodeCommandQueue);
-    stepExecuteSetQueue(stepperJobQueue);
-    dbgPrintf("initSpoolApp\n");
-    platformPostInit();
 
-    // Create the highest priority "printf" task
+    platformDisableStepper(0xFF);
+
+    // Create Tasks & Setup Queues
+    gcodeSerialTaskInit();
+    thermalTaskInit();
+    motionPlannerTaskInit();
+
+    // Create the task that should handle prints
     configASSERT(xTaskCreate(DebugPrintTask, "dbgPrintf",
                              configMINIMAL_STACK_SIZE, NULL,
                              configMAX_PRIORITIES - 1, &dbgPrintTaskHandle));
-    thermalManagerStart();
+
+    // Inform platform that execution is about to begin
+    platformPostInit();
+
+    // Disable Allocation at this point
+    vPortDisableHeapAllocation();
+    dbgPrintf("initSpoolApp\n");
 
     vTaskStartScheduler();
-    for (;;) {
-    }
+
+    // NO RETURN
+    for (;;)
+        ;
 }

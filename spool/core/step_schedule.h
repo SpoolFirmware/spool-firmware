@@ -47,9 +47,7 @@ typedef struct StepperJob {
     uint8_t stepDirs;
 } job_t;
 
-#define STEP_QUEUE_SIZE 20
-
-QueueHandle_t stepTaskInit(QueueHandle_t gcodeCommandQueue);
+void motionPlannerTaskInit(void);
 
 void notifyHomeXISR(void);
 void notifyHomeYISR(void);

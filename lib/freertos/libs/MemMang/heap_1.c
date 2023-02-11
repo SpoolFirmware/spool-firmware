@@ -66,12 +66,15 @@
 /* Index into the ucHeap array. */
 static size_t xNextFreeByte = ( size_t ) 0;
 
+static uint8_t allocationDisabled = pdFALSE;
 /*-----------------------------------------------------------*/
 
 void * pvPortMalloc( size_t xWantedSize )
 {
     void * pvReturn = NULL;
     static uint8_t * pucAlignedHeap = NULL;
+
+    configASSERT(!allocationDisabled);
 
     /* Ensure that blocks are always aligned. */
     #if ( portBYTE_ALIGNMENT != 1 )
@@ -135,7 +138,7 @@ void vPortFree( void * pv )
     ( void ) pv;
 
     /* Force an assert as it is invalid to call this function. */
-    configASSERT( pv == NULL );
+    configASSERT(0);
 }
 /*-----------------------------------------------------------*/
 
@@ -149,4 +152,9 @@ void vPortInitialiseBlocks( void )
 size_t xPortGetFreeHeapSize( void )
 {
     return( configADJUSTED_HEAP_SIZE - xNextFreeByte );
+}
+
+void vPortDisableHeapAllocation(void)
+{
+    allocationDisabled = pdTRUE;
 }

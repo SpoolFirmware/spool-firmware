@@ -15,6 +15,10 @@ void dbgPutc(const char c)
 {
     uint8_t signalTask = 0;
 
+    if (c == '\n') {
+        dbgPutc('\r');
+    }
+
     uint32_t basePri = ulPortRaiseBASEPRI();
     if (head == tail)
         signalTask = 1;
