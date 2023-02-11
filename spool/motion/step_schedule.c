@@ -7,12 +7,10 @@
 #include "platform/platform.h"
 #include "bitops.h"
 #include "dbgprintf.h"
-#include "gcode/gcode_parser.h"
+#include "gcode/gcode.h"
 #include "number.h"
 #include "compiler.h"
-
-static struct StepperJob queueBuf[STEP_QUEUE_SIZE];
-static StaticQueue_t stepQueue;
+#include "core/spool.h"
 
 /* Records the state of the printer ends up in after the stepper queue
  * finishes. We could have the state be attached to each stepper job.
@@ -21,25 +19,19 @@ static StaticQueue_t stepQueue;
  */
 /* only touched in scheduleMoveTo */
 static struct PrinterState currentState;
-static QueueHandle_t gcodeCommandQueue;
 
-#define STACK_SIZE 1024
-static StaticTask_t stepScheduleTaskBuf;
-static StackType_t stepScheduleStack[STACK_SIZE];
-static TaskHandle_t stepScheduleTaskHandle;
+TaskHandle_t stepScheduleTaskHandle;
 
-QueueHandle_t stepTaskInit(QueueHandle_t gcodeCommandQueue_)
+void motionPlannerTaskInit(void)
 {
-    QueueHandle_t handle = xQueueCreateStatic(STEP_QUEUE_SIZE,
-                                              sizeof(struct StepperJob),
-                                              (uint8_t *)queueBuf, &stepQueue);
-    configASSERT(handle);
-    configASSERT(gcodeCommandQueue_);
-    gcodeCommandQueue = gcodeCommandQueue_;
-    stepScheduleTaskHandle = xTaskCreateStatic(
-        stepScheduleTask, "stepSchedule", STACK_SIZE, (void *)handle,
-        tskIDLE_PRIORITY + 2, stepScheduleStack, &stepScheduleTaskBuf);
-    return handle;
+    MotionPlannerTaskQueue = xQueueCreate(MOTION_PLANNER_TASK_QUEUE_SIZE, sizeof(struct GcodeCommand));
+    if (MotionPlannerTaskQueue == NULL) {
+        panic();
+    }
+    if (xTaskCreate(stepScheduleTask, "stepSchedule", 1024, NULL,
+                    tskIDLE_PRIORITY + 1, &stepScheduleTaskHandle) != pdTRUE) {
+        panic();
+    }
 }
 
 #define SECONDS_PER_MIN 60
@@ -117,8 +109,9 @@ uint32_t getRequiredSpace(enum GcodeKind kind)
         return 1;
     case GcodeG28:
         return 3;
+    default:
+        panic();
     }
-    WARN();
     return 0;
 }
 
@@ -132,10 +125,10 @@ static void enqueueAvailableGcode()
     static struct PrinterState nextState = { 0 };
 
     while (plannerAvailableSpace() > 0) {
-        continuousMode = uxQueueSpacesAvailable(gcodeCommandQueue) <
+        continuousMode = uxQueueSpacesAvailable(MotionPlannerTaskQueue) <
                          CONTINUOUS_THRESHOLD;
         if (!commandAvailable) {
-            if (xQueueReceive(gcodeCommandQueue, &cmd,
+            if (xQueueReceive(MotionPlannerTaskQueue, &cmd,
                               plannerSize() == 0 ? portMAX_DELAY : 0) !=
                 pdTRUE) {
                 return;
@@ -163,17 +156,17 @@ static void enqueueAvailableGcode()
             platformEnableStepper(STEPPER_A | STEPPER_B | STEPPER_C);
             scheduleHome();
             break;
-        case GcodeM84:
-            /* TODO, make this a stepper job */
-            platformEnableStepper(0);
+        default:
+            panic();
             break;
         }
         commandAvailable = false;
     }
 }
 
-static void sendStepperJob(QueueHandle_t queue, const struct PlannerJob *j)
+static void sendStepperJob(const struct PlannerJob *j)
 {
+    QueueHandle_t queue = StepperExecutionQueue;
     job_t job = { 0 };
     for_each_stepper(i) {
         motion_block_t *mb = &job.blocks[i];
@@ -219,14 +212,12 @@ static void sendStepperJob(QueueHandle_t queue, const struct PlannerJob *j)
 
 portTASK_FUNCTION(stepScheduleTask, pvParameters)
 {
-    QueueHandle_t queue = (QueueHandle_t)pvParameters;
     struct PlannerJob j;
-
     for (;;) {
         enqueueAvailableGcode();
         if (plannerSize() > 0) {
             __dequeuePlan(&j);
-            sendStepperJob(queue, &j);
+            sendStepperJob(&j);
         }
     }
 }

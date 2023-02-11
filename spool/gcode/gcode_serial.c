@@ -1,4 +1,4 @@
-#include "spool.h"
+#include "core/spool.h"
 #include "gcode_serial.h"
 #include "gcode/gcode_parser.h"
 #include "dbgprintf.h"

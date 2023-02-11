@@ -2,4 +2,4 @@
 #include "FreeRTOS.h"
 #include "queue.h"
 
-void motionInit(QueueHandle_t gcodeCommandQueue);
+void motionInit(void);

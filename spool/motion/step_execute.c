@@ -3,11 +3,11 @@
 #include "misc.h"
 #include "string.h"
 
-#include "spool.h"
+#include "core/spool.h"
 
 #include "step_execute.h"
 #include "step_schedule.h"
-#include "magic_config.h"
+#include "core/magic_config.h"
 
 static bool stepperJobFinished(const struct StepperJob *pJob)
 {

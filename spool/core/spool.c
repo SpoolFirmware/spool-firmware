@@ -75,7 +75,7 @@ void main(void)
     // Create Tasks & Setup Queues
     gcodeSerialTaskInit();
     thermalTaskInit();
-    motionPlannerTaskInit();
+    motionInit();
 
     // Create the task that should handle prints
     configASSERT(xTaskCreate(DebugPrintTask, "dbgPrintf",
