@@ -53,6 +53,8 @@ void __warn_on_err(const char *file, int line, status_t err);
 
 #define ASSERT_OR_RETURN(expr) _ASSERT_OR_STATEMENT(expr, return _err)
 
+#define ASSERT_OR_PANIC(expr) _ASSERT_OR_STATEMENT(expr, panic())
+
 #define ASSIGN_OR_RETURN(x, expr) _ASSIGN_OR_STATEMENT(x, expr, return x)
 
 #define DEFINE_OR_RETURN(x, expr) _DEFINE_OR_STATEMENT(x, expr, return x)

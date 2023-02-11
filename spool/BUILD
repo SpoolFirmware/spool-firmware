@@ -29,9 +29,11 @@ cc_binary(
     name = "parser_test",
     srcs = [
         "core/gcode_parser_test.c",
-        "core/gcode_parser.c",
-        "core/gcode_parser.h",
+        "gcode/gcode.h",
+        "gcode/gcode_parser.c",
+        "gcode/gcode_parser.h",
     ],
+    copts = ["-Ispool"],
     deps = [
         "//lib/fxp:lib",
         "//lib/common:error_std",
@@ -49,6 +51,9 @@ cc_binary_with_platforms(
         "thermal/*.h",
         "thermal/*.c",
 
+        "gcode/*.h",
+        "gcode/*.c",
+
         "core/*.h",
     ]) + 
     [
@@ -58,7 +63,6 @@ cc_binary_with_platforms(
         "core/step_schedule.c",
         "core/step_plan.c",
         "core/gcode_serial.c",
-        "core/gcode_parser.c",
     ],
     linkopts = [
         "-T $(execpath //spool/platforms:linker.ld)",

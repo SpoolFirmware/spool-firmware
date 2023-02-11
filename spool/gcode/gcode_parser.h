@@ -2,48 +2,10 @@
 #include <stdbool.h>
 #include "fix16.h"
 #include "error.h"
+#include "gcode/gcode.h"
 
 /* sign, 5 char decimal, decimal point, 5 char fraction, NULL */
 #define MAX_NUM_LEN 13
-
-enum GcodeKind {
-    GcodeG0,
-    GcodeG1,
-    GcodeG28,
-    GcodeM84,
-    GcodeM104,
-    GcodeM105,
-    GcodeM109,
-};
-
-struct GcodeXYZEF {
-    fix16_t x, y, z, e, f;
-};
-
-struct GcodeTemp {
-    fix16_t sTemp;
-    fix16_t rTemp;
-};
-
-struct TemperatureReport {
-    uint16_t bed;
-    uint16_t extruders[3];
-};
-
-struct GcodeCommand {
-    enum GcodeKind kind;
-    union {
-        struct GcodeXYZEF xyzef;
-        struct GcodeTemp temperature;
-    };
-};
-
-struct GcodeResponse {
-    enum GcodeKind kind;
-    union {
-        struct TemperatureReport tempReport;
-    };
-};
 
 enum TokenKind {
     TokenUndef,

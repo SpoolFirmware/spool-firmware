@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "gcode_parser.h"
+#include "gcode/gcode_parser.h"
 #include "error.h"
 
 static FILE *f;
