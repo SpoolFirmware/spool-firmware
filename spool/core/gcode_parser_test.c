@@ -23,6 +23,15 @@ status_t receiveChar(char *c)
     return StatusOk;
 }
 
+static void printTemperature(struct GcodeTemp *temp)
+{
+    char buf[MAX_NUM_LEN];
+    fix16_to_str(temp->rTemp, buf, 10);
+    printf("R%s ", buf);
+    fix16_to_str(temp->sTemp, buf, 10);
+    printf("S%s\n", buf);
+}
+
 static void printGcode(struct GcodeCommand *cmd)
 {
     char buf[MAX_NUM_LEN];
@@ -39,6 +48,13 @@ static void printGcode(struct GcodeCommand *cmd)
         return;
     case GcodeM84:
         printf("M84\n");
+        return;
+    case GcodeM104:
+        printf("M104 "); printTemperature(&(cmd->temperature)); return;
+    case GcodeM105:
+        printf("M105\n"); return;
+    default:
+        printf("Update printing function: kind=%d\n", cmd->kind);
         return;
     }
 printXYZEF:
@@ -63,6 +79,7 @@ printXYZEF:
         printf("F%s ", buf);
     }
     printf("\n");
+    return;
 }
 
 static status_t parseFile(void)
@@ -128,8 +145,10 @@ static void runTest(const char *fileName, status_t t(void))
 
 int main(int argc, char **argv)
 {
-    if (argc < 2)
+    if (argc < 2) {
         printf("usage: gcode_filename [strict]\n");
+        return 1;
+    }
 
     char *fname = argv[1];
 

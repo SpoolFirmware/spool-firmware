@@ -172,8 +172,23 @@ static status_t letter(struct Tokenizer *s, struct Token *t,
     ASSERT_OR_RETURN(peekCurrChar(s, &c));
 
     switch (lowerCase(c)) {
+    case 'e':
+        t->kind = TokenE;
+        break;
+    case 'f':
+        t->kind = TokenF;
+        break;
     case 'g':
         t->kind = TokenG;
+        break;
+    case 'm':
+        t->kind = TokenM;
+        break;
+    case 'r':
+        t->kind = TokenR;
+        break;
+    case 's':
+        t->kind = TokenS;
         break;
     case 'x':
         t->kind = TokenX;
@@ -183,15 +198,6 @@ static status_t letter(struct Tokenizer *s, struct Token *t,
         break;
     case 'z':
         t->kind = TokenZ;
-        break;
-    case 'e':
-        t->kind = TokenE;
-        break;
-    case 'f':
-        t->kind = TokenF;
-        break;
-    case 'm':
-        t->kind = TokenM;
         break;
     default:
         return StatusInvalidGcodeToken;
@@ -317,11 +323,46 @@ static status_t assertAndEatToken(struct GcodeParser *s, enum TokenKind k,
 
 struct ParserState;
 typedef status_t parse_fun_t(struct GcodeParser *, struct GcodeCommand *t,
-                           struct ParserState *);
+                             struct ParserState *);
 struct ParserState {
     parse_fun_t *f;
 };
-static parse_fun_t parseXYZEF, parseCmdG, parseCmdM, _parseGcode;
+static parse_fun_t parseXYZEF, parseTemperature, parseCmdG, parseCmdM,
+    _parseGcode;
+
+static status_t parseTemperature(struct GcodeParser *s,
+                                 struct GcodeCommand *cmd,
+                                 struct ParserState *next)
+{
+    struct Token t;
+    status_t err;
+
+    err = peekToken(s, &t);
+    if (err == StatusGcodeEof) {
+        return StatusOk;
+    }
+    ASSERT_OR_RETURN(err);
+
+    fix16_t *target;
+
+    switch (t.kind) {
+    case TokenS:
+        target = &cmd->temperature.sTemp;
+        break;
+    case TokenR:
+        target = &cmd->temperature.rTemp;
+        break;
+    default:
+        return StatusOk;
+    }
+
+    ASSERT_OR_RETURN(eatToken(s));
+    ASSERT_OR_RETURN(assertAndEatToken(s, TokenFix16, &t));
+    *target = t.fix16;
+
+    next->f = parseTemperature;
+    return StatusAgain;
+}
 
 /* refactor to be less clunky, note this should not get more
  * tokens than what is required. 
@@ -413,6 +454,13 @@ static status_t parseCmdM(struct GcodeParser *s, struct GcodeCommand *cmd,
     switch ((unsigned int)fix16_to_int(t.fix16)) {
     case 84:
         cmd->kind = GcodeM84;
+        return StatusOk;
+    case 104:
+        cmd->kind = GcodeM104;
+        next->f = parseTemperature;
+        return StatusAgain;
+    case 105:
+        cmd->kind = GcodeM105;
         return StatusOk;
     default:
         break;
