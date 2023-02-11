@@ -24,7 +24,8 @@ TaskHandle_t stepScheduleTaskHandle;
 
 void motionPlannerTaskInit(void)
 {
-    MotionPlannerTaskQueue = xQueueCreate(MOTION_PLANNER_TASK_QUEUE_SIZE, sizeof(struct GcodeCommand));
+    MotionPlannerTaskQueue = xQueueCreate(MOTION_PLANNER_TASK_QUEUE_SIZE,
+                                          sizeof(struct GcodeCommand));
     if (MotionPlannerTaskQueue == NULL) {
         panic();
     }

@@ -14,8 +14,8 @@ extern QueueHandle_t ThermalTaskQueue;
 /*!
  * Parser Task Inbound Queue
  */
-#define PARSER_RESPONSE_TASK_QUEUE_SIZE 1
-extern QueueHandle_t ParserTaskQueue;
+#define PARSER_RESPONSE_QUEUE_SIZE 1
+extern QueueHandle_t ResponseQueue;
 
 /*
  * Planner Task Inbound (GCode) Queue

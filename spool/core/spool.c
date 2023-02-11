@@ -18,7 +18,7 @@
 
 /* ----------- Global Task Input Queues --------------- */
 QueueHandle_t ThermalTaskQueue;
-QueueHandle_t ParserTaskQueue;
+QueueHandle_t ResponseQueue;
 QueueHandle_t MotionPlannerTaskQueue;
 QueueHandle_t StepperExecutionQueue;
 

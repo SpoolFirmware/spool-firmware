@@ -1,16 +1,19 @@
+#include "string.h"
+#include "misc.h"
+#include "dbgprintf.h"
+#include "platform/platform.h"
+
 #include "FreeRTOS.h"
 #include "task.h"
 #include "timers.h"
 #include "fix16.h"
 
-#include "misc.h"
-#include "dbgprintf.h"
-#include "platform/platform.h"
+
+#include "semphr.h"
 
 #include "thermal/thermal.h"
 #include "core/spool.h"
 #include "gcode/gcode.h"
-
 
 typedef struct {
     // Target State
@@ -59,6 +62,7 @@ fix16_t pidUpdateLoop(pid_t *pPid, fix16_t input)
 
     if (fix16_abs(error) > pPid->effectiveRange) {
         pidReset(pPid);
+        pPid->lastInput = input;
         if (error > F16(0)) {
             return pPid->outputMax;
         } else {
@@ -84,20 +88,20 @@ fix16_t pidUpdateLoop(pid_t *pPid, fix16_t input)
 }
 
 // 24V
+SemaphoreHandle_t pidMutex;
 pid_t myPid = {
-    .setPoint = F16(10),
-    .kp = F16(35),
-    .ki = F16(4.3),
-    .kd = F16(75),
+    .setPoint = F16(0),
+    .kp = F16(13.5),
+    .ki = F16(1.6),
+    .kd = F16(400),
 
     .outputMin = F16(0),
     .outputMax = F16(100),
-    .effectiveRange = F16(20),
+    .effectiveRange = F16(10),
 };
 
 static void thermalCallback(TimerHandle_t timerHandle)
 {
-    vTaskDelay(pdMS_TO_TICKS(50));
     fix16_t tempC_f = 0;
     for (int i = 0; i < 6; i++) {
         const fix16_t reading = platformReadTemp(0);
@@ -105,20 +109,44 @@ static void thermalCallback(TimerHandle_t timerHandle)
     }
     tempC_f = fix16_div(tempC_f, F16(6));
     int tempC = fix16_to_int(tempC_f);
+    int targetC;
 
+    xSemaphoreTake(pidMutex, pdMS_TO_TICKS(50));
     int control = fix16_to_int(pidUpdateLoop(&myPid, tempC_f));
+    targetC = fix16_to_int(myPid.setPoint);
+    xSemaphoreGive(pidMutex);
 
     platformSetHeater(0, control);
     if (tempC > 40) {
         platformSetFan(0, 100);
     }
-    /* dbgPrintf("temp = %d action: %d\n", tempC, control); */
+    dbgPrintf("set=%d, cur=%d out:%d\n", targetC, tempC, control);
 }
 
 portTASK_FUNCTION(ThermalTask, args)
 {
     (void)args;
+    struct GcodeCommand cmd;
+    struct GcodeResponse resp;
     for (;;) {
+        xQueueReceive(ThermalTaskQueue, &cmd, portMAX_DELAY);
+        memset(&resp, 0, sizeof(resp));
+        switch (cmd.kind) {
+        case GcodeM104:
+            {
+                xSemaphoreTake(pidMutex, portMAX_DELAY);
+                myPid.setPoint = cmd.temperature.sTemp;
+                xSemaphoreGive(pidMutex);
+
+                resp.respKind = ResponseOK;
+                xQueueSend(ResponseQueue, &resp, portMAX_DELAY);
+            }
+            break;
+        default:
+            dbgPrintf("EPERM: Thermal\n");
+            panic();
+            break;
+        }
     }
 }
 
@@ -130,12 +158,22 @@ void thermalTaskInit(void)
                                      pdTRUE, NULL, thermalCallback)) == NULL) {
         panic();
     }
-    xQueueCreate(8, sizeof(struct GcodeCommand));
-    xTimerStart(thermalTimer, 0);
-    if (xTaskCreate(ThermalTask, "ThermalTask", 512, NULL,
-                               tskIDLE_PRIORITY + 1, &thermalTaskHandle) != pdTRUE)
-    {
+    ThermalTaskQueue =
+        xQueueCreate(THERMAL_TASK_QUEUE_SIZE, sizeof(struct GcodeCommand));
+    if (ThermalTaskQueue == NULL) {
         panic();
     }
 
+    pidMutex = xSemaphoreCreateMutex();
+    if (pidMutex == NULL) {
+        panic();
+    }
+    pidInit(&myPid);
+
+    xTimerStart(thermalTimer, 0);
+
+    if (xTaskCreate(ThermalTask, "ThermalTask", 512, NULL, tskIDLE_PRIORITY + 1,
+                    &thermalTaskHandle) != pdTRUE) {
+        panic();
+    }
 }

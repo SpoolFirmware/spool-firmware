@@ -1,6 +1,8 @@
 #ifndef GCODE_H_
 #define GCODE_H_
 #include <stdint.h>
+#include <stdbool.h>
+
 #include "fix16.h"
 
 enum GcodeKind {
@@ -11,6 +13,10 @@ enum GcodeKind {
     GcodeM104,
     GcodeM105,
     GcodeM109,
+};
+
+enum GcodeResponseKind {
+    ResponseOK,
 };
 
 struct GcodeXYZEF {
@@ -37,7 +43,7 @@ struct GcodeCommand {
 };
 
 struct GcodeResponse {
-    enum GcodeKind kind;
+    enum GcodeResponseKind respKind;
     union {
         struct TemperatureReport tempReport;
     };
