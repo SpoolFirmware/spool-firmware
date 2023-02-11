@@ -15,6 +15,7 @@ enum GcodeKind {
 
 struct GcodeXYZEF {
     fix16_t x, y, z, e, f;
+    bool xSet : 1, ySet : 1, zSet : 1, eSet : 1, fSet : 1;
 };
 
 struct GcodeTemp {
