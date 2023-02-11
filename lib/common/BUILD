@@ -1,25 +1,31 @@
 cc_library(
     name = "lib",
     srcs = ["error.c"],
-    hdrs = ["bitops.h", "drf.h", "error.h", "misc.h"],
-    include_prefix=".",
+    hdrs = [
+        "bitops.h",
+        "compiler.h",
+        "drf.h",
+        "error.h",
+	    "misc.h",
+        "number.h",
+    ],
+    include_prefix = ".",
+    visibility = ["//visibility:public"],
     deps = [
         "//lib/dbg:lib",
     ],
-    visibility=["//visibility:public"]
 )
 
 cc_library(
-    name = "bitops",
-    hdrs = ["bitops.h"],
-    include_prefix = ".",
-    visibility = ["//visibility:public"],
-)
-
-cc_library(
-    name = "error_std",
-    srcs = ["error_std.c"],
-    hdrs = ["error.h"],
+    name = "headers",
+    hdrs = [
+        "bitops.h",
+        "compiler.h",
+        "drf.h",
+        "error.h",
+	    "misc.h",
+        "number.h",
+    ],
     include_prefix = ".",
     visibility = ["//visibility:public"],
 )

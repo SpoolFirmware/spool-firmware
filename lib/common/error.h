@@ -63,6 +63,12 @@ void __warn_on_err(const char *file, int line, status_t err);
 
 #define UNIMPLEMENTED(x) __panic(__FILE__, __LINE__, "unimplemented " #x)
 
+#define BUG_ON(x)                                    \
+    do {                                             \
+        if (x)                                       \
+            __panic(__FILE__, __LINE__, "BUG: " #x); \
+    } while (0)
+
 #define WARN() __warn(__FILE__, __LINE__, "")
 
 #define WARN_ON(x)                          \
@@ -77,3 +83,19 @@ void __warn_on_err(const char *file, int line, status_t err);
         if (_err != StatusOk)                        \
             __warn_on_err(__FILE__, __LINE__, _err); \
     } while (0)
+
+#define PR_WARN(s, ...) \
+    dbgPrintf("WARN at %s:%s " s, __FILE__, __LINE__, __VA_ARGS__)
+
+#define __ASSERT_GE0(x) x >= 0
+
+#define ASSERT_EXPR(name, expr, assertion) \
+    ({                                     \
+        typeof(expr) name = expr;          \
+        WARN_ON(!(assertion(name)));       \
+        name;                              \
+    })
+
+#define ASSERT_GE0(x) ASSERT_EXPR(__assert_val, x, __ASSERT_GE0)
+
+#define STATIC_ASSERT(x) _Static_assert(x, #x)

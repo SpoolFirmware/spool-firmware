@@ -13,9 +13,8 @@
 
 #include "thermal/thermal.h"
 
-#include "step_schedule.h"
-#include "step_execute.h"
-#include "gcode_serial.h"
+#include "motion/motion.h"
+#include "gcode/gcode_serial.h"
 
 /* ----------- Global Task Input Queues --------------- */
 QueueHandle_t ThermalTaskQueue;

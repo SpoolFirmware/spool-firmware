@@ -79,6 +79,12 @@ uint16_t executeStep(uint16_t ticksElapsed)
                 notifyHomeYISR();
                 return 0;
             }
+            if (job.type == StepperJobHomeZ && i == ENDSTOP_Z) {
+                memset(&job, 0, sizeof(job));
+                memset(&counter, 0, sizeof(counter));
+                notifyHomeZISR();
+                return 0;
+            }
         }
     }
 
@@ -89,11 +95,11 @@ uint16_t executeStep(uint16_t ticksElapsed)
             motion_block_t *pBlock = &job.blocks[i];
             if (pBlock->stepsExecuted < pBlock->totalSteps) {
                 if (counter[i] > ticksElapsed) {
-                    counter[i] -= ticksElapsed;
+                    counter[i] = (uint16_t)(counter[i] - ticksElapsed);
                 } else {
                     counter[i] = 0;
                     pBlock->stepsExecuted += 1;
-                    stepper_mask |= BIT(i);
+                    stepper_mask |= (uint8_t)BIT(i);
                 }
             }
         }

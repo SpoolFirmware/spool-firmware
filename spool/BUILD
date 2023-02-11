@@ -6,37 +6,59 @@ constraint_setting(
 )
 
 cc_test(
-    name = "step_plan_test",
+    name = "motion_test",
     size = "small",
     srcs = [
-        "core/step_plan_test.c",
-        "core/step_plan.c",
-        "core/step_plan.h",
         "core/magic_config.h",
-    ],
-    deps = [
-        "//lib/fxp:lib",
-        "//lib/common:bitops",
-        "//lib/munit:lib"
+        "gcode/gcode_parser.c",
+        "gcode/gcode_parser.h",
+        "motion/motion_test.c",
+        "motion/step_plan_ng.c",
+        "motion/step_plan_ng.h",
     ],
     copts = [
         "-Wconversion",
         "-Warith-conversion",
+        "-Ispool",
+    ],
+    deps = [
+        "//lib/fxp:lib",
+        "//lib/munit:lib",
+        "//lib/test_compat:lib",
+    ],
+)
+
+cc_test(
+    name = "step_plan_ng_test",
+    size = "small",
+    srcs = [
+        "core/magic_config.h",
+        "motion/step_plan_ng.c",
+        "motion/step_plan_ng.h",
+        "motion/step_plan_ng_test.c",
+    ],
+    copts = [
+        "-Wconversion",
+        "-Warith-conversion",
+    ],
+    deps = [
+        "//lib/fxp:lib",
+        "//lib/munit:lib",
+        "//lib/test_compat:lib",
     ],
 )
 
 cc_binary(
     name = "parser_test",
     srcs = [
-        "core/gcode_parser_test.c",
-        "gcode/gcode.h",
         "gcode/gcode_parser.c",
         "gcode/gcode_parser.h",
+        "gcode/gcode_parser_test.c",
     ],
     copts = ["-Ispool"],
     deps = [
         "//lib/fxp:lib",
-        "//lib/common:error_std",
+        "//lib/test_compat:lib",
     ],
 )
 
@@ -50,39 +72,38 @@ cc_binary_with_platforms(
     srcs = glob([
         "thermal/*.h",
         "thermal/*.c",
-
+        "motion/*.h",
         "gcode/*.h",
-        "gcode/*.c",
-
         "core/*.h",
-    ]) + 
-    [
+    ]) + [
         "core/rtos_support.c",
         "core/spool.c",
-        "core/step_execute.c",
-        "core/step_schedule.c",
-        "core/step_plan.c",
-        "core/gcode_serial.c",
+        "motion/motion.c",
+        "motion/step_execute.c",
+        "motion/step_schedule.c",
+        "motion/step_plan_ng.c",
+        "gcode/gcode_serial.c",
+        "gcode/gcode_parser.c",
     ],
+    copts = ["-Ispool"],
     linkopts = [
         "-T $(execpath //spool/platforms:linker.ld)",
         "-lm",
     ],
-    stamp = 1,
-    copts = ["-Ispool"],
     platforms = {
         # targets are called :spool_$platform, e.g. spool_stm32f401_mini
         # "stm32f401_mini": "//spool/platforms/STM32F401_MINI:stm32f401_mini",
         "skr_pro_1_2": "//spool/platforms/SKR_PRO_1_2:skr_pro_1_2",
         "skr_mini_e3_2_0": "//spool/platforms/SKR_MINI_E3_2_0:skr_mini_e3_2_0",
     },
+    stamp = 1,
     visibility = ["//visibility:public"],
     deps = [
-        "//lib/freertos:freertos",
-        "//lib/syslib:lib",
         "//lib/dbg:lib",
+        "//lib/freertos",
         "//lib/fxp:lib",
         "//lib/hal/common:lib",
+        "//lib/syslib:lib",
         "//spool/lib/thermistor:lib",
         "//spool/platforms:linker.ld",
         "//spool/platforms:runtime",

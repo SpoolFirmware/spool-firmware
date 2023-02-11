@@ -27,16 +27,18 @@ struct TimerConfig pwmTimerCfg = {
 };
 struct TimerDriver pwmTimer0 = { 0 };
 
-#define NR_STEPPERS 2
+#define NR_STEPPERS 3
 
 #define STEPPER_A BIT(0)
 #define STEPPER_B BIT(1)
+#define STEPPER_C BIT(2)
 
-#define NR_AXES 2
+#define NR_AXES 3
 
 const static struct IOLine endstops[NR_AXES] = {
     { .group = GPIOB, .pin = 10 }, /* X */
-    { .group = GPIOE, .pin = 12 }, /* Y*/
+    { .group = GPIOE, .pin = 12 }, /* Y */
+    { .group = DRF_BASE(DRF_GPIOG), .pin = 8 }, /* Z */
 };
 
 const static struct IOLine step[NR_STEPPERS] = {
@@ -44,6 +46,8 @@ const static struct IOLine step[NR_STEPPERS] = {
     { .group = GPIOE, .pin = 9 },
     /* Y */
     { .group = GPIOE, .pin = 11 },
+    /* Z */
+    { .group = GPIOE, .pin = 13 },
 };
 
 const static struct IOLine dir[NR_STEPPERS] = {
@@ -51,6 +55,8 @@ const static struct IOLine dir[NR_STEPPERS] = {
     { .group = GPIOF, .pin = 1 },
     /* Y */
     { .group = GPIOE, .pin = 8 },
+    /* Z */
+    { .group = GPIOC, .pin = 2 },
 };
 
 const static struct IOLine en[NR_STEPPERS] = {
@@ -58,6 +64,8 @@ const static struct IOLine en[NR_STEPPERS] = {
     { .group = GPIOF, .pin = 2 },
     /* Y */
     { .group = GPIOD, .pin = 7 },
+    /* Z */
+    { .group = GPIOC, .pin = 0 },
 };
 
 void platformEnableStepper(uint8_t stepperMask)
@@ -143,7 +151,7 @@ IRQ_HANDLER_TIM2(void)
                      REG_RD32(DRF_REG(_TIM2, _SR)))) {
         REG_WR32(DRF_REG(_TIM2, _SR),
                  ~DRF_DEF(_TIM2, _SR, _UIF, _UPDATE_PENDING));
-        setStepper(STEPPER_A | STEPPER_B, 0);
+        setStepper(STEPPER_A | STEPPER_B | STEPPER_C, 0);
     }
     halIrqClear(IRQ_TIM2);
 }
@@ -194,6 +202,7 @@ void platformInit(struct PlatformConfig *config)
     ahb1enr = FLD_SET_DRF(_RCC, _AHB1ENR, _GPIODEN, _ENABLED, ahb1enr);
     ahb1enr = FLD_SET_DRF(_RCC, _AHB1ENR, _GPIOEEN, _ENABLED, ahb1enr);
     ahb1enr = FLD_SET_DRF(_RCC, _AHB1ENR, _GPIOFEN, _ENABLED, ahb1enr);
+    ahb1enr = FLD_SET_DRF(_RCC, _AHB1ENR, _GPIOGEN, _ENABLED, ahb1enr);
     REG_WR32(DRF_REG(_RCC, _AHB1ENR), ahb1enr);
 
     // Enable APB1 Peripherials

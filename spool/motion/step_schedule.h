@@ -1,29 +1,22 @@
 #pragma once
 #include "FreeRTOS.h"
-#include "platform/platform.h"
 #include "task.h"
 #include "queue.h"
-#include "magic_config.h"
+#include "core/magic_config.h"
+#include "step_plan_ng.h"
 
 struct PrinterState {
     fix16_t x;
     fix16_t y;
+    fix16_t z;
     fix16_t feedrate;
+    bool continuousMode;
 };
 
 enum MotionBlockState {
     BlockStateAccelerating = 0,
     BlockStateCruising,
     BlockStateDecelerating,
-};
-
-/* suboptimal arrangement, do we really care about the axes */
-enum JobType {
-    /* default value is to not run */
-    StepperJobUndef = 0,
-    StepperJobRun,
-    StepperJobHomeX,
-    StepperJobHomeY,
 };
 
 typedef struct MotionBlock {
@@ -51,5 +44,6 @@ void motionPlannerTaskInit(void);
 
 void notifyHomeXISR(void);
 void notifyHomeYISR(void);
+void notifyHomeZISR(void);
 
 portTASK_FUNCTION_PROTO(stepScheduleTask, pvParameters);
