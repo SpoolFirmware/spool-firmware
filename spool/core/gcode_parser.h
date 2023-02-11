@@ -13,6 +13,7 @@ enum GcodeKind {
     GcodeM84,
     GcodeM104,
     GcodeM105,
+    GcodeM109,
 };
 
 struct GcodeXYZEF {

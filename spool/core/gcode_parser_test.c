@@ -53,6 +53,8 @@ static void printGcode(struct GcodeCommand *cmd)
         printf("M104 "); printTemperature(&(cmd->temperature)); return;
     case GcodeM105:
         printf("M105\n"); return;
+    case GcodeM109:
+        printf("M109 "); printTemperature(&(cmd->temperature)); return;
     default:
         printf("Update printing function: kind=%d\n", cmd->kind);
         return;
