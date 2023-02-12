@@ -78,11 +78,15 @@ static void scheduleHome(void)
     /* HOMING CONSTANTS */
     const static fix16_t home_x[] = { -F16(MAX_X), 0, 0, 0};
     STATIC_ASSERT(ARRAY_SIZE(home_x) == NR_AXES);
+
     const static fix16_t home_y[] = { 0, -F16(MAX_Y), 0, 0};
     STATIC_ASSERT(ARRAY_SIZE(home_y) == NR_AXES);
+
     /* TODO fix z inversion */
     const static fix16_t home_z[] = { 0, 0, F16(MAX_Z), 0};
     STATIC_ASSERT(ARRAY_SIZE(home_z) == NR_AXES);
+    const static fix16_t home_z_bounce[] = { 0, 0, -F16(5), 0};
+    STATIC_ASSERT(ARRAY_SIZE(home_z_bounce) == NR_AXES);
 
     const static int32_t home_max_v[] = {
         HOMING_VEL * STEPS_PER_MM,
@@ -91,6 +95,14 @@ static void scheduleHome(void)
         0,
     };
     STATIC_ASSERT(ARRAY_SIZE(home_max_v) == NR_STEPPERS);
+
+    const static int32_t home_bounce_max_v[] = {
+        HOMING_VEL * STEPS_PER_MM,
+        HOMING_VEL * STEPS_PER_MM,
+        HOMING_VEL_Z * STEPS_PER_MM_Z / 8,
+        0,
+    };
+    STATIC_ASSERT(ARRAY_SIZE(home_bounce_max_v) == NR_STEPPERS);
     int32_t plan[NR_STEPPERS];
 
     planCoreXy(home_x, plan);
@@ -101,6 +113,12 @@ static void scheduleHome(void)
 
     planCoreXy(home_z, plan);
     __enqueuePlan(StepperJobHomeZ, plan, home_max_v, false);
+
+    planCoreXy(home_z_bounce, plan);
+    __enqueuePlan(StepperJobRun, plan, home_bounce_max_v, false);
+
+    planCoreXy(home_z, plan);
+    __enqueuePlan(StepperJobHomeZ, plan, home_bounce_max_v, false);
 
     currentState.x = 0;
     currentState.y = 0;
