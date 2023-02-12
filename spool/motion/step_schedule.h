@@ -9,6 +9,7 @@ struct PrinterState {
     fix16_t x;
     fix16_t y;
     fix16_t z;
+    fix16_t e;
     fix16_t feedrate;
     bool continuousMode;
 };

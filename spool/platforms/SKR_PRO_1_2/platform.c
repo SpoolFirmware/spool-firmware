@@ -27,18 +27,19 @@ struct TimerConfig pwmTimerCfg = {
 };
 struct TimerDriver pwmTimer0 = { 0 };
 
-#define NR_STEPPERS 3
+#define NR_STEPPERS 4
 
 #define STEPPER_A BIT(0)
 #define STEPPER_B BIT(1)
 #define STEPPER_C BIT(2)
 
-#define NR_AXES 3
+#define NR_AXES 4
 
 const static struct IOLine endstops[NR_AXES] = {
     { .group = GPIOB, .pin = 10 }, /* X */
     { .group = GPIOE, .pin = 12 }, /* Y */
     { .group = DRF_BASE(DRF_GPIOG), .pin = 8 }, /* Z */
+    { 0 },
 };
 
 const static struct IOLine step[NR_STEPPERS] = {
@@ -48,6 +49,8 @@ const static struct IOLine step[NR_STEPPERS] = {
     { .group = GPIOE, .pin = 11 },
     /* Z */
     { .group = GPIOE, .pin = 13 },
+    /* E */
+    { .group = GPIOE, .pin = 14 },
 };
 
 const static struct IOLine dir[NR_STEPPERS] = {
@@ -57,6 +60,8 @@ const static struct IOLine dir[NR_STEPPERS] = {
     { .group = GPIOE, .pin = 8 },
     /* Z */
     { .group = GPIOC, .pin = 2 },
+    /* E */
+    { .group = GPIOA, .pin = 0 },
 };
 
 const static struct IOLine en[NR_STEPPERS] = {
@@ -66,6 +71,8 @@ const static struct IOLine en[NR_STEPPERS] = {
     { .group = GPIOD, .pin = 7 },
     /* Z */
     { .group = GPIOC, .pin = 0 },
+    /* E */
+    { .group = GPIOC, .pin = 3 },
 };
 
 void platformEnableStepper(uint8_t stepperMask)
@@ -151,7 +158,7 @@ IRQ_HANDLER_TIM2(void)
                      REG_RD32(DRF_REG(_TIM2, _SR)))) {
         REG_WR32(DRF_REG(_TIM2, _SR),
                  ~DRF_DEF(_TIM2, _SR, _UIF, _UPDATE_PENDING));
-        setStepper(STEPPER_A | STEPPER_B | STEPPER_C, 0);
+        setStepper(0xFF, 0);
     }
     halIrqClear(IRQ_TIM2);
 }
@@ -245,9 +252,9 @@ void platformInit(struct PlatformConfig *config)
                                 DRF_DEF(_HAL_GPIO, _MODE, _SPEED, _VERY_HIGH) |
                                 DRF_NUM(_HAL_GPIO, _MODE, _AF, 1));
     halGpioSetMode(fan0, DRF_DEF(_HAL_GPIO, _MODE, _MODE, _OUTPUT) |
-                                DRF_DEF(_HAL_GPIO, _MODE, _TYPE, _PUSHPULL) |
-                                DRF_DEF(_HAL_GPIO, _MODE, _SPEED, _VERY_HIGH) |
-                                DRF_NUM(_HAL_GPIO, _MODE, _AF, 1));
+                             DRF_DEF(_HAL_GPIO, _MODE, _TYPE, _PUSHPULL) |
+                             DRF_DEF(_HAL_GPIO, _MODE, _SPEED, _VERY_HIGH) |
+                             DRF_NUM(_HAL_GPIO, _MODE, _AF, 1));
     halTimerConstruct(&pwmTimer0, DRF_BASE(DRF_TIM1));
     pwmTimerCfg.clkDomainFrequency = halClockApb2TimerFreqGet(&halClockConfig);
     halTimerStart(&pwmTimer0, &pwmTimerCfg);
@@ -255,13 +262,13 @@ void platformInit(struct PlatformConfig *config)
     REG_WR32(DRF_REG(_TIM1, _CCER), 0);
     REG_WR32(DRF_REG(_TIM1, _CCMR2_OUTPUT),
              DRF_DEF(_TIM1, _CCMR2_OUTPUT, _OC3M, _PWM_MODE1) |
-             DRF_DEF(_TIM1, _CCMR2_OUTPUT, _OC3PE, _ENABLED));
+                 DRF_DEF(_TIM1, _CCMR2_OUTPUT, _OC3PE, _ENABLED));
     REG_WR32(DRF_REG(_TIM1, _CCER),
              /* DRF_DEF(_TIM1, _CCER, _CC3NP, _SET) | */
              DRF_DEF(_TIM1, _CCER, _CC3NE, _SET));
     REG_WR32(DRF_REG(_TIM1, _CCR3), 0);
     REG_WR32(DRF_REG(_TIM1, _BDTR), DRF_DEF(_TIM1, _BDTR, _MOE, _ENABLED));
-    halTimerStartContinous(&pwmTimer0, 100-1);
+    halTimerStartContinous(&pwmTimer0, 100 - 1);
     /* TODO ^ END */
 
     communicationInit();

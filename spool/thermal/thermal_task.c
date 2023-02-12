@@ -8,7 +8,6 @@
 #include "timers.h"
 #include "fix16.h"
 
-
 #include "semphr.h"
 
 #include "thermal/thermal.h"
@@ -31,6 +30,9 @@ typedef struct {
     fix16_t maxOverKi;
     fix16_t iState;
     fix16_t lastInput;
+
+    fix16_t dBuffer[20];
+    uint8_t head;
 } pid_t;
 
 static void thermalCallback(TimerHandle_t timerHandle);
@@ -47,6 +49,7 @@ void pidInit(pid_t *pPid)
         pPid->maxOverKi =
             fix16_sub(fix16_div(pPid->outputMax, pPid->ki), pPid->outputMin);
     }
+    memset(&pPid->dBuffer, 0, sizeof(pPid->dBuffer));
 }
 
 void pidReset(pid_t *pPid)
@@ -70,15 +73,20 @@ fix16_t pidUpdateLoop(pid_t *pPid, fix16_t input)
         }
     }
 
-    dInput = fix16_sub(input, pPid->lastInput);
+    fix16_t oldInput = pPid->dBuffer[pPid->head];
+    pPid->dBuffer[pPid->head] = input;
+    pPid->head = (pPid->head+1) % ARRAY_LENGTH(pPid->dBuffer);
+    dInput = fix16_sub(input, oldInput);
 
     // Cap OutputSum
-    pPid->iState =
-        fix16_clamp(fix16_add(pPid->iState, error), 0, pPid->maxOverKi);
+    pPid->iState = fix16_clamp(fix16_add(pPid->iState, error), -pPid->maxOverKi,
+                               pPid->maxOverKi);
 
-    output = fix16_mul(pPid->kp, error); // P
+    const fix16_t dVal = fix16_mul(pPid->kd, dInput);
+    output = fix16_div(fix16_sub(pPid->setPoint, F16(30)), F16(7));
+    output = fix16_add(output, fix16_mul(pPid->kp, error)); // P
     output = fix16_add(output, fix16_mul(pPid->ki, pPid->iState)); // I
-    output = fix16_sub(output, fix16_mul(pPid->kd, dInput)); // D
+    output = fix16_sub(output, dVal); // D
 
     output = fix16_clamp(output, pPid->outputMin, pPid->outputMax);
 
@@ -91,13 +99,13 @@ fix16_t pidUpdateLoop(pid_t *pPid, fix16_t input)
 SemaphoreHandle_t pidMutex;
 pid_t myPid = {
     .setPoint = F16(0),
-    .kp = F16(13.5),
-    .ki = F16(1.6),
-    .kd = F16(400),
+    .kp = F16(6),
+    .ki = F16(0.02),
+    .kd = F16(10),
 
     .outputMin = F16(0),
     .outputMax = F16(100),
-    .effectiveRange = F16(10),
+    .effectiveRange = F16(20),
 };
 
 static void thermalCallback(TimerHandle_t timerHandle)
@@ -120,7 +128,12 @@ static void thermalCallback(TimerHandle_t timerHandle)
     if (tempC > 40) {
         platformSetFan(0, 100);
     }
-    dbgPrintf("set=%d, cur=%d out:%d\n", targetC, tempC, control);
+
+    static uint8_t log = 0;
+    if (log % 16 == 0) {
+        dbgPrintf("set=%d, cur=%d out:%d\n", targetC, tempC, control);
+    }
+    log++;
 }
 
 portTASK_FUNCTION(ThermalTask, args)
@@ -132,16 +145,16 @@ portTASK_FUNCTION(ThermalTask, args)
         xQueueReceive(ThermalTaskQueue, &cmd, portMAX_DELAY);
         memset(&resp, 0, sizeof(resp));
         switch (cmd.kind) {
-        case GcodeM104:
-            {
-                xSemaphoreTake(pidMutex, portMAX_DELAY);
+        case GcodeM104: {
+            xSemaphoreTake(pidMutex, portMAX_DELAY);
+            if (cmd.temperature.sTemp < F16(230)) {
                 myPid.setPoint = cmd.temperature.sTemp;
-                xSemaphoreGive(pidMutex);
-
-                resp.respKind = ResponseOK;
-                xQueueSend(ResponseQueue, &resp, portMAX_DELAY);
             }
-            break;
+            xSemaphoreGive(pidMutex);
+
+            resp.respKind = ResponseOK;
+            xQueueSend(ResponseQueue, &resp, portMAX_DELAY);
+        } break;
         default:
             dbgPrintf("EPERM: Thermal\n");
             panic();

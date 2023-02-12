@@ -109,7 +109,7 @@ uint16_t executeStep(uint16_t ticksElapsed)
     // Now we can do other things
     if (stepperJobFinished(&job)) {
         if (xQueueReceiveFromISR(StepperExecutionQueue, &job, NULL) != pdTRUE) {
-            return 0;
+            return 40;
         }
         platformSetStepperDir(job.stepDirs);
         for (uint8_t i = 0; i < NR_STEPPERS; ++i) {
