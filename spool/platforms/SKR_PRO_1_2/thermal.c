@@ -9,7 +9,7 @@ void thermalInit(void)
                    DRF_DEF(_HAL_GPIO, _MODE, _MODE, _ANALOG));
     REG_FLD_SET_DRF(_RCC, _APB2ENR, _ADC3EN, _ENABLED);
 
-    REG_FLD_SET_DRF(_ADC_COMMON, _CCR, _ADCPRE, _DIV8);
+    REG_FLD_SET_DRF(_ADC_COMMON, _CCR, _ADCPRE, _DIV6);
 
     // Configure ADC
     REG_WR32(DRF_REG(_ADC3, _CR1), DRF_DEF(_ADC3, _CR1, _EOCIE, _ENABLED));

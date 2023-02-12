@@ -257,7 +257,6 @@ void platformInit(struct PlatformConfig *config)
              DRF_DEF(_TIM1, _CCMR2_OUTPUT, _OC3M, _PWM_MODE1) |
              DRF_DEF(_TIM1, _CCMR2_OUTPUT, _OC3PE, _ENABLED));
     REG_WR32(DRF_REG(_TIM1, _CCER),
-             /* DRF_DEF(_TIM1, _CCER, _CC3NP, _SET) | */
              DRF_DEF(_TIM1, _CCER, _CC3NE, _SET));
     REG_WR32(DRF_REG(_TIM1, _CCR3), 0);
     REG_WR32(DRF_REG(_TIM1, _BDTR), DRF_DEF(_TIM1, _BDTR, _MOE, _ENABLED));
