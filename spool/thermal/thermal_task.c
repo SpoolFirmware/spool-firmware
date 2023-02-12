@@ -3,6 +3,8 @@
 #include "dbgprintf.h"
 #include "platform/platform.h"
 
+#include <stdbool.h>
+
 #include "FreeRTOS.h"
 #include "task.h"
 #include "timers.h"
@@ -31,7 +33,7 @@ typedef struct {
     fix16_t iState;
     fix16_t lastInput;
 
-    fix16_t dBuffer[20];
+    fix16_t inputHistory[20];
     uint8_t head;
 } pid_t;
 
@@ -49,12 +51,23 @@ void pidInit(pid_t *pPid)
         pPid->maxOverKi =
             fix16_sub(fix16_div(pPid->outputMax, pPid->ki), pPid->outputMin);
     }
-    memset(&pPid->dBuffer, 0, sizeof(pPid->dBuffer));
+    memset(&pPid->inputHistory, 0, sizeof(pPid->inputHistory));
 }
 
 void pidReset(pid_t *pPid)
 {
     pPid->iState = 0;
+}
+
+bool pidStable(pid_t *pPid)
+{
+    const fix16_t setPoint = pPid->setPoint;
+    for (int i = 0; i < ARRAY_LENGTH(pPid->inputHistory); i++) {
+        if (fix16_abs(fix16_sub(pPid->inputHistory[i], setPoint)) > F16(0.5)) {
+            return false;
+        }
+    }
+    return true;
 }
 
 fix16_t pidUpdateLoop(pid_t *pPid, fix16_t input)
@@ -73,9 +86,9 @@ fix16_t pidUpdateLoop(pid_t *pPid, fix16_t input)
         }
     }
 
-    fix16_t oldInput = pPid->dBuffer[pPid->head];
-    pPid->dBuffer[pPid->head] = input;
-    pPid->head = (pPid->head+1) % ARRAY_LENGTH(pPid->dBuffer);
+    fix16_t oldInput = pPid->inputHistory[pPid->head];
+    pPid->inputHistory[pPid->head] = input;
+    pPid->head = (pPid->head + 1) % ARRAY_LENGTH(pPid->inputHistory);
     dInput = fix16_sub(input, oldInput);
 
     // Cap OutputSum
@@ -127,8 +140,11 @@ static void thermalCallback(TimerHandle_t timerHandle)
     platformSetHeater(0, control);
     if (tempC > 40) {
         platformSetFan(0, 100);
+    } else {
+        platformSetFan(0, 0);
     }
 
+    // Logging
     static uint8_t log = 0;
     if (log % 16 == 0) {
         dbgPrintf("set=%d, cur=%d out:%d\n", targetC, tempC, control);
@@ -145,12 +161,24 @@ portTASK_FUNCTION(ThermalTask, args)
         xQueueReceive(ThermalTaskQueue, &cmd, portMAX_DELAY);
         memset(&resp, 0, sizeof(resp));
         switch (cmd.kind) {
-        case GcodeM104: {
+        case GcodeM104:
+        case GcodeM109: {
             xSemaphoreTake(pidMutex, portMAX_DELAY);
             if (cmd.temperature.sTemp < F16(230)) {
                 myPid.setPoint = cmd.temperature.sTemp;
             }
             xSemaphoreGive(pidMutex);
+
+            if (cmd.kind == GcodeM109) {
+                for(;;) {
+                    bool tempGood = false;
+                    xSemaphoreTake(pidMutex, portMAX_DELAY);
+                    tempGood = pidStable(&myPid);
+                    xSemaphoreGive(pidMutex);
+                    if (tempGood) break;
+                    vTaskDelay(pdMS_TO_TICKS(500));
+                }
+            }
 
             resp.respKind = ResponseOK;
             xQueueSend(ResponseQueue, &resp, portMAX_DELAY);
