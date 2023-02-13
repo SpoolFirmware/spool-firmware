@@ -301,7 +301,7 @@ __attribute__((always_inline)) inline struct IOLine platformGetStatusLED(void)
     return statusLED;
 }
 
-uint32_t platformGetStepperTimerFreq(void)
+const uint32_t platformGetStepperTimerFreq(void)
 {
     return 100000;
 }

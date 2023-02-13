@@ -9,157 +9,129 @@
 #include "step_schedule.h"
 #include "core/magic_config.h"
 
-static bool stepperJobFinished(const struct StepperJob *pJob)
-{
-    for (uint8_t i = 0; i < NR_STEPPERS; ++i) {
-        const motion_block_t *pBlock = &(pJob->blocks[i]);
-        if (pBlock->stepsExecuted < pBlock->totalSteps) {
-            return false;
-        }
-    }
-    return true;
-}
-
 static uint64_t getFreqSquared(void)
 {
     return ((uint64_t)platformGetStepperTimerFreq()) * platformGetStepperTimerFreq();
 }
 
-/*!
- * Derived from delta_v = 1/2 a t^2
- *
- * Since del_v is essentially step frequency (scaled by steps/mm),
- * this can be simplified into
- *
- * interval = freq_squared / (v0 * freq + (accel_steps_s2 * ticks_elapsed_in_stage))
- */
-static uint16_t sCalcInterval(motion_block_t *pBlock)
+static struct StepperJob job = {0};
+static uint32_t sIterationCompleted = 0;
+// Line Drawing
+static uint32_t sAccelerationTime;
+static uint32_t sDecelerationTime;
+static int32_t sDeltaError[NR_STEPPERS]; // "error"
+static uint32_t sIncrementRatio[NR_STEPPERS]; // "m". This expect slope <= 1
+static uint32_t sStepSize; // "x" step size
+
+static inline void sDiscardJob(void)
 {
-    uint64_t deltaVel = ACCEL_STEPS * (uint64_t)pBlock->ticksCurState;
-    switch (pBlock->blockState) {
-    case BlockStateDecelerating: {
-        uint64_t initialVel =
-            ((uint64_t)pBlock->cruiseVel_steps_s) * platformGetStepperTimerFreq();
-        if (deltaVel > initialVel) {
-            return 10;
-        } else {
-            return (uint16_t)(getFreqSquared() / (initialVel - deltaVel));
+    job.type = StepperJobUndef;
+}
+
+static uint16_t sCalcInterval(struct StepperJob *pJob)
+{
+    int64_t stepRate;
+
+    if (sIterationCompleted < pJob->accelerateUntil) { // Accelerating
+        stepRate = ((int64_t)sAccelerationTime * pJob->accel_steps_s2) + pJob->entry_steps_s;
+        if (stepRate > pJob->cruise_steps_s) {
+            stepRate = pJob->cruise_steps_s;
         }
+    } else if (sIterationCompleted > pJob->decelerateAfter) {  // Decelertaing
+        stepRate = (int64_t)pJob->cruise_steps_s - ((int64_t)sDecelerationTime * pJob->accel_steps_s2);
+        if (stepRate < pJob->exit_steps_s) { // Never go below exit velocity
+            stepRate = pJob->exit_steps_s;
+        }
+    } else { // Cruise
+        stepRate = pJob->cruise_steps_s;
     }
-    case BlockStateAccelerating: {
-        uint64_t initialVel =
-            (uint64_t)pBlock->entryVel_steps_s * platformGetStepperTimerFreq();
-        return (uint16_t)(getFreqSquared() / (initialVel + deltaVel));
+
+    if (stepRate < 100) { // TODO: CONFIG: MIN_STEP_RATE
+        stepRate = 100;
     }
-    case BlockStateCruising:
-        return (uint16_t)(platformGetStepperTimerFreq() / pBlock->cruiseVel_steps_s);
-    default:
-        break;
-    }
-    return 1;
+
+    return ((uint32_t)stepRate / platformGetStepperTimerFreq());
 }
 
 uint16_t executeStep(uint16_t ticksElapsed)
 {
-    static struct StepperJob job = { 0 };
     static uint16_t counter[NR_STEPPERS] = { 0 };
 
     /* Check endstops first */
-    for (uint8_t i = 0; i < NR_AXES; ++i) {
-        if (platformGetEndstop(i)) {
-            if (job.type == StepperJobHomeX && i == ENDSTOP_X) {
-                memset(&job, 0, sizeof(job));
-                memset(&counter, 0, sizeof(counter));
-                notifyHomeXISR();
-                return 0;
-            }
-            if (job.type == StepperJobHomeY && i == ENDSTOP_Y) {
-                memset(&job, 0, sizeof(job));
-                memset(&counter, 0, sizeof(counter));
-                notifyHomeYISR();
-                return 0;
-            }
-            if (job.type == StepperJobHomeZ && i == ENDSTOP_Z) {
-                memset(&job, 0, sizeof(job));
-                memset(&counter, 0, sizeof(counter));
-                notifyHomeZISR();
-                return 0;
+    if (job.type != StepperJobUndef && job.type != StepperJobRun) {
+        for (uint8_t i = 0; i < NR_AXES; ++i) {
+            if (platformGetEndstop(i)) {
+                if (job.type == StepperJobHomeX && i == ENDSTOP_X) {
+                    sDiscardJob();
+                    notifyHomeXISR();
+                    return 0;
+                }
+                if (job.type == StepperJobHomeY && i == ENDSTOP_Y) {
+                    sDiscardJob();
+                    notifyHomeYISR();
+                    return 0;
+                }
+                if (job.type == StepperJobHomeZ && i == ENDSTOP_Z) {
+                    sDiscardJob();
+                    notifyHomeZISR();
+                    return 0;
+                }
             }
         }
     }
 
+    // Executes Steps *FIRST*
     if (job.type != StepperJobUndef) {
-        // Executes Steps *FIRST*
-        uint8_t stepper_mask = 0;
+        uint8_t stepperMask = 0;
         for (uint8_t i = 0; i < NR_STEPPERS; i++) {
-            motion_block_t *pBlock = &job.blocks[i];
-            if (pBlock->stepsExecuted < pBlock->totalSteps) {
-                if (counter[i] > ticksElapsed) {
-                    counter[i] = (uint16_t)(counter[i] - ticksElapsed);
-                } else {
-                    counter[i] = 0;
-                    pBlock->stepsExecuted += 1;
-                    stepper_mask |= (uint8_t)BIT(i);
-                }
+            sDeltaError[i] += sIncrementRatio[i];
+            if (sDeltaError[i] >= 0) {
+                sDeltaError[i] -= sStepSize;
+                stepperMask |= BIT(i);
             }
         }
-        platformStepStepper(stepper_mask);
+        platformStepStepper(stepperMask);
+
+        sIterationCompleted += 1;
+        if (sIterationCompleted >= job.totalStepEvents) {
+            sDiscardJob();
+        }
     }
 
     // Now we can do other things
-    if (stepperJobFinished(&job)) {
+    if (job.type == StepperJobUndef) {
         if (xQueueReceiveFromISR(StepperExecutionQueue, &job, NULL) != pdTRUE) {
-            return 40;
+            return platformGetStepperTimerFreq() / 1000; // 1ms
         }
+        // Acquired new block
         platformSetStepperDir(job.stepDirs);
-        for (uint8_t i = 0; i < NR_STEPPERS; ++i) {
-            counter[i] = 0;
-            job.blocks[i].blockState = BlockStateAccelerating;
-            job.blocks[i].stepsExecuted = 0;
-            job.blocks[i].ticksCurState = 1;
-        }
-    }
 
-    uint16_t sleepTime = 40;
-    for (uint8_t i = 0; i < NR_STEPPERS; ++i) {
-        motion_block_t *pBlock = &job.blocks[i];
-        if (pBlock->stepsExecuted < pBlock->totalSteps) {
-            if (counter[i] == 0) {
-                // Move the block state if required
-                switch (pBlock->blockState) {
-                case BlockStateAccelerating:
-                    if (pBlock->stepsExecuted >= pBlock->accelerationSteps) {
-                        if (pBlock->cruiseSteps != 0) {
-                            pBlock->blockState = BlockStateCruising;
-                        } else {
-                            pBlock->blockState = BlockStateDecelerating;
-                            pBlock->ticksCurState = 1;
-                        }
-                    }
-                    break;
-                case BlockStateCruising:
-                    if (pBlock->stepsExecuted >=
-                        pBlock->accelerationSteps + pBlock->cruiseSteps) {
-                        pBlock->blockState = BlockStateDecelerating;
-                        pBlock->ticksCurState = 1;
-                    }
-                    break;
-                default:
-                    break;
+        // TODO: remove once supported in planner?
+        if (job.totalStepEvents == 0)  {
+            uint8_t maxStepAxisIndex = 0;
+            for (int i = 0; i < NR_STEPPERS; i++) {
+                if (job.blocks[i].totalSteps >= job.totalStepEvents) {
+                    maxStepAxisIndex = i;
+                    job.totalStepEvents = job.blocks[i].totalSteps;
                 }
+            }
+            job.totalStepEvents = job.blocks[maxStepAxisIndex].totalSteps;
+            job.accelerateUntil = job.blocks[maxStepAxisIndex].accelerationSteps;
+            job.decelerateAfter = job.accelerateUntil + job.blocks[maxStepAxisIndex].cruiseSteps;
+            job.entry_steps_s = job.blocks[maxStepAxisIndex].entryVel_steps_s;
+            job.cruise_steps_s = job.blocks[maxStepAxisIndex].cruiseVel_steps_s;
+            job.exit_steps_s = job.blocks[maxStepAxisIndex].exitVel_steps_s;
+            job.accel_steps_s2 = ACCEL_STEPS; // TODO: FIX THIS IS WRONG 
+        }
 
-                // Calculate the next step interval
-                counter[i] = sCalcInterval(pBlock);
-                if (counter[i] > 40)
-                    counter[i] = 40;
-            }
-            // Update next wakeup time
-            pBlock->ticksCurState += ticksElapsed;
-            if (counter[i] < sleepTime) {
-                sleepTime = counter[i];
-            }
+        sIterationCompleted = 0;
+        sAccelerationTime = sDecelerationTime = 0;
+        sStepSize = job.totalStepEvents * 2;
+        for (int i = 0; i < NR_STEPPERS; i++) {
+            sDeltaError[i] = -((int32_t) job.totalStepEvents);
+            sIncrementRatio[i] = job.blocks[i].totalSteps * 2;
         }
     }
 
-    return sleepTime;
+    return sCalcInterval(&job);
 }
