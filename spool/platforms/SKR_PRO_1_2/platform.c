@@ -125,6 +125,7 @@ IRQ_HANDLER_TIM3(void)
 VectorB4_begin:
         REG_WR32(DRF_REG(_TIM3, _SR),
                  ~DRF_DEF(_TIM3, _SR, _UIF, _UPDATE_PENDING));
+        REG_WR32(DRF_REG(_TIM3, _ARR), 65535);
         /* execute current job */
         uint32_t requestedTicks = executeStep((lastCntrReload + 1) / 2);
         uint32_t cntrReload = 2 * requestedTicks;

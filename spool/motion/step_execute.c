@@ -9,11 +9,6 @@
 #include "step_schedule.h"
 #include "core/magic_config.h"
 
-static uint64_t getFreqSquared(void)
-{
-    return ((uint64_t)platformGetStepperTimerFreq()) * platformGetStepperTimerFreq();
-}
-
 static struct StepperJob job = {0};
 static uint32_t sIterationCompleted = 0;
 // Line Drawing
@@ -33,12 +28,12 @@ static uint16_t sCalcInterval(struct StepperJob *pJob)
     int64_t stepRate;
 
     if (sIterationCompleted < pJob->accelerateUntil) { // Accelerating
-        stepRate = ((int64_t)sAccelerationTime * pJob->accel_steps_s2) + pJob->entry_steps_s;
+        stepRate = (((int64_t)sAccelerationTime * pJob->accel_steps_s2) / platformGetStepperTimerFreq())+ pJob->entry_steps_s;
         if (stepRate > pJob->cruise_steps_s) {
             stepRate = pJob->cruise_steps_s;
         }
     } else if (sIterationCompleted > pJob->decelerateAfter) {  // Decelertaing
-        stepRate = (int64_t)pJob->cruise_steps_s - ((int64_t)sDecelerationTime * pJob->accel_steps_s2);
+        stepRate = (int64_t)pJob->cruise_steps_s - (((int64_t)sDecelerationTime * pJob->accel_steps_s2) /platformGetStepperTimerFreq());
         if (stepRate < pJob->exit_steps_s) { // Never go below exit velocity
             stepRate = pJob->exit_steps_s;
         }
@@ -46,17 +41,23 @@ static uint16_t sCalcInterval(struct StepperJob *pJob)
         stepRate = pJob->cruise_steps_s;
     }
 
-    if (stepRate < 100) { // TODO: CONFIG: MIN_STEP_RATE
-        stepRate = 100;
+    if (stepRate < STEPS_PER_MM) { // TODO: CONFIG: MIN_STEP_RATE
+        stepRate = STEPS_PER_MM;
     }
 
-    return ((uint32_t)stepRate / platformGetStepperTimerFreq());
+    uint32_t interval = (platformGetStepperTimerFreq() / stepRate);
+
+    if (sIterationCompleted < pJob->accelerateUntil) {
+        sAccelerationTime += interval;
+    } else if (sIterationCompleted > pJob->decelerateAfter) {
+        sDecelerationTime += interval;
+    }
+
+    return interval;
 }
 
 uint16_t executeStep(uint16_t ticksElapsed)
 {
-    static uint16_t counter[NR_STEPPERS] = { 0 };
-
     /* Check endstops first */
     if (job.type != StepperJobUndef && job.type != StepperJobRun) {
         for (uint8_t i = 0; i < NR_AXES; ++i) {
@@ -122,6 +123,8 @@ uint16_t executeStep(uint16_t ticksElapsed)
             job.cruise_steps_s = job.blocks[maxStepAxisIndex].cruiseVel_steps_s;
             job.exit_steps_s = job.blocks[maxStepAxisIndex].exitVel_steps_s;
             job.accel_steps_s2 = ACCEL_STEPS; // TODO: FIX THIS IS WRONG 
+        } else {
+            panic();
         }
 
         sIterationCompleted = 0;

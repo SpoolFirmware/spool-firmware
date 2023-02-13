@@ -99,7 +99,7 @@ static void scheduleHome(void)
     const static int32_t home_bounce_max_v[] = {
         HOMING_VEL * STEPS_PER_MM,
         HOMING_VEL * STEPS_PER_MM,
-        HOMING_VEL_Z * STEPS_PER_MM_Z / 8,
+        HOMING_VEL_Z * STEPS_PER_MM_Z / 4,
         0,
     };
     STATIC_ASSERT(ARRAY_SIZE(home_bounce_max_v) == NR_STEPPERS);
