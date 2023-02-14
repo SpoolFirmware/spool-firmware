@@ -123,6 +123,8 @@ uint16_t executeStep(uint16_t ticksElapsed)
         platformSetStepperDir(job.stepDirs);
 
         sIterationCompleted = 0;
+        for_each_stepper(i)
+            sStepsExecuted[i] = 0;
         sAccelerationTime = sDecelerationTime = 0;
         sStepSize = job.totalStepEvents * 2;
         for (int i = 0; i < NR_STEPPERS; i++) {
