@@ -1,5 +1,6 @@
 #include "misc.h"
-#include "dbgprintf.h"
+#include "string.h"
+#include "stdio.h"
 
 #include "core/spool.h"
 
@@ -7,7 +8,7 @@
 #include "gcode/gcode_serial.h"
 #include "gcode/gcode_parser.h"
 
-const static char OK[5] = "OK\r\n";
+const static char OK[5] = "ok\r\n";
 
 static TaskHandle_t gcodeSerialTaskHandle;
 
@@ -44,11 +45,17 @@ status_t receiveChar(char *c)
 
 static void waitAndRespond(void)
 {
+    char printBuffer[64];
     struct GcodeResponse resp;
     xQueueReceive(ResponseQueue, &resp, portMAX_DELAY);
     switch (resp.respKind) {
     case ResponseOK:
         platformSendResponse(OK, sizeof(OK) - 1);
+        break;
+    case ResponseTemp:
+        snprintf(printBuffer, 64, "ok T:%d\r\n", 
+            resp.tempReport.extruders[0]);
+        platformSendResponse(printBuffer, strlen(printBuffer));
         break;
     }
 }
@@ -67,6 +74,10 @@ portTASK_FUNCTION(gcodeSerialTask, pvParameters)
             case GcodeG0:
             case GcodeG1:
             case GcodeG28:
+            case GcodeG90:
+            case GcodeG91:
+            case GcodeM82:
+            case GcodeM83:
                 xQueueSend(MotionPlannerTaskQueue, &cmd, portMAX_DELAY);
                 platformSendResponse(OK, sizeof(OK) - 1);
                 break;
@@ -76,12 +87,17 @@ portTASK_FUNCTION(gcodeSerialTask, pvParameters)
                 break;
             case GcodeM104:
             case GcodeM105:
+            case GcodeM107:
+            case GcodeM108:
             case GcodeM109:
                 xQueueSend(ThermalTaskQueue, &cmd, portMAX_DELAY);
                 waitAndRespond();
                 break;
+            case GcodeM_IDGAF:
+                platformSendResponse(OK, sizeof(OK) - 1);
+                break;
             default:
-                WARN();
+                panic();
                 platformSendResponse(OK, sizeof(OK) - 1);
                 break;
             }

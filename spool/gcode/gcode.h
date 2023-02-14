@@ -9,14 +9,22 @@ enum GcodeKind {
     GcodeG0,
     GcodeG1,
     GcodeG28,
-    GcodeM84,
-    GcodeM104,
-    GcodeM105,
-    GcodeM109,
+    GcodeG90,   // Set Abs Mode
+    GcodeG91,   // Set Rel Mode
+    GcodeM82,   // Extruder Absolute
+    GcodeM83,   // Extruder Relative
+    GcodeM84,   // Disable Stepper
+    GcodeM104,  // Set Extruder Temperature
+    GcodeM105,  // Get Temp
+    GcodeM107,  // Fan OFF
+    GcodeM108,  // Cancel Heating
+    GcodeM109,  // Set E Temp and Wait
+    GcodeM_IDGAF,  // IDGAF
 };
 
 enum GcodeResponseKind {
     ResponseOK,
+    ResponseTemp,
 };
 
 struct GcodeXYZEF {

@@ -31,7 +31,6 @@ typedef struct {
     // Internal State
     fix16_t maxOverKi;
     fix16_t iState;
-    fix16_t lastInput;
 
     fix16_t inputHistory[20];
     uint8_t head;
@@ -76,20 +75,19 @@ fix16_t pidUpdateLoop(pid_t *pPid, fix16_t input)
     fix16_t dInput;
     fix16_t output;
 
+    fix16_t oldInput = pPid->inputHistory[pPid->head];
+    pPid->inputHistory[pPid->head] = input;
+    pPid->head = (pPid->head + 1) % ARRAY_LENGTH(pPid->inputHistory);
+    dInput = fix16_sub(input, oldInput);
+
     if (fix16_abs(error) > pPid->effectiveRange) {
         pidReset(pPid);
-        pPid->lastInput = input;
         if (error > F16(0)) {
             return pPid->outputMax;
         } else {
             return pPid->outputMin;
         }
     }
-
-    fix16_t oldInput = pPid->inputHistory[pPid->head];
-    pPid->inputHistory[pPid->head] = input;
-    pPid->head = (pPid->head + 1) % ARRAY_LENGTH(pPid->inputHistory);
-    dInput = fix16_sub(input, oldInput);
 
     // Cap OutputSum
     pPid->iState = fix16_clamp(fix16_add(pPid->iState, error), -pPid->maxOverKi,
@@ -103,8 +101,6 @@ fix16_t pidUpdateLoop(pid_t *pPid, fix16_t input)
 
     output = fix16_clamp(output, pPid->outputMin, pPid->outputMax);
 
-    // Kd? lol not happening rn
-    pPid->lastInput = input;
     return output;
 }
 
@@ -139,9 +135,9 @@ static void thermalCallback(TimerHandle_t timerHandle)
 
     platformSetHeater(0, control);
     if (tempC > 40) {
-        platformSetFan(0, 100);
+        platformSetFan(-1, 100);
     } else {
-        platformSetFan(0, 0);
+        platformSetFan(-1, 0);
     }
 
     // Logging
@@ -152,6 +148,15 @@ static void thermalCallback(TimerHandle_t timerHandle)
     log++;
 }
 
+static void sSetHotendTemperature(fix16_t newTemp) 
+{
+    xSemaphoreTake(pidMutex, portMAX_DELAY);
+    if (newTemp < F16(230)) {
+        myPid.setPoint = newTemp;
+    }
+    xSemaphoreGive(pidMutex);
+}
+
 portTASK_FUNCTION(ThermalTask, args)
 {
     (void)args;
@@ -160,15 +165,15 @@ portTASK_FUNCTION(ThermalTask, args)
     for (;;) {
         xQueueReceive(ThermalTaskQueue, &cmd, portMAX_DELAY);
         memset(&resp, 0, sizeof(resp));
-        switch (cmd.kind) {
-        case GcodeM104:
-        case GcodeM109: {
-            xSemaphoreTake(pidMutex, portMAX_DELAY);
-            if (cmd.temperature.sTemp < F16(230)) {
-                myPid.setPoint = cmd.temperature.sTemp;
-            }
-            xSemaphoreGive(pidMutex);
 
+        switch (cmd.kind) {
+        case GcodeM108:
+            sSetHotendTemperature(F16(0));
+            resp.respKind = ResponseOK;
+        case GcodeM104:
+        case GcodeM109: // Set Temp / Set Temp and Wait
+        {
+            sSetHotendTemperature(cmd.temperature.sTemp);
             if (cmd.kind == GcodeM109) {
                 for(;;) {
                     bool tempGood = false;
@@ -181,13 +186,22 @@ portTASK_FUNCTION(ThermalTask, args)
             }
 
             resp.respKind = ResponseOK;
-            xQueueSend(ResponseQueue, &resp, portMAX_DELAY);
         } break;
+        case GcodeM105: // Get Temp
+            fix16_t e0TempF16 = -1;
+            xSemaphoreTake(pidMutex, portMAX_DELAY);
+            e0TempF16 = myPid.inputHistory[myPid.head];
+            xSemaphoreGive(pidMutex);
+            resp.respKind = ResponseTemp;
+            resp.tempReport.extruders[0] = fix16_to_int(e0TempF16);
+            break;
         default:
             dbgPrintf("EPERM: Thermal\n");
             panic();
             break;
         }
+
+        xQueueSend(ResponseQueue, &resp, portMAX_DELAY);
     }
 }
 

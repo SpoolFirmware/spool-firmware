@@ -288,8 +288,16 @@ void platformSetHeater(uint8_t idx, uint8_t pwm)
     REG_WR32(DRF_REG(_TIM1, _CCR3), pwm);
 }
 
-void platformSetFan(uint8_t idx, uint8_t pwm)
+void platformSetFan(int8_t idx, uint8_t pwm)
 {
+    struct IOLine fan = {};
+    switch (idx) {
+        case -1:
+            fan = fan0;
+            break;
+        default:
+            return;
+    }
     if (pwm) {
         halGpioSet(fan0);
     } else {

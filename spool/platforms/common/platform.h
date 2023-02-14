@@ -27,9 +27,13 @@ const uint32_t platformGetStepperTimerFreq(void);
 
 // Sensors
 bool platformGetEndstop(uint8_t axis);
-fix16_t platformReadTemp(uint8_t idx);
+// -1 is BED
+fix16_t platformReadTemp(int8_t idx);
+
 void platformSetHeater(uint8_t idx, uint8_t pwm);
-void platformSetFan(uint8_t idx, uint8_t pwm);
+
+// -1 is Hotend Fan
+void platformSetFan(int8_t idx, uint8_t pwm);
 
 // Communication
 size_t platformRecvCommand(char *pBuffer, size_t bufferSize, TickType_t ticksToWait);

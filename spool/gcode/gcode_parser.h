@@ -8,11 +8,12 @@
 #define MAX_NUM_LEN 13
 
 enum TokenKind {
-    TokenUndef,
+    TokenUndef = 0,
     TokenE,
     TokenF,
     TokenG,
     TokenM,
+    TokenN,
     TokenR,
     TokenS,
     TokenX,

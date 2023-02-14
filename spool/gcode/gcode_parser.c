@@ -1,5 +1,6 @@
 #include <stdint.h>
 #include "string.h"
+#include "dbgprintf.h"
 #include "gcode_parser.h"
 
 static status_t peekCurrChar(struct Tokenizer *s, char *out)
@@ -77,7 +78,7 @@ static char lowerCase(char c)
 
 static char isComment(char c)
 {
-    return c == ';';
+    return c == ';' || c == '*';
 }
 
 /*
@@ -183,6 +184,9 @@ static status_t letter(struct Tokenizer *s, struct Token *t,
     case 'm':
         t->kind = TokenM;
         break;
+    case 'n':
+        t->kind = TokenN;
+        break;
     case 'r':
         t->kind = TokenR;
         break;
@@ -199,6 +203,7 @@ static status_t letter(struct Tokenizer *s, struct Token *t,
         t->kind = TokenZ;
         break;
     default:
+        dbgPrintf("Unknown token %c\n", lowerCase(c));
         return StatusInvalidGcodeToken;
     }
     ASSERT_OR_RETURN(eatCurrChar(s));
@@ -245,6 +250,7 @@ static status_t tokenize(struct Tokenizer *s, struct Token *t,
         next->f = newline;
         return StatusAgain;
     }
+    dbgPrintf("tokenize: %c\n", lowerCase(c));
     return StatusInvalidGcodeToken;
 }
 
@@ -425,8 +431,8 @@ static status_t parseCmdG(struct GcodeParser *s, struct GcodeCommand *cmd,
     if (!fix16_is_uint(t.fix16)) {
         return StatusInvalidGcodeCommand;
     }
-
-    switch ((unsigned int)fix16_to_int(t.fix16)) {
+    const int number = fix16_to_int(t.fix16);
+    switch (number) {
     case 0:
         cmd->kind = GcodeG0;
         next->f = parseXYZEF;
@@ -438,7 +444,12 @@ static status_t parseCmdG(struct GcodeParser *s, struct GcodeCommand *cmd,
     case 28:
         cmd->kind = GcodeG28;
         return StatusOk;
+    case 90:
+        cmd->kind = GcodeG90; return StatusOk;
+    case 91:
+        cmd->kind = GcodeG91; return StatusOk;
     default:
+        dbgPrintf("UNIMPL G%d\n", number);
         break;
     }
     return StatusUnimplementedGcodeCommand;
@@ -454,8 +465,14 @@ static status_t parseCmdM(struct GcodeParser *s, struct GcodeCommand *cmd,
     if (!fix16_is_uint(t.fix16)) {
         return StatusInvalidGcodeCommand;
     }
-
-    switch ((unsigned int)fix16_to_int(t.fix16)) {
+    const int number = fix16_to_int(t.fix16);
+    switch (number) {
+    case 82:
+        cmd->kind = GcodeM82;
+        return StatusOk;
+    case 83:
+        cmd->kind = GcodeM83;
+        return StatusOk;
     case 84:
         cmd->kind = GcodeM84;
         return StatusOk;
@@ -466,11 +483,27 @@ static status_t parseCmdM(struct GcodeParser *s, struct GcodeCommand *cmd,
     case 105:
         cmd->kind = GcodeM105;
         return StatusOk;
+    case 107:
+        cmd->kind = GcodeM107;
+        return StatusOk;
+    case 108:
+        cmd->kind = GcodeM108;
+        return StatusOk;
     case 109:
         cmd->kind = GcodeM109;
         next->f = parseTemperature;
         return StatusAgain;
+    case 110:
+    case 111:
+    case 115:
+        do {
+            ASSERT_OR_RETURN(peekToken(s, &t));
+            eatToken(s);
+        } while(t.kind != TokenNewline);
+        cmd->kind = GcodeM_IDGAF;
+        return StatusOk;
     default:
+        dbgPrintf("UNIMPL M%d\n", number);
         break;
     }
     return StatusUnimplementedGcodeCommand;
@@ -483,6 +516,11 @@ static status_t _parseGcode(struct GcodeParser *s, struct GcodeCommand *cmd,
     ASSERT_OR_RETURN(peekToken(s, &t));
 
     switch (t.kind) {
+    case TokenN:
+        ASSERT_OR_RETURN(eatToken(s));
+        ASSERT_OR_RETURN(assertAndEatToken(s, TokenFix16, &t));
+        next->f = _parseGcode;
+        return StatusAgain;
     case TokenG:
         ASSERT_OR_RETURN(eatToken(s));
         next->f = parseCmdG;
@@ -496,6 +534,7 @@ static status_t _parseGcode(struct GcodeParser *s, struct GcodeCommand *cmd,
         next->f = _parseGcode;
         return StatusAgain;
     default:
+        dbgPrintf("token wut? %d\n", t.kind);
         return StatusUnimplementedGcodeCommand;
     }
 }

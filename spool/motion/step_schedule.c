@@ -131,6 +131,11 @@ static void scheduleHome(void)
 uint32_t getRequiredSpace(enum GcodeKind kind)
 {
     switch (kind) {
+    case GcodeG90:
+    case GcodeG91:
+    case GcodeM82:
+    case GcodeM83:
+        return 0;
     case GcodeG0:
     case GcodeG1:
     case GcodeM84:
@@ -152,6 +157,9 @@ static void enqueueAvailableGcode()
     static struct GcodeCommand cmd;
     static struct PrinterState nextState = { 0 };
 
+    static bool inRelativeMode = false;
+    static bool eRelativeMode = false;
+
     while (plannerAvailableSpace() > 0) {
         continuousMode = uxQueueSpacesAvailable(MotionPlannerTaskQueue) <
                          CONTINUOUS_THRESHOLD;
@@ -169,10 +177,10 @@ static void enqueueAvailableGcode()
         switch (cmd.kind) {
         case GcodeG0:
         case GcodeG1:
-            nextState.x = cmd.xyzef.xSet ? cmd.xyzef.x : currentState.x;
-            nextState.y = cmd.xyzef.ySet ? cmd.xyzef.y : currentState.y;
-            nextState.z = cmd.xyzef.zSet ? cmd.xyzef.z : currentState.z;
-            nextState.e = cmd.xyzef.eSet ? cmd.xyzef.e : currentState.e;
+            nextState.x = cmd.xyzef.xSet ? ((inRelativeMode ? currentState.x : 0) + cmd.xyzef.x) : currentState.x;
+            nextState.y = cmd.xyzef.ySet ? ((inRelativeMode ? currentState.y : 0) + cmd.xyzef.y) : currentState.y;
+            nextState.z = cmd.xyzef.zSet ? ((inRelativeMode ? currentState.z : 0) + cmd.xyzef.z) : currentState.z;
+            nextState.e = cmd.xyzef.eSet ? ((eRelativeMode ? currentState.e : 0) + cmd.xyzef.e) : currentState.e;
 
             WARN_ON(cmd.xyzef.f < 0);
             nextState.feedrate = (cmd.xyzef.fSet && cmd.xyzef.f != 0) ? fix16_abs(cmd.xyzef.f) :
@@ -184,6 +192,18 @@ static void enqueueAvailableGcode()
             /* TODO, make this a stepper job */
             platformEnableStepper(0xFF);
             scheduleHome();
+            break;
+        case GcodeG90:
+            inRelativeMode = false;
+            break;
+        case GcodeG91:
+            inRelativeMode = true;
+            break;
+        case GcodeM82:
+            eRelativeMode = false;
+            break;
+        case GcodeM83:
+            eRelativeMode = true;
             break;
         default:
             panic();
