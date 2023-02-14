@@ -5,6 +5,7 @@
 #include "error.h"
 #include "number.h"
 #include "dbgprintf.h"
+#include "bitops.h"
 
 struct StepperPlanBuf {
     uint32_t size;
@@ -35,7 +36,25 @@ uint32_t plannerAvailableSpace(void)
     return MOTION_LOOKAHEAD - plannerSize();
 }
 
-void planCoreXy(const fix16_t movement[NR_AXES], int32_t plan[NR_STEPPERS])
+static fix16_t vecUnit(const fix16_t a[NR_AXES], fix16_t out[NR_AXES])
+{
+    float accum = 0;
+    float af[NR_AXES];
+    for_each_axis(i) {
+        float x = fix16_to_float(a[i]);
+        accum += x * x;
+        af[i] = x;
+    }
+    float len = sqrtf(accum);
+    accum = 1.0f / len;
+    for_each_axis(i) {
+        out[i] = fix16_from_float(af[i] * accum);
+    }
+    return fix16_from_float(len);
+}
+
+void planCoreXy(const fix16_t movement[NR_AXES], int32_t plan[NR_STEPPERS],
+                fix16_t unit_vec[NR_AXES], fix16_t *len)
 {
     _Static_assert(NR_AXES >= X_AND_Y,
                    "number of axes insufficient for corexy");
@@ -51,6 +70,8 @@ void planCoreXy(const fix16_t movement[NR_AXES], int32_t plan[NR_STEPPERS])
         fix16_mul_int32(aX, STEPPER_STEPS_PER_MM[STEPPER_A_IDX]);
     plan[STEPPER_B_IDX] =
         fix16_mul_int32(bX, STEPPER_STEPS_PER_MM[STEPPER_B_IDX]);
+
+    *len = vecUnit(movement, unit_vec);
 }
 
 void __dequeuePlan(struct PlannerJob *out)
@@ -63,124 +84,132 @@ void __dequeuePlan(struct PlannerJob *out)
 
 static void calcReverse(struct PlannerJob *);
 
-static void populateBlock(const struct PlannerJob *prev, struct PlannerJob *new,
-                          bool continuous)
+static fix16_t vecDot(const fix16_t a[NR_AXES], const fix16_t b[NR_AXES])
 {
-    float time_est = 0;
+    fix16_t res = 0;
+    for_each_axis(i) {
+        res += fix16_mul(a[i], b[i]);
+    }
+    return res;
+}
+
+// static void vecSub(const fix16_t a[NR_AXES], const fix16_t b[NR_AXES],
+//                       fix16_t out[NR_AXES])
+// {
+//     for_each_axis(i) {
+//         out[i] = a[i] - b[i];
+//     }
+// }
+
+static void populateBlock(const struct PlannerJob *prev, struct PlannerJob *new,
+                          const int32_t plan[NR_STEPPERS],
+                          const int32_t max_v[NR_STEPPERS],
+                          const int32_t acc[NR_STEPPERS], bool stop)
+{
+    float timeEst = 0;
+    uint32_t maxStepper = 0;
+    for_each_stepper(i) {
+        if (plan[i] > 0)
+            new->stepDirs |= BIT(i);
+        new->steppers[i].x = abs(plan[i]);
+    }
     for_each_stepper(i) {
         struct PlannerBlock *s = &new->steppers[i];
-        s->a = fix16_copy_sign(STEPPER_ACC[i], s->x);
-        if (s->v != 0) {
-            time_est = max((float)s->x / (float)s->v, time_est);
+        if (max_v[i] != 0) {
+            timeEst = max((float)s->x / (float)max_v[i], timeEst);
+        }
+        if (s->x > new->x) {
+            new->x = s->x;
+            maxStepper = i;
         }
     }
-    if (time_est == 0) {
+
+    /* TODO correct for acceleration */
+    new->a = acc[maxStepper];
+    if (timeEst == 0) {
         /* empty block */
-        for_each_stepper(i) {
-            struct PlannerBlock *s = &new->steppers[i];
-            s->accelerationX = 0;
-            s->decelerationX = 0;
-            s->viSq = 0;
-            s->vSq = 0;
-            s->vfSq = 0;
-        }
         return;
     }
 
-    for_each_stepper(i) {
-        struct PlannerBlock *s = &new->steppers[i];
+    uint32_t v = (uint32_t)((float)new->steppers[maxStepper].x / timeEst);
+    new->vSq = v *v;
 
-        int32_t v = (int32_t)((float)s->x / time_est);
-        s->vSq = (uint32_t)(v * v);
-
-        if (s->x == 0) {
-            /* doesn't move */
-            s->viSq = 0;
-            continue;
-        }
-        if (int32_same_sign(s->x, prev->steppers[i].x)) {
-            /* prev block slows down or maintain speed */
-            s->viSq = min(prev->steppers[i].vfSq, s->vSq);
-        } else /* prev block needs to halt */
-            s->viSq = 0;
-
-        if (!continuous)
-            continue;
-
-        int32_t accelerationX = ((int32_t)(s->vSq - s->viSq)) / (2 * s->a);
-        if (int32_less_abs(s->x, accelerationX)) {
-            s->accelerationX = s->x;
-            s->vSq = (uint32_t)ASSERT_GE0(s->x * 2 * s->a + (int32_t)s->viSq);
-            s->vfSq = s->vSq;
-        } else {
-            s->accelerationX = accelerationX;
-            s->vfSq = s->vSq;
-        }
+    fix16_t cosTheta = vecDot(prev->unit_vec, new->unit_vec);
+    if (cosTheta >= JUNCTION_INHERIT_VEL_THRES) {
+        /* essentially the same direction */
+        /* TODO handle junction velocity like marlin */
+        uint32_t viSq = min(prev->vfSq, new->vSq);
+        new->viSq = viSq;
+    } else if (new->len <= JUNCTION_SMOOTHING_DIST_THRES &&
+               cosTheta >= JUNCTION_SMOOTHING_THRES) {
+        /* is this where we do rounded corners? */
+        /* for now, we pretend cos is linear */
+        uint32_t viSq = min(prev->vfSq * cosTheta, new->vSq);
+        new->a = new->a *cosTheta;
+        new->viSq = viSq;
+    } else {
+        /* is a minimum speed helpful here? why? */
+        new->viSq = 0;
     }
 
-    /* compute reverse with vf=0 to stop at the end */
-    if (!continuous)
+    if (stop) {
         calcReverse(new);
+        return;
+    }
+
+    int32_t accelerationX = ((int32_t)(new->vSq - new->viSq)) / (2 * new->a);
+    if (int32_less_abs(new->x, accelerationX)) {
+        new->vSq =
+            (uint32_t)ASSERT_GE0(new->x * 2 * new->a + (int32_t) new->viSq);
+        new->vfSq = new->vSq;
+    } else {
+        new->accelerationX = accelerationX;
+        new->vfSq = new->vSq;
+    }
 }
 
 static void calcReverse(struct PlannerJob *curr)
 {
-    for_each_stepper(i) {
-        struct PlannerBlock *s = &curr->steppers[i];
+    int32_t accelerationX =
+        ((int32_t)(curr->vSq - curr->viSq)) / (2 * (int32_t)curr->a);
+    int32_t decelerationX =
+        ((int32_t)(curr->vfSq - curr->vSq)) / (2 * -(int32_t)curr->a);
+    int32_t sum = accelerationX + decelerationX;
 
-        int32_t accelerationX = ((int32_t)(s->vSq - s->viSq)) / (2 * s->a);
-        int32_t decelerationX = ((int32_t)(s->vfSq - s->vSq)) / (2 * -s->a);
-        int32_t sum = accelerationX + decelerationX;
-
-        if (int32_less_abs(s->x, sum)) {
-            int32_t direct = accelerationX - decelerationX;
-            if (int32_less_abs(s->x, direct)) {
-                /* cannot decelerate to desired speed */
-                s->accelerationX = 0;
-                s->decelerationX = s->x;
-                s->viSq = (uint32_t)max(
-                    0, ASSERT_GE0(s->x * 2 * s->a + (int32_t)s->vfSq));
-                s->vSq = s->viSq;
-                s->v = (int32_t)sqrtf((float)s->viSq);
-            } else {
-                s->accelerationX = (direct + s->x) / 2;
-                s->decelerationX = s->x - s->accelerationX;
-                s->vSq =
-                    (uint32_t)max(0, ASSERT_GE0(s->accelerationX * 2 * s->a +
-                                                (int32_t)s->viSq));
-                /* here, due to integer math, vfSq may dip slightly below 0*/
-                s->vfSq = (uint32_t)max(0, s->decelerationX * -2 * s->a +
-                                               (int32_t)s->vSq);
-            }
+    if (int32_less_abs(curr->x, sum)) {
+        int32_t direct = accelerationX - decelerationX;
+        if (int32_less_abs(curr->x, direct)) {
+            /* cannot decelerate to desired speed */
+            curr->accelerationX = 0;
+            curr->decelerationX = curr->x;
+            curr->viSq = (uint32_t)max(
+                0, ASSERT_GE0(curr->x * 2 * curr->a + (int32_t)curr->vfSq));
+            curr->vSq = curr->viSq;
         } else {
-            s->accelerationX = accelerationX;
-            s->decelerationX = decelerationX;
+            curr->accelerationX = (direct + curr->x) / 2;
+            curr->decelerationX = curr->x - curr->accelerationX;
+            curr->vSq =
+                (uint32_t)max(0, ASSERT_GE0(curr->accelerationX * 2 * curr->a +
+                                            (int32_t)curr->viSq));
+            /* here, due to integer math, vfSq may dip slightly below 0*/
+            curr->vfSq =
+                (uint32_t)max(0, -(int32_t)curr->decelerationX * 2 * curr->a +
+                                     (int32_t)curr->vSq);
         }
+    } else {
+        curr->accelerationX = accelerationX;
+        curr->decelerationX = decelerationX;
     }
 }
 
 static bool recalculate(const struct PlannerJob *next, struct PlannerJob *curr)
 {
     bool dirty = false;
-    for_each_stepper(i) {
-        if (abs((int32_t)curr->steppers[i].vfSq -
-                (int32_t)next->steppers[i].viSq) >= VEL_CHANGE_THRESHOLD) {
-            dirty = true;
-            WARN_ON(
-                !int32_same_sign(curr->steppers[i].x, next->steppers[i].x) &&
-                next->steppers[i].viSq != 0);
+    if (abs((int32_t)curr->vfSq - (int32_t)next->viSq) >=
+        VEL_CHANGE_THRESHOLD) {
+        dirty = true;
 
-            curr->steppers[i].vfSq = next->steppers[i].viSq;
-        } else if (!int32_same_sign(curr->steppers[i].x, next->steppers[i].x) &&
-                   curr->steppers[i].vfSq != 0) {
-            /* not sure if this would happen. it shouldn't */
-            WARN();
-            dbgPrintf("currx%d nextx%d vfSq%d next viSq%d\n",
-                      curr->steppers[i].x, next->steppers[i].x,
-                      curr->steppers[i].vfSq, next->steppers[i].viSq);
-            dirty = true;
-            curr->steppers[i].vfSq = 0;
-        }
+        curr->vfSq = next->viSq;
     }
     return dirty;
 }
@@ -214,7 +243,9 @@ static void reversePass(void)
 }
 
 void __enqueuePlan(enum JobType k, const int32_t plan[NR_STEPPERS],
-                   const int32_t max_v[NR_STEPPERS], bool more_entries)
+                   const fix16_t unit_vec[NR_AXES],
+                   const int32_t max_v[NR_STEPPERS],
+                   const int32_t acc[NR_STEPPERS], fix16_t len, bool stop)
 {
     BUG_ON(plannerAvailableSpace() == 0);
     const struct PlannerJob *prev;
@@ -227,12 +258,11 @@ void __enqueuePlan(enum JobType k, const int32_t plan[NR_STEPPERS],
     }
     struct PlannerJob *tail = &stepperPlanBuf.buf[stepperPlanBuf.tail];
     memset(tail, 0, sizeof(*tail));
-    for_each_stepper(i) {
-        tail->steppers[i].x = plan[i];
-        tail->steppers[i].v = int32_copy_sign(max_v[i], plan[i]);
-    }
     tail->type = k;
-    populateBlock(prev, tail, more_entries);
+    for_each_axis(i)
+        tail->unit_vec[i] = unit_vec[i];
+    tail->len = len;
+    populateBlock(prev, tail, plan, max_v, acc, stop);
     reversePass();
     stepperPlanBuf.tail = (stepperPlanBuf.tail + 1) % MOTION_LOOKAHEAD;
     stepperPlanBuf.size++;

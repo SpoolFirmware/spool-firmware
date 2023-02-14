@@ -66,9 +66,11 @@ static void scheduleMoveTo(const struct PrinterState state)
     int32_t plan[NR_STEPPERS];
     /* TODO fix fixed z inversion */
     const fix16_t dir[NR_AXES] = { dx, dy, -dz, -de };
+    fix16_t unitVec[NR_AXES];
+    fix16_t len;
 
-    planCoreXy(dir, plan);
-    __enqueuePlan(StepperJobRun, plan, move_max_v, state.continuousMode);
+    planCoreXy(dir, plan, unitVec, &len);
+    __enqueuePlan(StepperJobRun, plan, unitVec, move_max_v, STEPPER_ACC, len, state.continuousMode);
 
     currentState = state;
 }
@@ -104,21 +106,23 @@ static void scheduleHome(void)
     };
     STATIC_ASSERT(ARRAY_SIZE(home_bounce_max_v) == NR_STEPPERS);
     int32_t plan[NR_STEPPERS];
+    fix16_t unitVec[NR_AXES];
+    fix16_t len;
 
-    planCoreXy(home_x, plan);
-    __enqueuePlan(StepperJobHomeX, plan, home_max_v, false);
+    planCoreXy(home_x, plan, unitVec, &len);
+    __enqueuePlan(StepperJobHomeX, plan, unitVec, home_max_v, STEPPER_ACC, len, false);
 
-    planCoreXy(home_y, plan);
-    __enqueuePlan(StepperJobHomeY, plan, home_max_v, false);
+    planCoreXy(home_y, plan, unitVec, &len);
+    __enqueuePlan(StepperJobHomeY, plan, unitVec, home_max_v, STEPPER_ACC, len, false);
 
-    planCoreXy(home_z, plan);
-    __enqueuePlan(StepperJobHomeZ, plan, home_max_v, false);
+    planCoreXy(home_z, plan, unitVec, &len);
+    __enqueuePlan(StepperJobHomeZ, plan, unitVec, home_max_v, STEPPER_ACC, len, false);
 
-    planCoreXy(home_z_bounce, plan);
-    __enqueuePlan(StepperJobRun, plan, home_bounce_max_v, false);
+    planCoreXy(home_z_bounce, plan, unitVec, &len);
+    __enqueuePlan(StepperJobRun, plan, unitVec, home_bounce_max_v, STEPPER_ACC, len, false);
 
-    planCoreXy(home_z, plan);
-    __enqueuePlan(StepperJobHomeZ, plan, home_bounce_max_v, false);
+    planCoreXy(home_z, plan, unitVec, &len);
+    __enqueuePlan(StepperJobHomeZ, plan, unitVec, home_bounce_max_v, STEPPER_ACC, len, false);
 
     currentState.x = 0;
     currentState.y = 0;
@@ -201,18 +205,19 @@ static void sendStepperJob(const struct PlannerJob *j)
         motion_block_t *mb = &job.blocks[i];
         const struct PlannerBlock *pb = &j->steppers[i];
         mb->totalSteps = (uint32_t)abs(pb->x);
-        mb->accelerationSteps = (uint32_t)abs(pb->accelerationX);
-        mb->decelerationSteps = (uint32_t)abs(pb->decelerationX);
-        mb->cruiseSteps =
-            mb->totalSteps - mb->accelerationSteps - mb->decelerationSteps;
-        mb->entryVel_steps_s = (uint32_t)sqrtf((float)pb->viSq);
-        mb->cruiseVel_steps_s = (uint32_t)sqrtf((float)pb->vSq);
-        mb->exitVel_steps_s = (uint32_t)sqrtf((float)pb->vfSq);
-        if (pb->x >= 0) {
-            job.stepDirs |= (uint8_t)BIT(i);
-        }
     }
+    job.totalStepEvents = j->x;
+    job.accelerateUntil = j->accelerationX;
+    job.decelerateAfter = j->x - j->decelerationX;
+
+    job.entry_steps_s = (uint32_t)sqrtf((float)j->viSq);
+    job.cruise_steps_s = (uint32_t)sqrtf((float)j->vSq);
+    job.exit_steps_s = (uint32_t)sqrtf((float)j->vfSq);
+    job.accel_steps_s2 = j->a;
+
+    job.stepDirs = j->stepDirs;
     job.type = j->type;
+
     switch (j->type) {
     case StepperJobRun:
         while (xQueueSend(queue, &job, portMAX_DELAY) != pdTRUE)
