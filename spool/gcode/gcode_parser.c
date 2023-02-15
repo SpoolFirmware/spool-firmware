@@ -332,8 +332,39 @@ typedef status_t parse_fun_t(struct GcodeParser *, struct GcodeCommand *t,
 struct ParserState {
     parse_fun_t *f;
 };
-static parse_fun_t parseXYZEF, parseTemperature, parseCmdG, parseCmdM,
+static parse_fun_t parseXYZEF, parseTemperature, parseFan, parseCmdG, parseCmdM,
     _parseGcode;
+
+static status_t parseFan(struct GcodeParser *s,
+                                 struct GcodeCommand *cmd,
+                                 struct ParserState *next)
+{
+    struct Token t;
+    status_t err;
+
+    err = peekToken(s, &t);
+    if (err == StatusGcodeEof) {
+        return StatusOk;
+    }
+    ASSERT_OR_RETURN(err);
+
+    fix16_t *target;
+
+    switch (t.kind) {
+    case TokenS:
+        target = &cmd->fan.speed;
+        break;
+    default:
+        return StatusOk;
+    }
+
+    ASSERT_OR_RETURN(eatToken(s));
+    ASSERT_OR_RETURN(assertAndEatToken(s, TokenFix16, &t));
+    *target = t.fix16;
+
+    next->f = parseFan;
+    return StatusAgain;
+}
 
 static status_t parseTemperature(struct GcodeParser *s,
                                  struct GcodeCommand *cmd,
@@ -448,6 +479,10 @@ static status_t parseCmdG(struct GcodeParser *s, struct GcodeCommand *cmd,
         cmd->kind = GcodeG90; return StatusOk;
     case 91:
         cmd->kind = GcodeG91; return StatusOk;
+    case 92:
+        cmd->kind = GcodeG92;
+        next->f = parseXYZEF;
+        return StatusAgain;
     default:
         dbgPrintf("UNIMPL G%d\n", number);
         break;
@@ -483,6 +518,10 @@ static status_t parseCmdM(struct GcodeParser *s, struct GcodeCommand *cmd,
     case 105:
         cmd->kind = GcodeM105;
         return StatusOk;
+    case 106:
+        cmd->kind = GcodeM106;
+        next->f = parseFan;
+        return StatusAgain;
     case 107:
         cmd->kind = GcodeM107;
         return StatusOk;

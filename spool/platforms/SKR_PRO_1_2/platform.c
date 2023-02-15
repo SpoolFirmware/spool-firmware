@@ -1,6 +1,6 @@
 #include "FreeRTOS.h"
 #include "platform_private.h"
-#include "bitops.h"
+#include "misc.h"
 
 const struct HalClockConfig halClockConfig = {
     .hseFreqHz = 8000000,
@@ -18,7 +18,9 @@ const struct HalClockConfig halClockConfig = {
 const static struct IOLine statusLED = { .group = GPIOE, .pin = 0 };
 
 const static struct IOLine heater0 = { .group = GPIOB, .pin = 1 };
-const static struct IOLine fan0 = { .group = GPIOC, .pin = 8 };
+const static struct IOLine extruderFan = { .group = GPIOC, .pin = 8 };
+const static struct IOLine fan0 = { .group = GPIOE, .pin = 5 };
+
 
 struct TimerConfig pwmTimerCfg = {
     .timerTargetFrequency = 1000,
@@ -252,6 +254,10 @@ void platformInit(struct PlatformConfig *config)
                                 DRF_DEF(_HAL_GPIO, _MODE, _TYPE, _PUSHPULL) |
                                 DRF_DEF(_HAL_GPIO, _MODE, _SPEED, _VERY_HIGH) |
                                 DRF_NUM(_HAL_GPIO, _MODE, _AF, 1));
+    halGpioSetMode(extruderFan, DRF_DEF(_HAL_GPIO, _MODE, _MODE, _OUTPUT) |
+                             DRF_DEF(_HAL_GPIO, _MODE, _TYPE, _PUSHPULL) |
+                             DRF_DEF(_HAL_GPIO, _MODE, _SPEED, _VERY_HIGH) |
+                             DRF_NUM(_HAL_GPIO, _MODE, _AF, 1));
     halGpioSetMode(fan0, DRF_DEF(_HAL_GPIO, _MODE, _MODE, _OUTPUT) |
                              DRF_DEF(_HAL_GPIO, _MODE, _TYPE, _PUSHPULL) |
                              DRF_DEF(_HAL_GPIO, _MODE, _SPEED, _VERY_HIGH) |
@@ -293,15 +299,19 @@ void platformSetFan(int8_t idx, uint8_t pwm)
     struct IOLine fan = {};
     switch (idx) {
         case -1:
+            fan = extruderFan;
+            break;
+        case 0:
             fan = fan0;
             break;
         default:
+            panic();
             return;
     }
     if (pwm) {
-        halGpioSet(fan0);
+        halGpioSet(fan);
     } else {
-        halGpioClear(fan0);
+        halGpioClear(fan);
     }
 }
 

@@ -11,11 +11,13 @@ enum GcodeKind {
     GcodeG28,
     GcodeG90,   // Set Abs Mode
     GcodeG91,   // Set Rel Mode
+    GcodeG92,   // Set Position
     GcodeM82,   // Extruder Absolute
     GcodeM83,   // Extruder Relative
     GcodeM84,   // Disable Stepper
     GcodeM104,  // Set Extruder Temperature
     GcodeM105,  // Get Temp
+    GcodeM106,  // Set Fan Speed
     GcodeM107,  // Fan OFF
     GcodeM108,  // Cancel Heating
     GcodeM109,  // Set E Temp and Wait
@@ -30,6 +32,10 @@ enum GcodeResponseKind {
 struct GcodeXYZEF {
     fix16_t x, y, z, e, f;
     bool xSet : 1, ySet : 1, zSet : 1, eSet : 1, fSet : 1;
+};
+
+struct GcodeFanSpeed {
+    fix16_t speed;
 };
 
 struct GcodeTemp {
@@ -47,6 +53,7 @@ struct GcodeCommand {
     union {
         struct GcodeXYZEF xyzef;
         struct GcodeTemp temperature;
+        struct GcodeFanSpeed fan;
     };
 };
 

@@ -133,6 +133,7 @@ uint32_t getRequiredSpace(enum GcodeKind kind)
     switch (kind) {
     case GcodeG90:
     case GcodeG91:
+    case GcodeG92:
     case GcodeM82:
     case GcodeM83:
         return 0;
@@ -198,6 +199,16 @@ static void enqueueAvailableGcode()
             break;
         case GcodeG91:
             inRelativeMode = true;
+            break;
+        case GcodeG92:
+            if (cmd.xyzef.xSet)
+                currentState.x = cmd.xyzef.x;
+            if (cmd.xyzef.ySet)
+                currentState.y = cmd.xyzef.y;
+            if (cmd.xyzef.zSet)
+                currentState.z = cmd.xyzef.z;
+            if (cmd.xyzef.eSet)
+                currentState.e = cmd.xyzef.e;
             break;
         case GcodeM82:
             eRelativeMode = false;

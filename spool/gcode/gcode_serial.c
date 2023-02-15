@@ -76,6 +76,7 @@ portTASK_FUNCTION(gcodeSerialTask, pvParameters)
             case GcodeG28:
             case GcodeG90:
             case GcodeG91:
+            case GcodeG92:
             case GcodeM82:
             case GcodeM83:
                 xQueueSend(MotionPlannerTaskQueue, &cmd, portMAX_DELAY);
@@ -87,6 +88,7 @@ portTASK_FUNCTION(gcodeSerialTask, pvParameters)
                 break;
             case GcodeM104:
             case GcodeM105:
+            case GcodeM106:
             case GcodeM107:
             case GcodeM108:
             case GcodeM109:

@@ -134,9 +134,9 @@ static void thermalCallback(TimerHandle_t timerHandle)
     xSemaphoreGive(pidMutex);
 
     platformSetHeater(0, control);
-    if (tempC > 40) {
+    if (tempC > 50) {
         platformSetFan(-1, 100);
-    } else {
+    } else if (tempC < 40) {
         platformSetFan(-1, 0);
     }
 
@@ -167,12 +167,20 @@ portTASK_FUNCTION(ThermalTask, args)
         memset(&resp, 0, sizeof(resp));
 
         switch (cmd.kind) {
+        case GcodeM107:
+            cmd.fan.speed = 0;
+            // fall-through
+        case GcodeM106:
+            dbgPrintf("FAN = %d\n", fix16_to_int(cmd.fan.speed));
+            platformSetFan(0, fix16_to_int(cmd.fan.speed));
+            resp.respKind = ResponseOK;
+            break;
         case GcodeM108:
             sSetHotendTemperature(F16(0));
             resp.respKind = ResponseOK;
+            break;
         case GcodeM104:
         case GcodeM109: // Set Temp / Set Temp and Wait
-        {
             sSetHotendTemperature(cmd.temperature.sTemp);
             if (cmd.kind == GcodeM109) {
                 for(;;) {
@@ -186,7 +194,7 @@ portTASK_FUNCTION(ThermalTask, args)
             }
 
             resp.respKind = ResponseOK;
-        } break;
+            break;
         case GcodeM105: // Get Temp
             fix16_t e0TempF16 = -1;
             xSemaphoreTake(pidMutex, portMAX_DELAY);
