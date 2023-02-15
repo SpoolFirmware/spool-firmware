@@ -1,6 +1,7 @@
 #include "platform_private.h"
 #include "lib/thermistor/thermistors.h"
 #include "semphr.h"
+#include "error.h"
 
 static SemaphoreHandle_t conversionSemaphoreHandle;
 void thermalInit(void)
@@ -38,11 +39,17 @@ IRQ_HANDLER_ADC(void)
     halIrqClear(IRQ_ADC);
 }
 
-fix16_t platformReadTemp(uint8_t idx)
+fix16_t platformReadTemp(int8_t idx)
 {
-    REG_FLD_SET_DRF(_ADC3, _CR2, _SWSTART, _START);
-    xSemaphoreTake(conversionSemaphoreHandle, portMAX_DELAY);
-    uint16_t scaledValue = (uint16_t)(REG_RD32(DRF_REG(_ADC3, _DR))) << 4U;
+    uint16_t scaledValue = 0;
+    if (idx == 0) {
+        REG_FLD_SET_DRF(_ADC3, _CR2, _SWSTART, _START);
+        xSemaphoreTake(conversionSemaphoreHandle, portMAX_DELAY);
+        scaledValue = (uint16_t)(REG_RD32(DRF_REG(_ADC3, _DR))) << 4U;
+    } else {
+        panic();
+    }
+
 
     return thermistorEvaulate(&t100k_4k7_table, scaledValue);
 }
