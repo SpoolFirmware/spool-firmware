@@ -21,6 +21,8 @@ enum GcodeKind {
     GcodeM107,  // Fan OFF
     GcodeM108,  // Cancel Heating
     GcodeM109,  // Set E Temp and Wait
+    GcodeM140,  // Set Bed
+    GcodeM190,  // Set Bed and Wait
     GcodeM_IDGAF,  // IDGAF
 };
 

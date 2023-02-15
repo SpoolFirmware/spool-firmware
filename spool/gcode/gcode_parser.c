@@ -532,6 +532,14 @@ static status_t parseCmdM(struct GcodeParser *s, struct GcodeCommand *cmd,
         cmd->kind = GcodeM109;
         next->f = parseTemperature;
         return StatusAgain;
+    case 140:
+        cmd->kind = GcodeM140;
+        next->f = parseTemperature;
+        return StatusAgain;
+    case 190:
+        cmd->kind = GcodeM190;
+        return StatusOk;
+    // IDGAF
     case 110:
     case 111:
     case 115:

@@ -93,6 +93,8 @@ portTASK_FUNCTION(gcodeSerialTask, pvParameters)
             case GcodeM107:
             case GcodeM108:
             case GcodeM109:
+            case GcodeM140:
+            case GcodeM190:
                 xQueueSend(ThermalTaskQueue, &cmd, portMAX_DELAY);
                 waitAndRespond();
                 break;
