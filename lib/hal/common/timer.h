@@ -18,6 +18,8 @@ void halTimerStop(struct TimerDriver *pDriver);
 bool halTimerPending(const struct TimerDriver *pDriver);
 void halTimerIrqClear(const struct TimerDriver *pDriver);
 
+uint32_t halTimerGetCount(const struct TimerDriver *pDriver);
+void halTimerZeroCount(struct TimerDriver *pDriver);
 void halTimerStartContinous(struct TimerDriver *pDriver, uint32_t reloadValue);
 void halTimerChangeReloadValue(struct TimerDriver *pDriver, uint32_t reloadValue);
 void halTimerStartOneShot(struct TimerDriver *pDriver, uint32_t reloadValue);
