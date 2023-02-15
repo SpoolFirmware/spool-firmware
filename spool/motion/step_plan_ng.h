@@ -5,9 +5,9 @@
 #include "error.h"
 #include "compiler.h"
 
-const static int32_t VEL_CHANGE_THRESHOLD = 10;
+const static uint32_t VEL_CHANGE_THRESHOLD = 10;
 
-const static int32_t STEPPER_ACC[] = {
+const static uint32_t STEPPER_ACC[] = {
     ACC * STEPS_PER_MM,
     ACC *STEPS_PER_MM,
     ACC_Z *STEPS_PER_MM_Z,
@@ -15,7 +15,7 @@ const static int32_t STEPPER_ACC[] = {
 };
 STATIC_ASSERT(ARRAY_SIZE(STEPPER_ACC) == NR_STEPPERS);
 
-const static int32_t STEPPER_STEPS_PER_MM[] = {
+const static uint32_t STEPPER_STEPS_PER_MM[] = {
     STEPS_PER_MM,
     STEPS_PER_MM,
     STEPS_PER_MM_Z,
@@ -70,7 +70,7 @@ struct PlannerJob {
 
 void initPlanner(void);
 
-void planCoreXy(const fix16_t movement[NR_AXES], int32_t plan[NR_STEPPERS],
+void planCoreXy(const int32_t movement[NR_AXES], int32_t plan[NR_STEPPERS],
                 fix16_t unit_vec[NR_AXES], fix16_t *len);
 
 uint32_t plannerAvailableSpace(void);
@@ -79,8 +79,8 @@ uint32_t plannerSize(void);
 void __dequeuePlan(struct PlannerJob *out);
 void __enqueuePlan(enum JobType k, const int32_t plan[NR_STEPPERS],
                    const fix16_t unit_vec[NR_AXES],
-                   const int32_t max_v[NR_STEPPERS],
-                   const int32_t acc[NR_STEPPERS], fix16_t len, bool stop);
+                   const uint32_t max_v[NR_STEPPERS],
+                   const uint32_t acc[NR_STEPPERS], fix16_t len, bool stop);
 
 #define for_each_axis(iter) for (uint8_t iter = 0; iter < NR_AXES; iter++)
 

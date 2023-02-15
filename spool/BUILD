@@ -40,6 +40,7 @@ cc_test(
     copts = [
         "-Wconversion",
         "-Warith-conversion",
+        "-Ispool",
     ],
     deps = [
         "//lib/fxp:lib",

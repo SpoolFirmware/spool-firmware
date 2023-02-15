@@ -6,11 +6,11 @@
 #include "step_plan_ng.h"
 
 struct PrinterState {
-    fix16_t x;
-    fix16_t y;
-    fix16_t z;
-    fix16_t e;
-    fix16_t feedrate;
+    int32_t x; /* unit: steps */
+    int32_t y;
+    int32_t z;
+    int32_t e;
+    int32_t feedrate;
     bool continuousMode;
 };
 

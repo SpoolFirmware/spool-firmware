@@ -36,12 +36,12 @@ uint32_t plannerAvailableSpace(void)
     return MOTION_LOOKAHEAD - plannerSize();
 }
 
-static fix16_t vecUnit(const fix16_t a[NR_AXES], fix16_t out[NR_AXES])
+static fix16_t vecUnit(const int32_t a[NR_AXES], fix16_t out[NR_AXES])
 {
     float accum = 0;
     float af[NR_AXES];
     for_each_axis(i) {
-        float x = fix16_to_float(a[i]);
+        float x = (float)a[i];
         accum += x * x;
         af[i] = x;
     }
@@ -53,23 +53,21 @@ static fix16_t vecUnit(const fix16_t a[NR_AXES], fix16_t out[NR_AXES])
     return fix16_from_float(len);
 }
 
-void planCoreXy(const fix16_t movement[NR_AXES], int32_t plan[NR_STEPPERS],
+void planCoreXy(const int32_t movement[NR_AXES], int32_t plan[NR_STEPPERS],
                 fix16_t unit_vec[NR_AXES], fix16_t *len)
 {
     _Static_assert(NR_AXES >= X_AND_Y,
                    "number of axes insufficient for corexy");
 
-    fix16_t aX = fix16_add(movement[X_AXIS], movement[Y_AXIS]);
-    fix16_t bX = fix16_sub(movement[X_AXIS], movement[Y_AXIS]);
+    int32_t aX = movement[X_AXIS] + movement[Y_AXIS];
+    int32_t bX = movement[X_AXIS] - movement[Y_AXIS];
     for_each_stepper(i) {
         if (i < X_AND_Y)
             continue;
-        plan[i] = fix16_mul_int32(movement[i], STEPPER_STEPS_PER_MM[i]);
+        plan[i] = movement[i];
     }
-    plan[STEPPER_A_IDX] =
-        fix16_mul_int32(aX, STEPPER_STEPS_PER_MM[STEPPER_A_IDX]);
-    plan[STEPPER_B_IDX] =
-        fix16_mul_int32(bX, STEPPER_STEPS_PER_MM[STEPPER_B_IDX]);
+    plan[STEPPER_A_IDX] = aX;
+    plan[STEPPER_B_IDX] = bX;
 
     *len = vecUnit(movement, unit_vec);
 }
@@ -103,15 +101,16 @@ static fix16_t vecDot(const fix16_t a[NR_AXES], const fix16_t b[NR_AXES])
 
 static void populateBlock(const struct PlannerJob *prev, struct PlannerJob *new,
                           const int32_t plan[NR_STEPPERS],
-                          const int32_t max_v[NR_STEPPERS],
-                          const int32_t acc[NR_STEPPERS], bool stop)
+                          const uint32_t max_v[NR_STEPPERS],
+                          const uint32_t acc[NR_STEPPERS], bool stop)
 {
     float timeEst = 0;
     uint32_t maxStepper = 0;
+
     for_each_stepper(i) {
-        if (plan[i] > 0)
+        if (plan[i] >= 0)
             new->stepDirs |= BIT(i);
-        new->steppers[i].x = abs(plan[i]);
+        new->steppers[i].x = (uint32_t)abs(plan[i]);
     }
     for_each_stepper(i) {
         struct PlannerBlock *s = &new->steppers[i];
@@ -124,17 +123,19 @@ static void populateBlock(const struct PlannerJob *prev, struct PlannerJob *new,
         }
     }
 
-    /* TODO correct for acceleration */
-    new->a = acc[maxStepper];
     if (timeEst == 0) {
         /* empty block */
         return;
     }
 
+    /* TODO correct for acceleration */
+    new->a = acc[maxStepper];
+
     uint32_t v = (uint32_t)((float)new->steppers[maxStepper].x / timeEst);
     new->vSq = v *v;
 
     fix16_t cosTheta = vecDot(prev->unit_vec, new->unit_vec);
+
     if (cosTheta >= JUNCTION_INHERIT_VEL_THRES) {
         /* essentially the same direction */
         /* TODO handle junction velocity like marlin */
@@ -144,8 +145,9 @@ static void populateBlock(const struct PlannerJob *prev, struct PlannerJob *new,
                cosTheta >= JUNCTION_SMOOTHING_THRES) {
         /* is this where we do rounded corners? */
         /* for now, we pretend cos is linear */
-        uint32_t viSq = min(prev->vfSq * cosTheta, new->vSq);
-        new->a = new->a *cosTheta;
+        uint32_t viSq = min((uint32_t)((float)prev->vfSq * fix16_to_float(cosTheta)), new->vSq);
+        uint32_t a = min((uint32_t)((float)prev->a * fix16_to_float(cosTheta)), new->a);
+        new->a = a;
         new->viSq = viSq;
     } else {
         /* is a minimum speed helpful here? why? */
@@ -157,10 +159,9 @@ static void populateBlock(const struct PlannerJob *prev, struct PlannerJob *new,
         return;
     }
 
-    int32_t accelerationX = ((int32_t)(new->vSq - new->viSq)) / (2 * new->a);
-    if (int32_less_abs(new->x, accelerationX)) {
-        new->vSq =
-            (uint32_t)ASSERT_GE0(new->x * 2 * new->a + (int32_t) new->viSq);
+    uint32_t accelerationX = (new->vSq - new->viSq) / (2 * new->a);
+    if (new->x < accelerationX) {
+        new->vSq = new->x * 2 * new->a + new->viSq;
         new->vfSq = new->vSq;
     } else {
         new->accelerationX = accelerationX;
@@ -170,30 +171,27 @@ static void populateBlock(const struct PlannerJob *prev, struct PlannerJob *new,
 
 static void calcReverse(struct PlannerJob *curr)
 {
-    int32_t accelerationX =
-        ((int32_t)(curr->vSq - curr->viSq)) / (2 * (int32_t)curr->a);
-    int32_t decelerationX =
-        ((int32_t)(curr->vfSq - curr->vSq)) / (2 * -(int32_t)curr->a);
-    int32_t sum = accelerationX + decelerationX;
+    uint32_t accelerationX =
+        (curr->vSq - curr->viSq) / (2 * curr->a);
+    uint32_t decelerationX =
+        (curr->vSq - curr->vfSq) / (2 * curr->a);
+    uint32_t sum = accelerationX + decelerationX;
 
-    if (int32_less_abs(curr->x, sum)) {
-        int32_t direct = accelerationX - decelerationX;
-        if (int32_less_abs(curr->x, direct)) {
+    if (curr->x < sum) {
+        int32_t direct = (int32_t)accelerationX - (int32_t)decelerationX;
+        if (int32_less_abs((int32_t)curr->x, direct)) {
             /* cannot decelerate to desired speed */
             curr->accelerationX = 0;
             curr->decelerationX = curr->x;
-            curr->viSq = (uint32_t)max(
-                0, ASSERT_GE0(curr->x * 2 * curr->a + (int32_t)curr->vfSq));
+            curr->viSq = curr->x * 2 * curr->a + curr->vfSq;
             curr->vSq = curr->viSq;
         } else {
-            curr->accelerationX = (direct + curr->x) / 2;
+            curr->accelerationX = (uint32_t)(direct + (int32_t)curr->x) / 2;
             curr->decelerationX = curr->x - curr->accelerationX;
-            curr->vSq =
-                (uint32_t)max(0, ASSERT_GE0(curr->accelerationX * 2 * curr->a +
-                                            (int32_t)curr->viSq));
+            curr->vSq = curr->accelerationX * 2 * curr->a + curr->viSq;
             /* here, due to integer math, vfSq may dip slightly below 0*/
             curr->vfSq =
-                (uint32_t)max(0, -(int32_t)curr->decelerationX * 2 * curr->a +
+                (uint32_t)max(0, -(int32_t)(curr->decelerationX * 2 * curr->a) +
                                      (int32_t)curr->vSq);
         }
     } else {
@@ -244,8 +242,8 @@ static void reversePass(void)
 
 void __enqueuePlan(enum JobType k, const int32_t plan[NR_STEPPERS],
                    const fix16_t unit_vec[NR_AXES],
-                   const int32_t max_v[NR_STEPPERS],
-                   const int32_t acc[NR_STEPPERS], fix16_t len, bool stop)
+                   const uint32_t max_v[NR_STEPPERS],
+                   const uint32_t acc[NR_STEPPERS], fix16_t len, bool stop)
 {
     BUG_ON(plannerAvailableSpace() == 0);
     const struct PlannerJob *prev;
