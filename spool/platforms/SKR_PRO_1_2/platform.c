@@ -289,7 +289,7 @@ void platformPostInit(void)
     thermalPostInit();
 }
 
-void platformSetHeater(uint8_t idx, uint8_t pwm)
+void platformSetHeater(int8_t idx, uint8_t pwm)
 {
     REG_WR32(DRF_REG(_TIM1, _CCR3), pwm);
 }

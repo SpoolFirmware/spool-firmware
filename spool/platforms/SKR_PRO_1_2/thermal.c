@@ -6,8 +6,12 @@
 static SemaphoreHandle_t conversionSemaphoreHandle;
 void thermalInit(void)
 {
+    halGpioSetMode(halGpioLineConstruct(DRF_BASE(DRF_GPIOF), 3),
+                   DRF_DEF(_HAL_GPIO, _MODE, _MODE, _ANALOG)); // Bed TH0
+
     halGpioSetMode(halGpioLineConstruct(DRF_BASE(DRF_GPIOF), 4),
-                   DRF_DEF(_HAL_GPIO, _MODE, _MODE, _ANALOG));
+                   DRF_DEF(_HAL_GPIO, _MODE, _MODE, _ANALOG)); // Hotend TH1
+
     REG_FLD_SET_DRF(_RCC, _APB2ENR, _ADC3EN, _ENABLED);
 
     REG_FLD_SET_DRF(_ADC_COMMON, _CCR, _ADCPRE, _DIV8);
@@ -17,10 +21,8 @@ void thermalInit(void)
     REG_WR32(DRF_REG(_ADC3, _CR2),
              DRF_DEF(_ADC3, _CR2, _ADON, _ENABLED) |
                  DRF_DEF(_ADC3, _CR2, _EOCS, _EACH_CONVERSION));
-
-    // Configure Sequence
+    
     REG_WR32(DRF_REG(_ADC3, _SQR1), DRF_NUM(_ADC3, _SQR1, _L, 1));
-    REG_WR32(DRF_REG(_ADC3, _SQR3), DRF_NUM(_ADC3, _SQR3, _SQ1, 14));
 
     conversionSemaphoreHandle = xSemaphoreCreateBinary();
 }
@@ -42,14 +44,16 @@ IRQ_HANDLER_ADC(void)
 fix16_t platformReadTemp(int8_t idx)
 {
     uint16_t scaledValue = 0;
-    if (idx == 0) {
-        REG_FLD_SET_DRF(_ADC3, _CR2, _SWSTART, _START);
-        xSemaphoreTake(conversionSemaphoreHandle, portMAX_DELAY);
-        scaledValue = (uint16_t)(REG_RD32(DRF_REG(_ADC3, _DR))) << 4U;
+    if (idx == -1) {
+        REG_WR32(DRF_REG(_ADC3, _SQR3), DRF_NUM(_ADC3, _SQR3, _SQ1, 9)); // Bed
+    } else if (idx == 0) {
+        REG_WR32(DRF_REG(_ADC3, _SQR3), DRF_NUM(_ADC3, _SQR3, _SQ1, 14)); // HotEnd
     } else {
         panic();
     }
-
+    REG_FLD_SET_DRF(_ADC3, _CR2, _SWSTART, _START);
+    xSemaphoreTake(conversionSemaphoreHandle, portMAX_DELAY);
+    scaledValue = (uint16_t)(REG_RD32(DRF_REG(_ADC3, _DR))) << 4U;
 
     return thermistorEvaulate(&t100k_4k7_table, scaledValue);
 }

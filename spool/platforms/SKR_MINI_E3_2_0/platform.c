@@ -68,7 +68,7 @@ fix16_t platformReadTemp(int8_t idx)
     return F16(0);
 }
 
-void platformSetHeater(uint8_t idx, uint8_t pwm)
+void platformSetHeater(int8_t idx, uint8_t pwm)
 {
 }
 

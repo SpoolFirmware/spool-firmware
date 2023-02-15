@@ -53,8 +53,9 @@ static void waitAndRespond(void)
         platformSendResponse(OK, sizeof(OK) - 1);
         break;
     case ResponseTemp:
-        snprintf(printBuffer, 64, "ok T:%d\r\n", 
-            resp.tempReport.extruders[0]);
+        snprintf(printBuffer, 64, "ok T:%d B:%d\r\n",
+            resp.tempReport.extruders[0],
+            resp.tempReport.bed);
         platformSendResponse(printBuffer, strlen(printBuffer));
         break;
     }

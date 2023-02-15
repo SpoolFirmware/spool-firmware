@@ -30,7 +30,8 @@ bool platformGetEndstop(uint8_t axis);
 // -1 is BED
 fix16_t platformReadTemp(int8_t idx);
 
-void platformSetHeater(uint8_t idx, uint8_t pwm);
+// -1 is BED
+void platformSetHeater(int8_t idx, uint8_t pwm);
 
 // -1 is Hotend Fan
 void platformSetFan(int8_t idx, uint8_t pwm);
