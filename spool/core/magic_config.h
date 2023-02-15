@@ -22,9 +22,9 @@
 #define ACC_E 1000
 #define VEL_E 50
 
-#define VEL  100
+#define VEL  150
 #define JERK 10
-#define ACC  1000
+#define ACC  1500
 
 #define HOMING_VEL   50
 #define HOMING_VEL_Z 5

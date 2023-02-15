@@ -5,7 +5,7 @@
 
 /* ---------------------- GPIO Lines ---------------------------------------- */
 const static struct IOLine th0 = { .group = DRF_BASE(DRF_GPIOF), .pin = 3 }; // BED
-const static struct IOLine th1 = { .group = DRF_BASE(DRF_GPIOF), .pin = 3 }; // E0
+const static struct IOLine th1 = { .group = DRF_BASE(DRF_GPIOF), .pin = 4 }; // E0
 
 const static struct IOLine heater0 = { .group = GPIOB, .pin = 1 };  // E0
 const static struct IOLine bedHeater = { .group = GPIOD, .pin = 12 };  // E0

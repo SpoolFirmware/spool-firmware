@@ -22,9 +22,9 @@ static void thermalCallback(TimerHandle_t timerHandle);
 SemaphoreHandle_t pidMutex;
 pid_t e0Pid = {
     .setPoint = F16(0),
-    .kp = F16(6),
-    .ki = F16(0.02),
-    .kd = F16(30),
+    .kp = F16(4),
+    .ki = F16(0.01),
+    .kd = F16(60),
 
     .m = F16(1.0 / 7),
     .b = F16(-30),
@@ -36,16 +36,16 @@ pid_t e0Pid = {
 
 pid_t bedPid = {
     .setPoint = F16(0),
-    .kp = F16(6),
-    .ki = F16(0.02),
-    .kd = F16(30),
+    .kp = F16(40),
+    .ki = F16(0.1),
+    .kd = F16(40),
 
-    .m = F16(1.0 / 7),
-    .b = F16(-30),
+    .m = F16(1.0/0.837),
+    .b = F16(-11.6),
 
     .outputMin = F16(0),
     .outputMax = F16(100),
-    .effectiveRange = F16(20),
+    .effectiveRange = F16(10),
 };
 
 static void thermalCallback(TimerHandle_t timerHandle)
@@ -62,7 +62,7 @@ static void thermalCallback(TimerHandle_t timerHandle)
     int tempCExtruder = fix16_to_int(tempC_f);
 
     for (int i = 0; i < 6; i++) {
-        const fix16_t reading = platformReadTemp(1);
+        const fix16_t reading = platformReadTemp(-1);
         tempCBed_f = fix16_add(tempCBed_f, reading);
     }
     tempCBed_f = fix16_div(tempCBed_f, F16(6));
@@ -107,8 +107,8 @@ static void thermalCallback(TimerHandle_t timerHandle)
 static void sSetHotendTemperature(fix16_t newTemp)
 {
     xSemaphoreTake(pidMutex, portMAX_DELAY);
-    if (newTemp < F16(80)) {
-        bedPid.setPoint = newTemp;
+    if (newTemp < F16(230)) {
+        e0Pid.setPoint = newTemp;
     }
     xSemaphoreGive(pidMutex);
 }
@@ -116,8 +116,8 @@ static void sSetHotendTemperature(fix16_t newTemp)
 static void sSetBedTemperature(fix16_t newTemp, bool wait)
 {
     xSemaphoreTake(pidMutex, portMAX_DELAY);
-    if (newTemp < F16(230)) {
-        e0Pid.setPoint = newTemp;
+    if (newTemp < F16(80)) {
+        bedPid.setPoint = newTemp;
     }
     xSemaphoreGive(pidMutex);
 
@@ -184,7 +184,9 @@ portTASK_FUNCTION(ThermalTask, args)
             e0TempF16 = e0Pid.inputHistory[e0Pid.head];
             xSemaphoreGive(pidMutex);
             resp.respKind = ResponseTemp;
+            resp.tempReport.extrudersTarget[0] = fix16_to_int(e0Pid.setPoint);
             resp.tempReport.extruders[0] = fix16_to_int(e0TempF16);
+            resp.tempReport.bedTarget = fix16_to_int(bedPid.setPoint);
             resp.tempReport.bed = fix16_to_int(platformReadTemp(-1));
         } break;
         default:

@@ -47,7 +47,9 @@ struct GcodeTemp {
 
 struct TemperatureReport {
     uint16_t bed;
-    uint16_t extruders[3];
+    uint16_t bedTarget;
+    uint16_t extruders[1];
+    uint16_t extrudersTarget[1];
 };
 
 struct GcodeCommand {
