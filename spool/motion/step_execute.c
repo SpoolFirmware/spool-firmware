@@ -9,13 +9,14 @@
 #include "step_schedule.h"
 #include "core/magic_config.h"
 
-static struct StepperJob job = {0};
+static struct StepperJob job = { 0 };
 static uint32_t sIterationCompleted = 0;
 // Line Drawing
 static uint32_t sAccelerationTime;
 static uint32_t sDecelerationTime;
 static int32_t sDeltaError[NR_STEPPERS]; // "error"
 static uint32_t sIncrementRatio[NR_STEPPERS]; // "m". This expect slope <= 1
+static uint32_t sStepsExecuted[NR_STEPPERS]; // steps executed
 static uint32_t sStepSize; // "x" step size
 
 static inline void sDiscardJob(void)
@@ -28,12 +29,16 @@ static uint16_t sCalcInterval(struct StepperJob *pJob)
     int64_t stepRate;
 
     if (sIterationCompleted < pJob->accelerateUntil) { // Accelerating
-        stepRate = (((int64_t)sAccelerationTime * pJob->accel_steps_s2) / platformGetStepperTimerFreq())+ pJob->entry_steps_s;
+        stepRate = (((int64_t)sAccelerationTime * pJob->accel_steps_s2) /
+                    platformGetStepperTimerFreq()) +
+                   pJob->entry_steps_s;
         if (stepRate > pJob->cruise_steps_s) {
             stepRate = pJob->cruise_steps_s;
         }
-    } else if (sIterationCompleted > pJob->decelerateAfter) {  // Decelertaing
-        stepRate = (int64_t)pJob->cruise_steps_s - (((int64_t)sDecelerationTime * pJob->accel_steps_s2) /platformGetStepperTimerFreq());
+    } else if (sIterationCompleted > pJob->decelerateAfter) { // Decelertaing
+        stepRate = (int64_t)pJob->cruise_steps_s -
+                   (((int64_t)sDecelerationTime * pJob->accel_steps_s2) /
+                    platformGetStepperTimerFreq());
         if (stepRate < pJob->exit_steps_s) { // Never go below exit velocity
             stepRate = pJob->exit_steps_s;
         }
@@ -88,14 +93,24 @@ uint16_t executeStep(uint16_t ticksElapsed)
             sDeltaError[i] += sIncrementRatio[i];
             if (sDeltaError[i] >= 0) {
                 sDeltaError[i] -= sStepSize;
-                stepperMask |= BIT(i);
+                if (sStepsExecuted[i] < job.blocks[i].totalSteps) {
+                    sStepsExecuted[i]++;
+                    stepperMask |= BIT(i);
+                }
             }
         }
         platformStepStepper(stepperMask);
 
         sIterationCompleted += 1;
         if (sIterationCompleted >= job.totalStepEvents) {
-            sDiscardJob();
+            bool finished = true;
+            for_each_stepper(i) {
+                if (sStepsExecuted[i] < job.blocks[i].totalSteps) {
+                    finished = false;
+                }
+            }
+            if (finished)
+                sDiscardJob();
         }
     }
 
@@ -107,31 +122,13 @@ uint16_t executeStep(uint16_t ticksElapsed)
         // Acquired new block
         platformSetStepperDir(job.stepDirs);
 
-        // TODO: remove once supported in planner?
-        if (job.totalStepEvents == 0)  {
-            uint8_t maxStepAxisIndex = 0;
-            for (int i = 0; i < NR_STEPPERS; i++) {
-                if (job.blocks[i].totalSteps >= job.totalStepEvents) {
-                    maxStepAxisIndex = i;
-                    job.totalStepEvents = job.blocks[i].totalSteps;
-                }
-            }
-            job.totalStepEvents = job.blocks[maxStepAxisIndex].totalSteps;
-            job.accelerateUntil = job.blocks[maxStepAxisIndex].accelerationSteps;
-            job.decelerateAfter = job.accelerateUntil + job.blocks[maxStepAxisIndex].cruiseSteps;
-            job.entry_steps_s = job.blocks[maxStepAxisIndex].entryVel_steps_s;
-            job.cruise_steps_s = job.blocks[maxStepAxisIndex].cruiseVel_steps_s;
-            job.exit_steps_s = job.blocks[maxStepAxisIndex].exitVel_steps_s;
-            job.accel_steps_s2 = ACCEL_STEPS; // TODO: FIX THIS IS WRONG 
-        } else {
-            panic();
-        }
-
         sIterationCompleted = 0;
+        for_each_stepper(i)
+            sStepsExecuted[i] = 0;
         sAccelerationTime = sDecelerationTime = 0;
         sStepSize = job.totalStepEvents * 2;
         for (int i = 0; i < NR_STEPPERS; i++) {
-            sDeltaError[i] = -((int32_t) job.totalStepEvents);
+            sDeltaError[i] = -((int32_t)job.totalStepEvents);
             sIncrementRatio[i] = job.blocks[i].totalSteps * 2;
         }
     }
