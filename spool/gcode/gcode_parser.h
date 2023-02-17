@@ -21,12 +21,14 @@ enum TokenKind {
     TokenZ,
     TokenFix16,
     TokenNewline,
+    TokenInt32,
 };
 
 struct Token {
     enum TokenKind kind;
     union {
         fix16_t fix16;
+        int32_t int32;
     };
 };
 

@@ -52,8 +52,10 @@ static void sendTempReport(struct TemperatureReport *pReport)
 {
     char printBuffer[64];
 
-    snprintf(printBuffer, 64, " T:%d /%d B:%d /%d\r\n", pReport->extruders[0],
-             pReport->extrudersTarget[0], pReport->bed, pReport->bedTarget);
+    snprintf(printBuffer, 64, " T:%d /%d B:%d /%d @:%d B@:%d\r\n",
+             pReport->extruders[0], pReport->extrudersTarget[0], pReport->bed,
+             pReport->bedTarget, pReport->extrudersTarget[0],
+             pReport->bedTarget);
     platformSendResponse(printBuffer, strlen(printBuffer));
 }
 
