@@ -1,6 +1,6 @@
 #include "FreeRTOS.h"
 #include "platform_private.h"
-#include "bitops.h"
+#include "misc.h"
 
 const struct HalClockConfig halClockConfig = {
     .hseFreqHz = 8000000,
@@ -17,15 +17,14 @@ const struct HalClockConfig halClockConfig = {
 // const static struct IOLine statusLED = { .group = GPIOA, .pin = 7 };
 const static struct IOLine statusLED = { .group = GPIOE, .pin = 0 };
 
-const static struct IOLine heater0 = { .group = GPIOB, .pin = 1 };
-const static struct IOLine fan0 = { .group = GPIOC, .pin = 8 };
+const static uint32_t stepperFrequency = 100000;
 
-struct TimerConfig pwmTimerCfg = {
-    .timerTargetFrequency = 1000,
+struct TimerConfig stepperExecutionTimerCfg = {
+    .timerTargetFrequency = 100000 * 2,
     .clkDomainFrequency = 0,
-    .interruptEnable = false,
+    .interruptEnable = true,
 };
-struct TimerDriver pwmTimer0 = { 0 };
+struct TimerDriver stepperExecutionTimer = { 0 };
 
 #define NR_STEPPERS 4
 
@@ -118,26 +117,25 @@ static void setStepper(uint8_t stepperMask, uint8_t stepMask)
 }
 
 static uint32_t lastCntrReload = 0;
-IRQ_HANDLER_TIM3(void)
+IRQ_HANDLER_TIM7(void)
 {
-    if (FLD_TEST_DRF(_TIM3, _SR, _UIF, _UPDATE_PENDING,
-                     REG_RD32(DRF_REG(_TIM3, _SR)))) {
+    if (halTimerPending(&stepperExecutionTimer)) {
 VectorB4_begin:
-        REG_WR32(DRF_REG(_TIM3, _SR),
-                 ~DRF_DEF(_TIM3, _SR, _UIF, _UPDATE_PENDING));
+        halTimerIrqClear(&stepperExecutionTimer);
+        halTimerChangeReloadValue(&stepperExecutionTimer, 65535);
         /* execute current job */
         uint32_t requestedTicks = executeStep((lastCntrReload + 1) / 2);
         uint32_t cntrReload = 2 * requestedTicks;
         if (cntrReload == 0)
             cntrReload = 1;
-        if ((lastCntrReload = REG_RD32(DRF_REG(_TIM3, _CNT))) > cntrReload) {
-            REG_WR32(DRF_REG(_TIM3, _CNT), 0);
+        if ((lastCntrReload = halTimerGetCount(&stepperExecutionTimer)) > cntrReload) {
+            halTimerZeroCount(&stepperExecutionTimer);
             goto VectorB4_begin;
         }
         lastCntrReload = cntrReload;
-        REG_WR32(DRF_REG(_TIM3, _ARR), cntrReload);
+        halTimerChangeReloadValue(&stepperExecutionTimer, cntrReload);
     }
-    halIrqClear(IRQ_TIM3);
+    halIrqClear(IRQ_TIM7);
 }
 
 static void reloadTimer(void)
@@ -182,19 +180,15 @@ static void setupTimer()
     REG_WR32(DRF_REG(_TIM2, _DIER), DRF_DEF(_TIM2, _DIER, _UIE, _ENABLED));
 
     // schedule steps on different timer
-    halIrqPrioritySet(IRQ_TIM3, configMAX_SYSCALL_INTERRUPT_PRIORITY + 1);
-    halIrqEnable(IRQ_TIM3);
+    REG_FLD_SET_DRF(_RCC, _APB1ENR, _TIM7EN, _ENABLED);
+    stepperExecutionTimerCfg.clkDomainFrequency = halClockApb1TimerFreqGet(&halClockConfig);
+    stepperExecutionTimerCfg.interruptEnable = true;
+    halTimerConstruct(&stepperExecutionTimer, DRF_BASE(DRF_TIM7));
+    halTimerStart(&stepperExecutionTimer, &stepperExecutionTimerCfg);
 
-    // Enable Counter
-    /* TIM3 runs off APB1, which runs at 42, but 84 due to x2 in the clock graph??? */
-    /* actual PSC is value + 1 */
-    REG_WR32(DRF_REG(_TIM3, _PSC), halClockApb1TimerFreqGet(&halClockConfig) /
-                                           platformGetStepperTimerFreq() / 2 -
-                                       1);
-    REG_WR32(DRF_REG(_TIM3, _ARR), 1);
-    REG_WR32(DRF_REG(_TIM3, _CNT), 0);
-    REG_WR32(DRF_REG(_TIM3, _DIER), DRF_DEF(_TIM3, _DIER, _UIE, _ENABLED));
-    REG_WR32(DRF_REG(_TIM3, _CR1), DRF_DEF(_TIM3, _CR1, _CEN, _ENABLED));
+    halIrqPrioritySet(IRQ_TIM7, configMAX_SYSCALL_INTERRUPT_PRIORITY + 1);
+    halIrqEnable(IRQ_TIM7);
+    halTimerStartContinous(&stepperExecutionTimer, 1);
 }
 
 void platformInit(struct PlatformConfig *config)
@@ -221,7 +215,6 @@ void platformInit(struct PlatformConfig *config)
 
     uint32_t apb2enr = REG_RD32(DRF_REG(_RCC, _APB2ENR));
     apb2enr = FLD_SET_DRF(_RCC, _APB2ENR, _USART1EN, _ENABLED, apb2enr);
-    apb2enr = FLD_SET_DRF(_RCC, _APB2ENR, _TIM1EN, _ENABLED, apb2enr);
     REG_WR32(DRF_REG(_RCC, _APB2ENR), apb2enr);
 
     halGpioSetMode(statusLED, DRF_DEF(_HAL_GPIO, _MODE, _MODE, _OUTPUT) |
@@ -246,31 +239,6 @@ void platformInit(struct PlatformConfig *config)
         halGpioSetMode(endstops[i], DRF_DEF(_HAL_GPIO, _MODE, _MODE, _INPUT));
     }
 
-    /* TODO-codetector Cleanup */
-    halGpioSetMode(heater0, DRF_DEF(_HAL_GPIO, _MODE, _MODE, _AF) |
-                                DRF_DEF(_HAL_GPIO, _MODE, _TYPE, _PUSHPULL) |
-                                DRF_DEF(_HAL_GPIO, _MODE, _SPEED, _VERY_HIGH) |
-                                DRF_NUM(_HAL_GPIO, _MODE, _AF, 1));
-    halGpioSetMode(fan0, DRF_DEF(_HAL_GPIO, _MODE, _MODE, _OUTPUT) |
-                             DRF_DEF(_HAL_GPIO, _MODE, _TYPE, _PUSHPULL) |
-                             DRF_DEF(_HAL_GPIO, _MODE, _SPEED, _VERY_HIGH) |
-                             DRF_NUM(_HAL_GPIO, _MODE, _AF, 1));
-    halTimerConstruct(&pwmTimer0, DRF_BASE(DRF_TIM1));
-    pwmTimerCfg.clkDomainFrequency = halClockApb2TimerFreqGet(&halClockConfig);
-    halTimerStart(&pwmTimer0, &pwmTimerCfg);
-
-    REG_WR32(DRF_REG(_TIM1, _CCER), 0);
-    REG_WR32(DRF_REG(_TIM1, _CCMR2_OUTPUT),
-             DRF_DEF(_TIM1, _CCMR2_OUTPUT, _OC3M, _PWM_MODE1) |
-                 DRF_DEF(_TIM1, _CCMR2_OUTPUT, _OC3PE, _ENABLED));
-    REG_WR32(DRF_REG(_TIM1, _CCER),
-             /* DRF_DEF(_TIM1, _CCER, _CC3NP, _SET) | */
-             DRF_DEF(_TIM1, _CCER, _CC3NE, _SET));
-    REG_WR32(DRF_REG(_TIM1, _CCR3), 0);
-    REG_WR32(DRF_REG(_TIM1, _BDTR), DRF_DEF(_TIM1, _BDTR, _MOE, _ENABLED));
-    halTimerStartContinous(&pwmTimer0, 100 - 1);
-    /* TODO ^ END */
-
     communicationInit();
     thermalInit();
 }
@@ -282,28 +250,14 @@ void platformPostInit(void)
     thermalPostInit();
 }
 
-void platformSetHeater(uint8_t idx, uint8_t pwm)
-{
-    REG_WR32(DRF_REG(_TIM1, _CCR3), pwm);
-}
-
-void platformSetFan(uint8_t idx, uint8_t pwm)
-{
-    if (pwm) {
-        halGpioSet(fan0);
-    } else {
-        halGpioClear(fan0);
-    }
-}
-
 __attribute__((always_inline)) inline struct IOLine platformGetStatusLED(void)
 {
     return statusLED;
 }
 
-uint32_t platformGetStepperTimerFreq(void)
+const uint32_t platformGetStepperTimerFreq(void)
 {
-    return 100000;
+    return stepperFrequency;
 }
 
 __attribute__((always_inline)) inline bool platformGetEndstop(uint8_t axis)

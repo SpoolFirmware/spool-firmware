@@ -1,5 +1,6 @@
 #include <stdint.h>
 #include "string.h"
+#include "dbgprintf.h"
 #include "gcode_parser.h"
 
 static status_t peekCurrChar(struct Tokenizer *s, char *out)
@@ -12,6 +13,7 @@ static status_t peekCurrChar(struct Tokenizer *s, char *out)
     ASSERT_OR_RETURN(receiveChar(&c));
     s->currChar = c;
     s->hasCurrChar = true;
+    dbgPutc(c);
     *out = c;
     return StatusOk;
 }
@@ -40,6 +42,7 @@ static status_t nextChar(struct Tokenizer *s, char *out)
     s->currChar = '\0';
     ASSERT_OR_RETURN(receiveChar(&c));
     s->currChar = c;
+    dbgPutc(c);
     s->hasCurrChar = true;
     *out = c;
     return StatusOk;
@@ -57,9 +60,14 @@ static bool isNewline(char c)
     return c == '\r' || c == '\n';
 }
 
+static bool isDigit(char c)
+{
+    return '0' <= c && c <= '9';
+}
+
 static bool isFix16Start(char c)
 {
-    return ('0' <= c && c <= '9') || c == '-';
+    return isDigit(c) || c == '-';
 }
 
 static bool isLetter(char c)
@@ -77,7 +85,7 @@ static char lowerCase(char c)
 
 static char isComment(char c)
 {
-    return c == ';';
+    return c == ';' || c == '*';
 }
 
 /*
@@ -141,6 +149,74 @@ static status_t takeUntilSeparator(struct Tokenizer *s)
     return StatusOk;
 }
 
+static status_t fix16OrInt32FromStr(const char *buf, int32_t *out,
+                                    bool *isInt32)
+{
+    while (isWhitespace((unsigned char)*buf))
+        buf++;
+
+    /* Decode the sign */
+    bool negative = (*buf == '-');
+    if (*buf == '+' || *buf == '-')
+        buf++;
+
+    /* Decode the integer part */
+    uint32_t intpart = 0;
+    int count = 0;
+
+    while (isDigit((unsigned char)*buf)) {
+        intpart *= 10;
+        intpart += *buf++ - '0';
+        count++;
+    }
+
+    if (!(*buf == '.' || *buf == ',')) {
+        if (count == 0) {
+            PR_WARN("parsed no digits\n");
+            return StatusGcodeBadNumber;
+        }
+        *out = negative ? -(int32_t)intpart : (int32_t)intpart;
+        *isInt32 = true;
+        return StatusOk;
+    }
+
+    /* has . or , must be fix16 */
+    if (count == 0 || count > 5 || intpart > 32768 ||
+        (!negative && intpart > 32767)) {
+        PR_WARN("fix16 overflow/no digits %d, count=%d\n", intpart, count);
+        return StatusGcodeBadNumber;
+    }
+
+    fix16_t value = intpart << 16;
+
+    /* Decode the decimal part */
+    buf++;
+
+    uint32_t fracpart = 0;
+    uint32_t scale = 1;
+    while (isDigit((unsigned char)*buf) && scale < 100000) {
+        scale *= 10;
+        fracpart *= 10;
+        fracpart += *buf++ - '0';
+    }
+    value += fix16_div(fracpart, scale);
+
+    /* Verify that there is no garbage left over */
+    while (*buf != '\0') {
+        if (!isDigit((unsigned char)*buf) &&
+            !isWhitespace((unsigned char)*buf)) {
+            PR_WARN("fix16 leftover garbage num=%d\n", value);
+            return StatusGcodeBadNumber;
+        }
+
+        buf++;
+    }
+
+    *out = negative ? -value : value;
+    *isInt32 = false;
+    return StatusOk;
+}
+
 struct TokenizerState;
 typedef status_t tok_fun_t(struct Tokenizer *, struct Token *t,
                            struct TokenizerState *);
@@ -153,14 +229,19 @@ static status_t dec(struct Tokenizer *s, struct Token *t,
                     struct TokenizerState *next)
 {
     ASSERT_OR_RETURN(takeUntilSeparator(s));
-    fix16_t res = fix16_from_str(s->scratchBuf);
+    int32_t res;
+    bool isInt32;
+    ASSERT_OR_RETURN(fix16OrInt32FromStr(s->scratchBuf, &res, &isInt32));
 
     memset(s->scratchBuf, 0, sizeof(s->scratchBuf));
-    if (res == fix16_overflow)
-        return StatusInvalidGcodeToken;
 
-    t->kind = TokenFix16;
-    t->fix16 = res;
+    if (isInt32) {
+        t->kind = TokenInt32;
+        t->int32 = res;
+    } else {
+        t->kind = TokenFix16;
+        t->fix16 = res;
+    }
     return StatusOk;
 }
 
@@ -183,6 +264,9 @@ static status_t letter(struct Tokenizer *s, struct Token *t,
     case 'm':
         t->kind = TokenM;
         break;
+    case 'n':
+        t->kind = TokenN;
+        break;
     case 'r':
         t->kind = TokenR;
         break;
@@ -199,6 +283,7 @@ static status_t letter(struct Tokenizer *s, struct Token *t,
         t->kind = TokenZ;
         break;
     default:
+        dbgPrintf("Unknown token %c\n", lowerCase(c));
         return StatusInvalidGcodeToken;
     }
     ASSERT_OR_RETURN(eatCurrChar(s));
@@ -245,6 +330,7 @@ static status_t tokenize(struct Tokenizer *s, struct Token *t,
         next->f = newline;
         return StatusAgain;
     }
+    dbgPrintf("tokenize: %c\n", lowerCase(c));
     return StatusInvalidGcodeToken;
 }
 
@@ -305,13 +391,12 @@ static status_t eatToken(struct GcodeParser *s)
     return StatusOk;
 }
 
-static status_t assertAndEatToken(struct GcodeParser *s, enum TokenKind k,
-                                  struct Token *out)
+static status_t assertAndEatNumber(struct GcodeParser *s, struct Token *out)
 {
     struct Token curr;
 
     ASSERT_OR_RETURN(peekToken(s, &curr));
-    if (curr.kind != k) {
+    if (!(curr.kind == TokenFix16 || curr.kind == TokenInt32)) {
         WARN();
         return StatusInvalidGcodeCommand;
     }
@@ -320,14 +405,64 @@ static status_t assertAndEatToken(struct GcodeParser *s, enum TokenKind k,
     return StatusOk;
 }
 
+/* coerse a token to fix16_t, return error if it can't */
+static status_t assertGetFix16(const struct Token *token, fix16_t *out)
+{
+    if (token->kind == TokenFix16) {
+        *out = token->fix16;
+        return StatusOk;
+    }
+    if (token->kind == TokenInt32) {
+        if (token->int32 <= 32767 && token->int32 > -32768) {
+            *out = fix16_from_int(token->int32);
+            return StatusOk;
+        } else {
+            PR_WARN("trying to coerse %d to fix16\n", token->int32);
+            return StatusGcodeBadNumber;
+        }
+    }
+    PR_WARN("trying to coerse token %d to fix16\n", token->kind);
+    return StatusInvalidGcodeToken;
+}
+
 struct ParserState;
 typedef status_t parse_fun_t(struct GcodeParser *, struct GcodeCommand *t,
                              struct ParserState *);
 struct ParserState {
     parse_fun_t *f;
 };
-static parse_fun_t parseXYZEF, parseTemperature, parseCmdG, parseCmdM,
+static parse_fun_t parseXYZEF, parseTemperature, parseFan, parseCmdG, parseCmdM,
     _parseGcode;
+
+static status_t parseFan(struct GcodeParser *s, struct GcodeCommand *cmd,
+                         struct ParserState *next)
+{
+    struct Token t;
+    status_t err;
+
+    err = peekToken(s, &t);
+    if (err == StatusGcodeEof) {
+        return StatusOk;
+    }
+    ASSERT_OR_RETURN(err);
+
+    fix16_t *target;
+
+    switch (t.kind) {
+    case TokenS:
+        target = &cmd->fan.speed;
+        break;
+    default:
+        return StatusOk;
+    }
+
+    ASSERT_OR_RETURN(eatToken(s));
+    ASSERT_OR_RETURN(assertAndEatNumber(s, &t));
+    *target = t.fix16;
+
+    next->f = parseFan;
+    return StatusAgain;
+}
 
 static status_t parseTemperature(struct GcodeParser *s,
                                  struct GcodeCommand *cmd,
@@ -356,8 +491,8 @@ static status_t parseTemperature(struct GcodeParser *s,
     }
 
     ASSERT_OR_RETURN(eatToken(s));
-    ASSERT_OR_RETURN(assertAndEatToken(s, TokenFix16, &t));
-    *target = t.fix16;
+    ASSERT_OR_RETURN(assertAndEatNumber(s, &t));
+    ASSERT_OR_RETURN(assertGetFix16(&t, target));
 
     next->f = parseTemperature;
     return StatusAgain;
@@ -409,8 +544,8 @@ static status_t parseXYZEF(struct GcodeParser *s, struct GcodeCommand *cmd,
     }
 
     ASSERT_OR_RETURN(eatToken(s));
-    ASSERT_OR_RETURN(assertAndEatToken(s, TokenFix16, &t));
-    *target = t.fix16;
+    ASSERT_OR_RETURN(assertAndEatNumber(s, &t));
+    ASSERT_OR_RETURN(assertGetFix16(&t, target));
     next->f = parseXYZEF;
     return StatusAgain;
 }
@@ -420,13 +555,13 @@ static status_t parseCmdG(struct GcodeParser *s, struct GcodeCommand *cmd,
 {
     struct Token t;
 
-    ASSERT_OR_RETURN(assertAndEatToken(s, TokenFix16, &t));
-    memset(cmd, 0, sizeof(*cmd));
-    if (!fix16_is_uint(t.fix16)) {
+    ASSERT_OR_RETURN(assertAndEatNumber(s, &t));
+    if (t.kind != TokenInt32) {
+        PR_WARN("G called with fix16 %d\n", t.fix16);
         return StatusInvalidGcodeCommand;
     }
-
-    switch ((unsigned int)fix16_to_int(t.fix16)) {
+    memset(cmd, 0, sizeof(*cmd));
+    switch (t.int32) {
     case 0:
         cmd->kind = GcodeG0;
         next->f = parseXYZEF;
@@ -437,8 +572,20 @@ static status_t parseCmdG(struct GcodeParser *s, struct GcodeCommand *cmd,
         return StatusAgain;
     case 28:
         cmd->kind = GcodeG28;
+        next->f = parseXYZEF;
+        return StatusAgain;
+    case 90:
+        cmd->kind = GcodeG90;
         return StatusOk;
+    case 91:
+        cmd->kind = GcodeG91;
+        return StatusOk;
+    case 92:
+        cmd->kind = GcodeG92;
+        next->f = parseXYZEF;
+        return StatusAgain;
     default:
+        PR_WARN("UNIMPL G%d\n", t.int32);
         break;
     }
     return StatusUnimplementedGcodeCommand;
@@ -449,13 +596,19 @@ static status_t parseCmdM(struct GcodeParser *s, struct GcodeCommand *cmd,
 {
     struct Token t;
 
-    ASSERT_OR_RETURN(assertAndEatToken(s, TokenFix16, &t));
-    memset(cmd, 0, sizeof(*cmd));
-    if (!fix16_is_uint(t.fix16)) {
+    ASSERT_OR_RETURN(assertAndEatNumber(s, &t));
+    if (t.kind != TokenInt32) {
+        PR_WARN("G called with fix16 %d\n", t.fix16);
         return StatusInvalidGcodeCommand;
     }
-
-    switch ((unsigned int)fix16_to_int(t.fix16)) {
+    memset(cmd, 0, sizeof(*cmd));
+    switch (t.int32) {
+    case 82:
+        cmd->kind = GcodeM82;
+        return StatusOk;
+    case 83:
+        cmd->kind = GcodeM83;
+        return StatusOk;
     case 84:
         cmd->kind = GcodeM84;
         return StatusOk;
@@ -466,11 +619,41 @@ static status_t parseCmdM(struct GcodeParser *s, struct GcodeCommand *cmd,
     case 105:
         cmd->kind = GcodeM105;
         return StatusOk;
+    case 106:
+        cmd->kind = GcodeM106;
+        next->f = parseFan;
+        return StatusAgain;
+    case 107:
+        cmd->kind = GcodeM107;
+        return StatusOk;
+    case 108:
+        cmd->kind = GcodeM108;
+        return StatusOk;
     case 109:
         cmd->kind = GcodeM109;
         next->f = parseTemperature;
         return StatusAgain;
+    case 140:
+        cmd->kind = GcodeM140;
+        next->f = parseTemperature;
+        return StatusAgain;
+    case 190:
+        cmd->kind = GcodeM190;
+        next->f = parseTemperature;
+        return StatusAgain;
+    // IDGAF
+    case 29: /* STOP WRITING SD CARD */
+    case 110:
+    case 111:
+    case 115:
+        do {
+            ASSERT_OR_RETURN(peekToken(s, &t));
+            eatToken(s);
+        } while (t.kind != TokenNewline);
+        cmd->kind = GcodeM_IDGAF;
+        return StatusOk;
     default:
+        PR_WARN("UNIMPL M%d\n", t.int32);
         break;
     }
     return StatusUnimplementedGcodeCommand;
@@ -483,6 +666,11 @@ static status_t _parseGcode(struct GcodeParser *s, struct GcodeCommand *cmd,
     ASSERT_OR_RETURN(peekToken(s, &t));
 
     switch (t.kind) {
+    case TokenN:
+        ASSERT_OR_RETURN(eatToken(s));
+        ASSERT_OR_RETURN(assertAndEatNumber(s, &t));
+        next->f = _parseGcode;
+        return StatusAgain;
     case TokenG:
         ASSERT_OR_RETURN(eatToken(s));
         next->f = parseCmdG;
@@ -496,6 +684,7 @@ static status_t _parseGcode(struct GcodeParser *s, struct GcodeCommand *cmd,
         next->f = _parseGcode;
         return StatusAgain;
     default:
+        PR_WARN("unknown token %d\n", t.kind);
         return StatusUnimplementedGcodeCommand;
     }
 }

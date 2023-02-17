@@ -22,9 +22,9 @@
 #define ACC_E 1000
 #define VEL_E 50
 
-#define VEL  100
+#define VEL  150
 #define JERK 10
-#define ACC  200
+#define ACC  1500
 
 #define HOMING_VEL   50
 #define HOMING_VEL_Z 5
@@ -38,6 +38,8 @@
 #define ENDSTOP_Z 2
 #define X_AXIS    0
 #define Y_AXIS    1
+#define Z_AXIS    2
+#define E_AXIS    3
 
 #define NR_AXES   4
 

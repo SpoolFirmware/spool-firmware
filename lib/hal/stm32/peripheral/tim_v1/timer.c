@@ -47,6 +47,16 @@ void halTimerIrqClear(const struct TimerDriver *pDriver)
              ~DRF_DEF(_TIM1, _SR, _UIF, _UPDATE_PENDING));
 }
 
+uint32_t halTimerGetCount(const struct TimerDriver *pDriver)
+{
+    return REG_RD32(pDriver->base + DRF_TIM1_CNT);
+}
+
+void halTimerZeroCount(struct TimerDriver *pDriver)
+{
+    REG_WR32(pDriver->base + DRF_TIM1_CNT, 0);
+}
+
 void halTimerStartContinous(struct TimerDriver *pDriver, uint32_t reloadValue)
 {
     if (pDriver->base == 0) panic();
