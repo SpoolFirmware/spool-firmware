@@ -38,7 +38,6 @@ struct Tokenizer {
 
 struct GcodeParser {
     struct Token currToken;
-    bool hasCurrToken;
     struct Tokenizer tokenizer;
 };
 

@@ -98,8 +98,8 @@ static void thermalCallback(TimerHandle_t timerHandle)
     static uint8_t log = 0;
     if (log == 16) {
         log = 0;
-        dbgPrintf("s=%d c=%d o=%d; B:s=%d c=%d o=%d\n", targetCE, tempCExtruder,
-                  eControl, targetCBed, tempCBed, bControl);
+        /* dbgPrintf("s=%d c=%d o=%d; B:s=%d c=%d o=%d\n", targetCE, tempCExtruder, */
+        /*           eControl, targetCBed, tempCBed, bControl); */
     }
     log++;
 }
@@ -133,6 +133,21 @@ static void sSetBedTemperature(fix16_t newTemp, bool wait)
             lastReading = currentReading;
         }
     }
+}
+
+void thermalGetTempReport(struct TemperatureReport *pReport)
+{
+    fix16_t e0TempF16 = -1;
+    fix16_t bedTempF16 = -1;
+
+    xSemaphoreTake(pidMutex, portMAX_DELAY);
+    e0TempF16 = e0Pid.inputHistory[e0Pid.head];
+    bedTempF16 = bedPid.inputHistory[bedPid.head];
+    xSemaphoreGive(pidMutex);
+    pReport->extrudersTarget[0] = fix16_to_int(e0Pid.setPoint);
+    pReport->extruders[0] = fix16_to_int(e0TempF16);
+    pReport->bedTarget = fix16_to_int(bedPid.setPoint);
+    pReport->bed = fix16_to_int(bedTempF16);
 }
 
 portTASK_FUNCTION(ThermalTask, args)
@@ -179,15 +194,8 @@ portTASK_FUNCTION(ThermalTask, args)
             break;
         case GcodeM105: // Get Temp
         {
-            fix16_t e0TempF16 = -1;
-            xSemaphoreTake(pidMutex, portMAX_DELAY);
-            e0TempF16 = e0Pid.inputHistory[e0Pid.head];
-            xSemaphoreGive(pidMutex);
             resp.respKind = ResponseTemp;
-            resp.tempReport.extrudersTarget[0] = fix16_to_int(e0Pid.setPoint);
-            resp.tempReport.extruders[0] = fix16_to_int(e0TempF16);
-            resp.tempReport.bedTarget = fix16_to_int(bedPid.setPoint);
-            resp.tempReport.bed = fix16_to_int(platformReadTemp(-1));
+            thermalGetTempReport(&resp.tempReport);
         } break;
         default:
             dbgPrintf("EPERM: Thermal\n");

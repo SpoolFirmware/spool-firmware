@@ -3,12 +3,17 @@
 #include "stdio.h"
 
 #include "core/spool.h"
+#include "compiler.h"
+#include "error.h"
 
 #include "gcode/gcode.h"
 #include "gcode/gcode_serial.h"
 #include "gcode/gcode_parser.h"
 
 const static char OK[5] = "ok\r\n";
+
+const static char BUSY[] = "busy:doing shit\r\n";
+STATIC_ASSERT(ARRAY_SIZE(BUSY) == 18);
 
 static TaskHandle_t gcodeSerialTaskHandle;
 
@@ -43,20 +48,32 @@ status_t receiveChar(char *c)
     return StatusOk;
 }
 
-static void waitAndRespond(void)
+static void sendTempReport(struct TemperatureReport *pReport)
 {
     char printBuffer[64];
+
+    snprintf(printBuffer, 64, " T:%d /%d B:%d /%d\r\n", pReport->extruders[0],
+             pReport->extrudersTarget[0], pReport->bed, pReport->bedTarget);
+    platformSendResponse(printBuffer, strlen(printBuffer));
+}
+
+static void waitAndRespond(void)
+{
     struct GcodeResponse resp;
-    xQueueReceive(ResponseQueue, &resp, portMAX_DELAY);
+
+    while (xQueueReceive(ResponseQueue, &resp,
+                         pdMS_TO_TICKS(GCODE_SERIAL_TIMEOUT)) == pdFALSE) {
+        platformSendResponse(BUSY, sizeof(BUSY) - 1);
+        thermalGetTempReport(&resp.tempReport);
+        sendTempReport(&resp.tempReport);
+    }
     switch (resp.respKind) {
     case ResponseOK:
         platformSendResponse(OK, sizeof(OK) - 1);
         break;
     case ResponseTemp:
-        snprintf(printBuffer, 64, "ok T:%d /%d B:%d /%d\r\n",
-            resp.tempReport.extruders[0], resp.tempReport.extrudersTarget[0],
-            resp.tempReport.bed, resp.tempReport.bedTarget);
-        platformSendResponse(printBuffer, strlen(printBuffer));
+        platformSendResponse(OK, 2);
+        sendTempReport(&resp.tempReport);
         break;
     }
 }

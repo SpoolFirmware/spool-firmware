@@ -3,6 +3,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 
+#include "thermal/thermal.h"
 #include "fix16.h"
 
 enum GcodeKind {
@@ -43,13 +44,6 @@ struct GcodeFanSpeed {
 struct GcodeTemp {
     fix16_t sTemp;
     fix16_t rTemp;
-};
-
-struct TemperatureReport {
-    uint16_t bed;
-    uint16_t bedTarget;
-    uint16_t extruders[1];
-    uint16_t extrudersTarget[1];
 };
 
 struct GcodeCommand {

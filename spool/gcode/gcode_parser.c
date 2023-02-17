@@ -13,6 +13,7 @@ static status_t peekCurrChar(struct Tokenizer *s, char *out)
     ASSERT_OR_RETURN(receiveChar(&c));
     s->currChar = c;
     s->hasCurrChar = true;
+    dbgPutc(c);
     *out = c;
     return StatusOk;
 }
@@ -41,6 +42,7 @@ static status_t nextChar(struct Tokenizer *s, char *out)
     s->currChar = '\0';
     ASSERT_OR_RETURN(receiveChar(&c));
     s->currChar = c;
+    dbgPutc(c);
     s->hasCurrChar = true;
     *out = c;
     return StatusOk;
@@ -335,9 +337,8 @@ struct ParserState {
 static parse_fun_t parseXYZEF, parseTemperature, parseFan, parseCmdG, parseCmdM,
     _parseGcode;
 
-static status_t parseFan(struct GcodeParser *s,
-                                 struct GcodeCommand *cmd,
-                                 struct ParserState *next)
+static status_t parseFan(struct GcodeParser *s, struct GcodeCommand *cmd,
+                         struct ParserState *next)
 {
     struct Token t;
     status_t err;
@@ -476,9 +477,11 @@ static status_t parseCmdG(struct GcodeParser *s, struct GcodeCommand *cmd,
         cmd->kind = GcodeG28;
         return StatusOk;
     case 90:
-        cmd->kind = GcodeG90; return StatusOk;
+        cmd->kind = GcodeG90;
+        return StatusOk;
     case 91:
-        cmd->kind = GcodeG91; return StatusOk;
+        cmd->kind = GcodeG91;
+        return StatusOk;
     case 92:
         cmd->kind = GcodeG92;
         next->f = parseXYZEF;
@@ -540,13 +543,14 @@ static status_t parseCmdM(struct GcodeParser *s, struct GcodeCommand *cmd,
         cmd->kind = GcodeM190;
         return StatusOk;
     // IDGAF
+    case 29: /* STOP WRITING SD CARD */
     case 110:
     case 111:
     case 115:
         do {
             ASSERT_OR_RETURN(peekToken(s, &t));
             eatToken(s);
-        } while(t.kind != TokenNewline);
+        } while (t.kind != TokenNewline);
         cmd->kind = GcodeM_IDGAF;
         return StatusOk;
     default:
