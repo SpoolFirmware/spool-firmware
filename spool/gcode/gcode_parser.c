@@ -271,6 +271,9 @@ static status_t letter(struct Tokenizer *s, struct Token *t,
     case 's':
         t->kind = TokenS;
         break;
+    case 't':
+        t->kind = TokenT;
+        break;
     case 'x':
         t->kind = TokenX;
         break;
@@ -399,7 +402,8 @@ static status_t assertAndEatNumber(struct GcodeParser *s, struct Token *out)
         return StatusInvalidGcodeCommand;
     }
     ASSERT_OR_RETURN(eatToken(s));
-    *out = curr;
+    if (out)
+        *out = curr;
     return StatusOk;
 }
 
@@ -478,6 +482,9 @@ static status_t parseTemperature(struct GcodeParser *s,
     fix16_t *target;
 
     switch (t.kind) {
+    case TokenT:
+        target = NULL;
+        break;
     case TokenS:
         target = &cmd->temperature.sTemp;
         break;
@@ -572,6 +579,9 @@ static status_t parseCmdG(struct GcodeParser *s, struct GcodeCommand *cmd,
         cmd->kind = GcodeG28;
         next->f = parseXYZEF;
         return StatusAgain;
+    case 29:
+        cmd->kind = GcodeG29;
+        return StatusOk;
     case 90:
         cmd->kind = GcodeG90;
         return StatusOk;

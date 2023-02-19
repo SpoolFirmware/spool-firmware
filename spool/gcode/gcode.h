@@ -10,6 +10,7 @@ enum GcodeKind {
     GcodeG0,
     GcodeG1,
     GcodeG28,
+    GcodeG29,   // Bed Leveling
     GcodeG90,   // Set Abs Mode
     GcodeG91,   // Set Rel Mode
     GcodeG92,   // Set Position

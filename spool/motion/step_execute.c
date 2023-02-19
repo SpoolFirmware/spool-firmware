@@ -1,3 +1,4 @@
+#include "motion/step_plan_ng.h"
 #include <stdbool.h>
 
 #include "misc.h"
@@ -18,6 +19,8 @@ static int32_t sDeltaError[NR_STEPPERS]; // "error"
 static uint32_t sIncrementRatio[NR_STEPPERS]; // "m". This expect slope <= 1
 static uint32_t sStepsExecuted[NR_STEPPERS]; // steps executed
 static uint32_t sStepSize; // "x" step size
+static uint32_t
+    sStepCounter; // Counter to keep track of the desired axis movement.
 
 static inline void sDiscardJob(void)
 {
@@ -69,17 +72,17 @@ uint16_t executeStep(uint16_t ticksElapsed)
             if (platformGetEndstop(i)) {
                 if (job.type == StepperJobHomeX && i == ENDSTOP_X) {
                     sDiscardJob();
-                    notifyHomeXISR();
+                    notifyHomeISR(sStepCounter);
                     return 0;
                 }
                 if (job.type == StepperJobHomeY && i == ENDSTOP_Y) {
                     sDiscardJob();
-                    notifyHomeYISR();
+                    notifyHomeISR(sStepCounter);
                     return 0;
                 }
                 if (job.type == StepperJobHomeZ && i == ENDSTOP_Z) {
                     sDiscardJob();
-                    notifyHomeZISR();
+                    notifyHomeISR(sStepCounter);
                     return 0;
                 }
             }
@@ -112,6 +115,11 @@ uint16_t executeStep(uint16_t ticksElapsed)
             if (finished)
                 sDiscardJob();
         }
+        
+        // TODO: THIS IS KIND OF BAD, maybe generic
+        if (stepperMask & STEPPER_C) {
+            sStepCounter++;
+        }
     }
 
     // Now we can do other things
@@ -120,6 +128,7 @@ uint16_t executeStep(uint16_t ticksElapsed)
             return platformGetStepperTimerFreq() / 1000; // 1ms
         }
         // Acquired new block
+        sStepCounter = 0;
         platformSetStepperDir(job.stepDirs);
 
         sIterationCompleted = 0;

@@ -14,13 +14,13 @@
 #define STEPS_PER_MM   80
 #define STEPS_PER_MM_Z 800
 
-#define STEPS_PER_MM_E 820
+#define STEPS_PER_MM_E 800
 
 #define VEL_Z 5
 #define ACC_Z 50
 
 #define ACC_E 1000
-#define VEL_E 50
+#define VEL_E 75
 
 #define VEL  150
 #define JERK 10

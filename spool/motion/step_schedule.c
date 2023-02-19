@@ -1,4 +1,5 @@
 #include "step_schedule.h"
+#include "lib/fxp/src/fix16.h"
 #include "step_plan_ng.h"
 #include <stdint.h>
 #include <stdbool.h>
@@ -19,6 +20,18 @@
  */
 /* only touched in scheduleMoveTo */
 static struct PrinterState currentState;
+static struct {
+    int32_t x;
+    int32_t y;
+    int32_t current;
+} bedLevelingFactors = { 0 };
+
+static uint32_t s_scheduleHomeMove(enum JobType k,
+                                   const int32_t plan[NR_STEPPERS],
+                                   const fix16_t unitVec[X_AND_Y],
+                                   const uint32_t maxV[NR_STEPPERS],
+                                   const uint32_t acc[NR_STEPPERS],
+                                   fix16_t len);
 
 TaskHandle_t stepScheduleTaskHandle;
 
@@ -41,7 +54,7 @@ static void scheduleMoveTo(const struct PrinterMove state)
 {
     BUG_ON(state.x < 0);
     BUG_ON(state.y < 0);
-    BUG_ON(state.z < 0);
+    // BUG_ON(state.z < 0);
 
     BUG_ON(state.x > (MAX_X * STEPS_PER_MM));
     BUG_ON(state.y > (MAX_Y * STEPS_PER_MM));
@@ -51,6 +64,12 @@ static void scheduleMoveTo(const struct PrinterMove state)
     int32_t dy = currentState.homedY ? (state.y - currentState.y) : 0;
     int32_t dz = currentState.homedZ ? (state.z - currentState.z) : 0;
     int32_t de = state.e - currentState.e;
+    int32_t zLevelingTarget = 0;
+    if (bedLevelingFactors.x)
+        zLevelingTarget += (currentState.homedX ? state.x : currentState.x) / bedLevelingFactors.x;
+    if (bedLevelingFactors.y)
+        zLevelingTarget += (currentState.homedY ? state.y : currentState.y) / bedLevelingFactors.y;
+    const int32_t dzLeveling = zLevelingTarget - bedLevelingFactors.current;
 
     /* MOVE CONSTANTS */
     const uint32_t move_max_v[] = {
@@ -63,7 +82,7 @@ static void scheduleMoveTo(const struct PrinterMove state)
 
     int32_t plan[NR_STEPPERS];
     /* TODO fix fixed z inversion */
-    const int32_t dir[NR_AXES] = { dx, dy, -dz, -de };
+    const int32_t dir[NR_AXES] = { dx, dy, -(dz + dzLeveling), -de };
     fix16_t unitVec[X_AND_Y];
     fix16_t len;
 
@@ -75,6 +94,7 @@ static void scheduleMoveTo(const struct PrinterMove state)
     currentState.y = currentState.homedY ? state.y : currentState.y;
     currentState.z = currentState.homedZ ? state.z : currentState.z;
     currentState.e = state.e;
+    bedLevelingFactors.current = zLevelingTarget;
 }
 
 const static uint32_t home_max_v[] = {
@@ -94,8 +114,8 @@ static void scheduleHomeX(void)
     fix16_t len;
 
     planCoreXy(home_x, plan, unitVec, &len);
-    __enqueuePlan(StepperJobHomeX, plan, unitVec, home_max_v, STEPPER_ACC, len,
-                  false);
+    s_scheduleHomeMove(StepperJobHomeX, plan, unitVec, home_max_v, STEPPER_ACC,
+                       len);
     currentState.x = 0;
     currentState.homedX = true;
 }
@@ -109,58 +129,123 @@ static void scheduleHomeY(void)
     fix16_t len;
 
     planCoreXy(home_y, plan, unitVec, &len);
-    __enqueuePlan(StepperJobHomeY, plan, unitVec, home_max_v, STEPPER_ACC, len,
-                  false);
+    s_scheduleHomeMove(StepperJobHomeY, plan, unitVec, home_max_v, STEPPER_ACC,
+                       len);
     currentState.y = 0;
     currentState.homedY = true;
 }
 
-static void scheduleHomeZ(void)
+static uint32_t s_scheduleZMeasure(uint32_t velSteps)
 {
-    /* TODO fix z inversion */
-    static struct PrinterMove home_z_move = { 0 };
-    home_z_move.x = Z_HOME_X * STEPPER_STEPS_PER_MM[X_AXIS];
-    home_z_move.y = Z_HOME_Y * STEPPER_STEPS_PER_MM[Y_AXIS];
-    static struct PrinterMove home_z_after = { 0 };
-
-    const static int32_t home_z[] = { 0, 0, MAX_Z * STEPS_PER_MM_Z, 0 };
-    STATIC_ASSERT(ARRAY_SIZE(home_z) == NR_AXES);
-    const static int32_t home_z_bounce[] = { 0, 0, -5 * STEPS_PER_MM_Z, 0 };
-    STATIC_ASSERT(ARRAY_SIZE(home_z_bounce) == NR_AXES);
-
-    const static uint32_t home_bounce_max_v[] = {
+    static int32_t home_z[] = { 0, 0, MAX_Z * STEPS_PER_MM_Z, 0 };
+    uint32_t home_z_max_v[] = {
         HOMING_VEL * STEPS_PER_MM,
         HOMING_VEL * STEPS_PER_MM,
-        HOMING_VEL_Z * STEPS_PER_MM_Z / 4,
+        velSteps,
         0,
     };
+    STATIC_ASSERT(ARRAY_SIZE(home_z) == NR_AXES);
 
-    /* move x and y to the right spot to home z */
-    if (home_z_move.x || home_z_move.y)
-        scheduleMoveTo(home_z_move);
-
-    STATIC_ASSERT(ARRAY_SIZE(home_bounce_max_v) == NR_STEPPERS);
     int32_t plan[NR_STEPPERS];
     fix16_t unitVec[X_AND_Y];
     fix16_t len;
 
     planCoreXy(home_z, plan, unitVec, &len);
-    __enqueuePlan(StepperJobHomeZ, plan, unitVec, home_max_v, STEPPER_ACC, len,
-                  false);
+    return s_scheduleHomeMove(StepperJobHomeZ, plan, unitVec, home_z_max_v,
+                              STEPPER_ACC, len);
+}
 
-    planCoreXy(home_z_bounce, plan, unitVec, &len);
-    __enqueuePlan(StepperJobRun, plan, unitVec, home_bounce_max_v, STEPPER_ACC,
-                  len, false);
+static void scheduleHomeZ(void)
+{
+    if (!(currentState.homedX && currentState.homedY))
+        return;
+    bedLevelingFactors.current = 0;
+    bedLevelingFactors.x = 0;
+    bedLevelingFactors.y = 0;
+    /* TODO fix z inversion */
+    int32_t savedFR, savedX = 0, savedY = 0;
+    struct PrinterMove home_z_move = { 0 };
+    home_z_move.x = Z_HOME_X * STEPPER_STEPS_PER_MM[X_AXIS];
+    home_z_move.y = Z_HOME_Y * STEPPER_STEPS_PER_MM[Y_AXIS];
 
-    planCoreXy(home_z, plan, unitVec, &len);
-    __enqueuePlan(StepperJobHomeZ, plan, unitVec, home_bounce_max_v,
-                  STEPPER_ACC, len, false);
+    /* move x and y to the right spot to home z */
+    if (home_z_move.x || home_z_move.y) {
+        savedX = currentState.x;
+        savedY = currentState.y;
+        scheduleMoveTo(home_z_move);
+    }
+
+    s_scheduleZMeasure(HOMING_VEL_Z * STEPPER_STEPS_PER_MM[Z_AXIS]);
+    currentState.homedZ = true;
+    currentState.z = 0;
+
+    home_z_move.z = 3 * STEPPER_STEPS_PER_MM[Z_AXIS];
+    savedFR = currentState.feedrate;
+    currentState.feedrate =
+        HOMING_VEL_Z * STEPPER_STEPS_PER_MM[Z_AXIS] * SECONDS_PER_MIN / 4;
+    scheduleMoveTo(home_z_move);
+    currentState.feedrate = savedFR;
+
+    s_scheduleZMeasure(HOMING_VEL_Z * STEPPER_STEPS_PER_MM[Z_AXIS] / 4);
 
     currentState.z = fix16_mul_int32(Z_OFFSET, STEPPER_STEPS_PER_MM[Z_AXIS]);
-    currentState.homedZ = true;
 
-    if (Z_OFFSET)
-        scheduleMoveTo(home_z_after);
+    if (Z_OFFSET) {
+        home_z_move.x = savedX;
+        home_z_move.y = savedY;
+        home_z_move.z = 0;
+        scheduleMoveTo(home_z_move);
+    }
+}
+
+static void s_performBedLeveling(void)
+{
+    if (!(currentState.homedX && currentState.homedY && currentState.homedZ)) {
+        return;
+    }
+
+    // Reset leveling factor
+    bedLevelingFactors.current = 0;
+    bedLevelingFactors.x = 0;
+    bedLevelingFactors.y = 0;
+
+    currentState.feedrate = 2000 * STEPPER_STEPS_PER_MM[Z_AXIS];
+    // Probe (5,10), (120, 10), (5, 155)
+    static struct PrinterMove move_position = {
+        .z = 5 * STEPPER_STEPS_PER_MM[Z_AXIS],
+    };
+    int32_t travels[3] = {0};
+    struct {
+        int32_t x;
+        int32_t y;
+    } positions[] = { { 5, 10 }, { 120, 10 }, { 5, 155 } };
+    for (int i = 0; i < ARRAY_LENGTH(positions); i++) {
+        move_position.x = positions[i].x * STEPPER_STEPS_PER_MM[X_AXIS];
+        move_position.y = positions[i].y * STEPPER_STEPS_PER_MM[X_AXIS];
+        scheduleMoveTo(move_position);
+        int32_t actualTravel = (int32_t)s_scheduleZMeasure(
+            HOMING_VEL_Z * STEPPER_STEPS_PER_MM[Z_AXIS] / 4);
+        travels[i] = actualTravel;
+        currentState.z -= actualTravel;
+        scheduleMoveTo(move_position);
+    }
+    move_position.x = Z_HOME_X * STEPPER_STEPS_PER_MM[X_AXIS];
+    move_position.y = Z_HOME_Y * STEPPER_STEPS_PER_MM[Y_AXIS];
+    scheduleMoveTo(move_position);
+
+    if (travels[1] != travels[0]) {
+        bedLevelingFactors.x =
+            -(((positions[1].x - positions[0].x) * STEPPER_STEPS_PER_MM[X_AXIS]) /
+            (travels[1] - travels[0]));
+    }
+    if (travels[2] != travels[1]) {
+        bedLevelingFactors.y =
+            -(((positions[2].y - positions[0].y) * STEPPER_STEPS_PER_MM[X_AXIS]) /
+            (travels[2] - travels[0]));
+    }
+    bedLevelingFactors.current = move_position.x / bedLevelingFactors.x;
+    bedLevelingFactors.current += move_position.y / bedLevelingFactors.y;
+    dbgPrintf("BLVL: z/x=%d, z/y=%d\n", bedLevelingFactors.x, bedLevelingFactors.y);
 }
 
 uint32_t getRequiredSpace(enum GcodeKind kind)
@@ -174,6 +259,7 @@ uint32_t getRequiredSpace(enum GcodeKind kind)
         return 0;
     case GcodeG0:
     case GcodeG1:
+    case GcodeG29: // Correct? Do we even need this?
     case GcodeM84:
         return 1;
     case GcodeG28:
@@ -265,6 +351,9 @@ static void enqueueAvailableGcode()
             WARN_ON(cmd.xyzef.eSet);
             WARN_ON(cmd.xyzef.fSet);
             break;
+        case GcodeG29:
+            s_performBedLeveling();
+            break;
         case GcodeG90:
             inRelativeMode = false;
             break;
@@ -328,23 +417,11 @@ static void sendStepperJob(const struct PlannerJob *j)
 
     switch (j->type) {
     case StepperJobRun:
-        while (xQueueSend(queue, &job, portMAX_DELAY) != pdTRUE)
-            ;
-        break;
     case StepperJobHomeX:
-        while (xQueueSend(queue, &job, portMAX_DELAY) != pdTRUE)
-            ;
-        WARN_ON(ulTaskNotifyTakeIndexed(1, pdTRUE, portMAX_DELAY) == 0);
-        break;
     case StepperJobHomeY:
-        while (xQueueSend(queue, &job, portMAX_DELAY) != pdTRUE)
-            ;
-        WARN_ON(ulTaskNotifyTakeIndexed(1, pdTRUE, portMAX_DELAY) == 0);
-        break;
     case StepperJobHomeZ:
         while (xQueueSend(queue, &job, portMAX_DELAY) != pdTRUE)
             ;
-        WARN_ON(ulTaskNotifyTakeIndexed(1, pdTRUE, portMAX_DELAY) == 0);
         break;
     case StepperJobUndef:
     default:
@@ -352,29 +429,41 @@ static void sendStepperJob(const struct PlannerJob *j)
     }
 }
 
-portTASK_FUNCTION(stepScheduleTask, pvParameters)
+static bool s_executePlannerJobs(void)
 {
     struct PlannerJob j;
+    if (plannerSize() > 0) {
+        __dequeuePlan(&j);
+        sendStepperJob(&j);
+    }
+    return plannerSize() > 0;
+}
+
+uint32_t s_scheduleHomeMove(enum JobType k, const int32_t plan[NR_STEPPERS],
+                            const fix16_t unitVec[X_AND_Y],
+                            const uint32_t maxV[NR_STEPPERS],
+                            const uint32_t acc[NR_STEPPERS], fix16_t len)
+{
+    uint32_t stepsMoved = 0;
+    xTaskNotifyStateClear(NULL);
+    __enqueuePlan(k, plan, unitVec, maxV, acc, len, true);
+    // Empty Planner Queue
+    while (s_executePlannerJobs())
+        ;
+    xTaskNotifyWait(0, 0, &stepsMoved, portMAX_DELAY);
+    return stepsMoved;
+}
+
+portTASK_FUNCTION(stepScheduleTask, pvParameters)
+{
     for (;;) {
         enqueueAvailableGcode();
-        if (plannerSize() > 0) {
-            __dequeuePlan(&j);
-            sendStepperJob(&j);
-        }
+        s_executePlannerJobs();
     }
 }
 
-void notifyHomeXISR(void)
+void notifyHomeISR(uint32_t stepsMoved)
 {
-    vTaskNotifyGiveIndexedFromISR(stepScheduleTaskHandle, 1, NULL);
-}
-
-void notifyHomeYISR(void)
-{
-    vTaskNotifyGiveIndexedFromISR(stepScheduleTaskHandle, 1, NULL);
-}
-
-void notifyHomeZISR(void)
-{
-    vTaskNotifyGiveIndexedFromISR(stepScheduleTaskHandle, 1, NULL);
+    xTaskNotifyFromISR(stepScheduleTaskHandle, stepsMoved,
+                       eSetValueWithOverwrite, NULL);
 }

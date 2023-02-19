@@ -94,6 +94,7 @@ portTASK_FUNCTION(gcodeSerialTask, pvParameters)
             case GcodeG0:
             case GcodeG1:
             case GcodeG28:
+            case GcodeG29:
             case GcodeG90:
             case GcodeG91:
             case GcodeG92:

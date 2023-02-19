@@ -10,6 +10,7 @@ struct PrinterMove {
     int32_t y;
     int32_t z;
     int32_t e;
+    uint32_t fr;
 };
 
 struct PrinterState {
@@ -44,8 +45,6 @@ typedef struct StepperJob {
 
 void motionPlannerTaskInit(void);
 
-void notifyHomeXISR(void);
-void notifyHomeYISR(void);
-void notifyHomeZISR(void);
+void notifyHomeISR(uint32_t stepsMoved);
 
 portTASK_FUNCTION_PROTO(stepScheduleTask, pvParameters);

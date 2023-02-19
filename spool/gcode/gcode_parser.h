@@ -16,6 +16,7 @@ enum TokenKind {
     TokenN,
     TokenR,
     TokenS,
+    TokenT,
     TokenX,
     TokenY,
     TokenZ,
