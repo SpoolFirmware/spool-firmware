@@ -124,11 +124,16 @@ uint16_t halADCConvertSingle(struct ADCDriver *pD, uint32_t streamId)
     if (xSemaphoreTake(adcMutex, portMAX_DELAY) != pdTRUE) {
         panic();
     }
-
-    REG_WR32(s_getADCBaseFromStream(streamId) + DRF_ADC1_SQR1,
+    const uint32_t adcBase = s_getADCBaseFromStream(streamId);
+    REG_WR32(adcBase + DRF_ADC1_SQR1,
              DRF_NUM(_ADC1, _SQR1, _L, 1));
-    REG_WR32(s_getADCBaseFromStream(streamId) + DRF_ADC1_SQR3,
+    REG_WR32(adcBase + DRF_ADC1_SQR3,
              DRF_NUM(_ADC1, _SQR3, _SQ1, channel));
+    
+    REG_WR32(adcBase + DRF_ADC1_CR2, 
+        FLD_SET_DRF(_ADC1, _CR2, _SWSTART, _START, 
+        REG_RD32(adcBase + DRF_ADC1_CR2)));
+
     xSemaphoreTake(adcSemaphore, portMAX_DELAY);
     convertResult =
         (uint16_t)(REG_RD32(s_getADCBaseFromStream(streamId) + DRF_ADC1_DR)
