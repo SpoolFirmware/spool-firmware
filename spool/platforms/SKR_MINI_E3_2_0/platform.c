@@ -75,11 +75,3 @@ void platformSetHeater(int8_t idx, uint8_t pwm)
 void platformSetFan(int8_t idx, uint8_t pwm)
 {
 }
-
-void __warn(const char *file, int line, const char *err)
-{
-}
-
-void __warn_on_err(const char *file, int line, status_t err)
-{
-}

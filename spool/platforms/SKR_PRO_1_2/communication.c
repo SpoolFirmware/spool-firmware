@@ -75,16 +75,6 @@ IRQ_HANDLER_USART1(void)
     halIrqClear(IRQ_USART1);
 }
 
-void __warn(const char *file, int line, const char *err)
-{
-    dbgPrintf("WARN %s in %s:%d\n", err, file, line);
-}
-
-void __warn_on_err(const char *file, int line, status_t err)
-{
-    dbgPrintf("WARN ERR %d in %s:%d\n", err, file, line);
-}
-
 void platformDbgPutc(char c)
 {
     halUartSendByte(&printUart, (uint8_t)c);
