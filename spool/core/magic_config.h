@@ -20,11 +20,11 @@
 #define ACC_Z 50
 
 #define ACC_E 1000
-#define VEL_E 75
+#define VEL_E 45
 
 #define VEL  150
 #define JERK 10
-#define ACC  1500
+#define ACC  1000
 
 #define HOMING_VEL   50
 #define HOMING_VEL_Z 5
@@ -34,7 +34,7 @@
 #define Z_HOME_Y 30
 
 /* in case the z endstop is not z=0 */
-#define Z_OFFSET F16(1.2)
+#define Z_OFFSET F16(1.0)
 
 #define MAX_X 160
 #define MAX_Y 160
@@ -48,7 +48,7 @@
 #define Z_AXIS    2
 #define E_AXIS    3
 
-#define NR_AXES   4
+#define NR_AXES 4
 
 const static uint32_t V_MAX_STEPS = VEL * STEPS_PER_MM;
 const static uint32_t ACCEL_STEPS = ACC * STEPS_PER_MM;

@@ -398,7 +398,7 @@ static status_t assertAndEatNumber(struct GcodeParser *s, struct Token *out)
 
     ASSERT_OR_RETURN(peekToken(s, &curr));
     if (!(curr.kind == TokenFix16 || curr.kind == TokenInt32)) {
-        WARN();
+        PR_WARN("ate token %d instead of number\n", curr.kind);
         return StatusInvalidGcodeCommand;
     }
     ASSERT_OR_RETURN(eatToken(s));

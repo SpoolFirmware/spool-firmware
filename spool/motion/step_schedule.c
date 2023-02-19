@@ -73,10 +73,10 @@ static void scheduleMoveTo(const struct PrinterMove state)
 
     /* MOVE CONSTANTS */
     const uint32_t move_max_v[] = {
-        min(currentState.feedrate / SECONDS_PER_MIN, VEL * STEPS_PER_MM),
-        min(currentState.feedrate / SECONDS_PER_MIN, VEL * STEPS_PER_MM),
-        min(currentState.feedrate / SECONDS_PER_MIN, VEL_Z * STEPS_PER_MM_Z),
-        min(currentState.feedrate / SECONDS_PER_MIN, VEL_E * STEPS_PER_MM_E),
+        min(currentState.feedrate, VEL) * STEPS_PER_MM,
+        min(currentState.feedrate, VEL) * STEPS_PER_MM,
+        min(currentState.feedrate, VEL_Z) * STEPS_PER_MM_Z,
+        min(currentState.feedrate, VEL_E) * STEPS_PER_MM_E,
     };
     STATIC_ASSERT(ARRAY_SIZE(move_max_v) == NR_STEPPERS);
 
@@ -182,7 +182,7 @@ static void scheduleHomeZ(void)
     home_z_move.z = 3 * STEPPER_STEPS_PER_MM[Z_AXIS];
     savedFR = currentState.feedrate;
     currentState.feedrate =
-        HOMING_VEL_Z * STEPPER_STEPS_PER_MM[Z_AXIS] * SECONDS_PER_MIN / 4;
+        HOMING_VEL_Z / 4;
     scheduleMoveTo(home_z_move);
     currentState.feedrate = savedFR;
 
@@ -209,7 +209,7 @@ static void s_performBedLeveling(void)
     bedLevelingFactors.x = 0;
     bedLevelingFactors.y = 0;
 
-    currentState.feedrate = 2000 * STEPPER_STEPS_PER_MM[Z_AXIS];
+    currentState.feedrate = 60;
     // Probe (5,10), (120, 10), (5, 155)
     static struct PrinterMove move_position = {
         .z = 5 * STEPPER_STEPS_PER_MM[Z_AXIS],
@@ -323,7 +323,7 @@ static void enqueueAvailableGcode()
             WARN_ON(cmd.xyzef.f < 0);
             currentState.feedrate =
                 (cmd.xyzef.fSet && cmd.xyzef.f != 0) ?
-                    fix16_mul_int32(cmd.xyzef.f, STEPS_PER_MM) :
+                    fix16_to_int(cmd.xyzef.f) / SECONDS_PER_MIN :
                     currentState.feedrate;
             currentState.continuousMode = continuousMode;
             scheduleMoveTo(nextState);
@@ -331,7 +331,7 @@ static void enqueueAvailableGcode()
         case GcodeG28:
             /* TODO, make this a stepper job */
             platformEnableStepper(0xFF);
-            currentState.feedrate = VEL * STEPS_PER_MM * SECONDS_PER_MIN;
+            currentState.feedrate = VEL;
             currentState.continuousMode = false;
             if (!(cmd.xyzef.xSet || cmd.xyzef.ySet || cmd.xyzef.zSet)) {
                 scheduleHomeX();
