@@ -1,4 +1,5 @@
 #include "thermistors.h"
+#include "dbgprintf.h"
 
 fix16_t thermistorEvaulate(const struct ThermistorTable *pTable, uint16_t scaledValue)
 {

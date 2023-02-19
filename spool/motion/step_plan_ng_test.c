@@ -10,8 +10,10 @@ struct Move {
     fix16_t y;
 };
 
-const static int32_t max_v[NR_STEPPERS] = { VEL * STEPS_PER_MM,
-                                            VEL * STEPS_PER_MM };
+const static uint32_t max_v[NR_STEPPERS] = {
+    VEL * STEPS_PER_MM, VEL *STEPS_PER_MM,
+    VEL * STEPS_PER_MM, VEL *STEPS_PER_MM,
+    };
 
 #define M(x, y)        \
     {                  \
@@ -28,11 +30,14 @@ void testPlanContinuous(const struct Move *move)
 {
     int32_t plan[NR_STEPPERS];
     const fix16_t movement[NR_AXES] = { move->x, move->y };
-    planCoreXy(movement, plan);
+    fix16_t unitVec[NR_AXES];
+    fix16_t len;
+
+    planCoreXy(movement, plan, unitVec, &len);
     printf("(x,y) %f, %f => (a,b) %d, %d\n", fix16_to_float(move->x),
            fix16_to_float(move->y), plan[0], plan[1]);
 
-    __enqueuePlan(StepperJobRun, plan, max_v, true);
+    __enqueuePlan(StepperJobRun, plan, unitVec, max_v, STEPPER_ACC, len, true);
 }
 
 void printPlan(void)
@@ -44,10 +49,11 @@ void printPlan(void)
     printf("===\n");
     for_each_stepper(i) {
         struct PlannerBlock *s = &job.steppers[i];
+    }
+    struct PlannerJob *s = &job;
         printf("x=%d acc=%d dec=%d vi=%f v=%f vf=%f\n", s->x, s->accelerationX,
                s->decelerationX, sqrtf((float)s->viSq), sqrtf((float)s->vSq),
                sqrtf((float)s->vfSq));
-    }
 }
 
 int main()

@@ -3,97 +3,45 @@
 #include "dbgprintf.h"
 #include "platform/platform.h"
 
+#include <stdbool.h>
+
 #include "FreeRTOS.h"
 #include "task.h"
 #include "timers.h"
 #include "fix16.h"
 
-
 #include "semphr.h"
 
+#include "thermal/pid.h"
 #include "thermal/thermal.h"
 #include "core/spool.h"
 #include "gcode/gcode.h"
 
-typedef struct {
-    // Target State
-    fix16_t setPoint;
-    // Configuration State
-    fix16_t kp;
-    fix16_t ki;
-    fix16_t kd;
-
-    fix16_t outputMin;
-    fix16_t outputMax;
-    fix16_t effectiveRange;
-
-    // Internal State
-    fix16_t maxOverKi;
-    fix16_t iState;
-    fix16_t lastInput;
-} pid_t;
-
 static void thermalCallback(TimerHandle_t timerHandle);
 
-void pidInit(pid_t *pPid)
-{
-    if (pPid->outputMax == 0)
-        panic();
-
-    if (pPid->effectiveRange == 0)
-        pPid->effectiveRange = F16(-1);
-
-    if (pPid->ki != 0) {
-        pPid->maxOverKi =
-            fix16_sub(fix16_div(pPid->outputMax, pPid->ki), pPid->outputMin);
-    }
-}
-
-void pidReset(pid_t *pPid)
-{
-    pPid->iState = 0;
-}
-
-fix16_t pidUpdateLoop(pid_t *pPid, fix16_t input)
-{
-    fix16_t error = fix16_sub(pPid->setPoint, input);
-    fix16_t dInput;
-    fix16_t output;
-
-    if (fix16_abs(error) > pPid->effectiveRange) {
-        pidReset(pPid);
-        pPid->lastInput = input;
-        if (error > F16(0)) {
-            return pPid->outputMax;
-        } else {
-            return pPid->outputMin;
-        }
-    }
-
-    dInput = fix16_sub(input, pPid->lastInput);
-
-    // Cap OutputSum
-    pPid->iState =
-        fix16_clamp(fix16_add(pPid->iState, error), 0, pPid->maxOverKi);
-
-    output = fix16_mul(pPid->kp, error); // P
-    output = fix16_add(output, fix16_mul(pPid->ki, pPid->iState)); // I
-    output = fix16_sub(output, fix16_mul(pPid->kd, dInput)); // D
-
-    output = fix16_clamp(output, pPid->outputMin, pPid->outputMax);
-
-    // Kd? lol not happening rn
-    pPid->lastInput = input;
-    return output;
-}
-
-// 24V
 SemaphoreHandle_t pidMutex;
-pid_t myPid = {
+pid_t e0Pid = {
     .setPoint = F16(0),
-    .kp = F16(13.5),
-    .ki = F16(1.6),
-    .kd = F16(400),
+    .kp = F16(4),
+    .ki = F16(0.01),
+    .kd = F16(60),
+
+    .m = F16(1.0 / 7),
+    .b = F16(-30),
+
+    .outputMin = F16(0),
+    .outputMax = F16(100),
+    .effectiveRange = F16(20),
+};
+
+pid_t bedPid = {
+    .setPoint = F16(0),
+    .kp = F16(40),
+    .ki = F16(0.1),
+    .kd = F16(40),
+
+    .m = F16(1.0/0.837),
+    .b = F16(-11.6),
 
     .outputMin = F16(0),
     .outputMax = F16(100),
@@ -103,24 +51,98 @@ pid_t myPid = {
 static void thermalCallback(TimerHandle_t timerHandle)
 {
     fix16_t tempC_f = 0;
+    fix16_t tempCBed_f = 0;
+    int targetCBed, targetCE;
+
     for (int i = 0; i < 6; i++) {
         const fix16_t reading = platformReadTemp(0);
         tempC_f = fix16_add(tempC_f, reading);
     }
     tempC_f = fix16_div(tempC_f, F16(6));
-    int tempC = fix16_to_int(tempC_f);
-    int targetC;
+    int tempCExtruder = fix16_to_int(tempC_f);
 
-    xSemaphoreTake(pidMutex, pdMS_TO_TICKS(50));
-    int control = fix16_to_int(pidUpdateLoop(&myPid, tempC_f));
-    targetC = fix16_to_int(myPid.setPoint);
+    for (int i = 0; i < 6; i++) {
+        const fix16_t reading = platformReadTemp(-1);
+        tempCBed_f = fix16_add(tempCBed_f, reading);
+    }
+    tempCBed_f = fix16_div(tempCBed_f, F16(6));
+    int tempCBed = fix16_to_int(tempCBed_f);
+
+    int eControl, bControl;
+
+    if (xSemaphoreTake(pidMutex, pdMS_TO_TICKS(50)) == pdTRUE) {
+        eControl = fix16_to_int(pidUpdateLoop(&e0Pid, tempC_f));
+        targetCE = fix16_to_int(e0Pid.setPoint);
+
+        bControl = fix16_to_int(pidUpdateLoop(&bedPid, tempCBed_f));
+        targetCBed = fix16_to_int(bedPid.setPoint);
+        xSemaphoreGive(pidMutex);
+    } else {
+        platformSetHeater(0, 0);
+        platformSetHeater(-1, 0);
+        panic();
+    }
+
+    // Apply Control
+    platformSetHeater(0, eControl);
+    platformSetHeater(-1, bControl);
+
+    // Extruder Fan
+    if (tempCExtruder > 50) {
+        platformSetFan(-1, 100);
+    } else if (tempCExtruder < 40) {
+        platformSetFan(-1, 0);
+    }
+
+    // Logging
+    static uint8_t log = 0;
+    if (log == 16) {
+        log = 0;
+        /* dbgPrintf("s=%d c=%d o=%d; B:s=%d c=%d o=%d\n", targetCE, tempCExtruder, */
+        /*           eControl, targetCBed, tempCBed, bControl); */
+    }
+    log++;
+}
+
+static void sSetHotendTemperature(fix16_t newTemp)
+{
+    xSemaphoreTake(pidMutex, portMAX_DELAY);
+    if (newTemp < F16(230)) {
+        e0Pid.setPoint = newTemp;
+    }
+    xSemaphoreGive(pidMutex);
+}
+
+static void sSetBedTemperature(fix16_t newTemp, bool wait)
+{
+    xSemaphoreTake(pidMutex, portMAX_DELAY);
+    if (newTemp < F16(80)) {
+        bedPid.setPoint = newTemp;
+    }
     xSemaphoreGive(pidMutex);
 
-    platformSetHeater(0, control);
-    if (tempC > 40) {
-        platformSetFan(0, 100);
+    if (wait) {
+        for (;;) {
+            vTaskDelay(pdMS_TO_TICKS(1000));
+            if (pidStable(&bedPid))
+                break;
+        }
     }
-    dbgPrintf("set=%d, cur=%d out:%d\n", targetC, tempC, control);
+}
+
+void thermalGetTempReport(struct TemperatureReport *pReport)
+{
+    fix16_t e0TempF16 = -1;
+    fix16_t bedTempF16 = -1;
+
+    xSemaphoreTake(pidMutex, portMAX_DELAY);
+    e0TempF16 = e0Pid.inputHistory[e0Pid.head];
+    bedTempF16 = bedPid.inputHistory[bedPid.head];
+    xSemaphoreGive(pidMutex);
+    pReport->extrudersTarget[0] = fix16_to_int(e0Pid.setPoint);
+    pReport->extruders[0] = fix16_to_int(e0TempF16);
+    pReport->bedTarget = fix16_to_int(bedPid.setPoint);
+    pReport->bed = fix16_to_int(bedTempF16);
 }
 
 portTASK_FUNCTION(ThermalTask, args)
@@ -131,22 +153,52 @@ portTASK_FUNCTION(ThermalTask, args)
     for (;;) {
         xQueueReceive(ThermalTaskQueue, &cmd, portMAX_DELAY);
         memset(&resp, 0, sizeof(resp));
-        switch (cmd.kind) {
-        case GcodeM104:
-            {
-                xSemaphoreTake(pidMutex, portMAX_DELAY);
-                myPid.setPoint = cmd.temperature.sTemp;
-                xSemaphoreGive(pidMutex);
 
-                resp.respKind = ResponseOK;
-                xQueueSend(ResponseQueue, &resp, portMAX_DELAY);
+        // Default responds ResponseOK
+        resp.respKind = ResponseOK;
+        switch (cmd.kind) {
+        case GcodeM107:
+            cmd.fan.speed = 0;
+            // fall-through
+        case GcodeM106:
+            platformSetFan(0, fix16_to_int(cmd.fan.speed));
+            break;
+        case GcodeM108:
+            sSetHotendTemperature(F16(0));
+            break;
+        case GcodeM140:
+            sSetBedTemperature(cmd.temperature.sTemp, false);
+            break;
+        case GcodeM190:
+            sSetBedTemperature(cmd.temperature.sTemp, true);
+            break;
+        case GcodeM104:
+        case GcodeM109: // Set Temp / Set Temp and Wait
+            sSetHotendTemperature(cmd.temperature.sTemp);
+            if (cmd.kind == GcodeM109) {
+                for (;;) {
+                    bool tempGood = false;
+                    xSemaphoreTake(pidMutex, portMAX_DELAY);
+                    tempGood = pidStable(&e0Pid);
+                    xSemaphoreGive(pidMutex);
+                    if (tempGood)
+                        break;
+                    vTaskDelay(pdMS_TO_TICKS(500));
+                }
             }
             break;
+        case GcodeM105: // Get Temp
+        {
+            resp.respKind = ResponseTemp;
+            thermalGetTempReport(&resp.tempReport);
+        } break;
         default:
             dbgPrintf("EPERM: Thermal\n");
             panic();
             break;
         }
+
+        xQueueSend(ResponseQueue, &resp, portMAX_DELAY);
     }
 }
 
@@ -168,7 +220,7 @@ void thermalTaskInit(void)
     if (pidMutex == NULL) {
         panic();
     }
-    pidInit(&myPid);
+    pidInit(&e0Pid);
 
     xTimerStart(thermalTimer, 0);
 

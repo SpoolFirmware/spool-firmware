@@ -8,24 +8,28 @@
 #define MAX_NUM_LEN 13
 
 enum TokenKind {
-    TokenUndef,
+    TokenUndef = 0,
     TokenE,
     TokenF,
     TokenG,
     TokenM,
+    TokenN,
     TokenR,
     TokenS,
+    TokenT,
     TokenX,
     TokenY,
     TokenZ,
     TokenFix16,
     TokenNewline,
+    TokenInt32,
 };
 
 struct Token {
     enum TokenKind kind;
     union {
         fix16_t fix16;
+        int32_t int32;
     };
 };
 
@@ -37,7 +41,6 @@ struct Tokenizer {
 
 struct GcodeParser {
     struct Token currToken;
-    bool hasCurrToken;
     struct Tokenizer tokenizer;
 };
 

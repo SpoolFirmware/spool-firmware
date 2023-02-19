@@ -18,4 +18,13 @@ void *memcpy(void *dst, const void *src, size_t n)
         *dst1++ = *src1++;
     return dst;
 }
+
+size_t strlen(const char *s)
+{
+	const char *ss = s;
+	while (*ss)
+		ss++;
+	return ss - s;
+}
+
 #pragma GCC pop_options
