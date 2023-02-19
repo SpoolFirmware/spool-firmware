@@ -69,7 +69,7 @@ static void scheduleMoveTo(const struct PrinterMove state)
 
     planCoreXy(dir, plan, unitVec, &len);
     __enqueuePlan(StepperJobRun, plan, unitVec, move_max_v, STEPPER_ACC, len,
-                  currentState.continuousMode);
+                  !currentState.continuousMode);
 
     currentState.x = currentState.homedX ? state.x : currentState.x;
     currentState.y = currentState.homedY ? state.y : currentState.y;

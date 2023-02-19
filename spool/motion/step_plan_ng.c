@@ -83,12 +83,7 @@ static void calcReverse(struct PlannerJob *);
 static fix16_t vecDot(const fix16_t a[X_AND_Y], const fix16_t b[X_AND_Y])
 {
     fix16_t res = 0;
-    dbgPrintf("===\n");
     for (uint8_t i = 0; i < X_AND_Y; ++i) {
-        char astr[20], bstr[20];
-        fix16_to_str(a[i], astr, 5);
-        fix16_to_str(b[i], bstr, 5);
-        dbgPrintf("%s %s\n", astr, bstr);
         res = fix16_add(res, fix16_mul(a[i], b[i]));
     }
     return res;
@@ -139,16 +134,12 @@ static void populateBlock(const struct PlannerJob *prev, struct PlannerJob *new,
 
     /* cos(pi - theta) = -cos(theta) */
     fix16_t cosTheta = -vecDot(prev->unit_vec, new->unit_vec);
-    char needful[20];
-    fix16_to_str(cosTheta, needful, 5);
-    dbgPrintf("%s\n", needful);
 
     if (cosTheta <= JUNCTION_INHERIT_VEL_THRES) {
         /* essentially the same direction */
         /* TODO handle junction velocity like marlin */
         uint32_t viSq = min(prev->vfSq, new->vSq);
         new->viSq = viSq;
-        dbgPrintf("same_vel\n");
     } else if (new->len <= JUNCTION_SMOOTHING_DIST_THRES &&
                cosTheta <= JUNCTION_SMOOTHING_THRES) {
         /* is this where we do rounded corners? */
@@ -157,11 +148,9 @@ static void populateBlock(const struct PlannerJob *prev, struct PlannerJob *new,
             min((uint32_t)((float)prev->vfSq * abs(fix16_to_float(cosTheta))),
                 new->vSq);
         new->viSq = viSq;
-        dbgPrintf("smooth_vel\n");
     } else {
         /* is a minimum speed helpful here? why? */
         new->viSq = MIN_STEP_RATE[maxStepper];
-        dbgPrintf("zero_vel\n");
     }
 
     if (stop) {
@@ -264,9 +253,9 @@ void __enqueuePlan(enum JobType k, const int32_t plan[NR_STEPPERS],
     }
     struct PlannerJob *tail = &stepperPlanBuf.buf[stepperPlanBuf.tail];
     memset(tail, 0, sizeof(*tail));
-    tail->type = k;
     for (uint8_t i = 0; i < X_AND_Y; ++i)
         tail->unit_vec[i] = unit_vec[i];
+    tail->type = k;
     tail->len = len;
     populateBlock(prev, tail, plan, max_v, acc, stop);
     reversePass();

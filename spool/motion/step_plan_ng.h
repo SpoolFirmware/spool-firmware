@@ -39,10 +39,10 @@ STATIC_ASSERT(ARRAY_SIZE(MIN_STEP_RATE) == NR_STEPPERS);
 /* TODO MAKE CONFIGURABLE */
 #define SECONDS_IN_MIN 60
 
-#define JUNCTION_INHERIT_VEL_THRES F16(-0.99f)
+#define JUNCTION_INHERIT_VEL_THRES F16(-0.99999f)
 /* for distances less than DIST, and angles cos greater than octagon (from marlin)
  * we smooth out the velocity */
-#define JUNCTION_SMOOTHING_DIST_THRES F16(1)
+#define JUNCTION_SMOOTHING_DIST_THRES F16(1 * STEPS_PER_MM)
 #define JUNCTION_SMOOTHING_THRES      F16(-0.5f)
 
 #define X_AND_Y 2
