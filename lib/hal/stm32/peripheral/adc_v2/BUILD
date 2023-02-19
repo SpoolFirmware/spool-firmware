@@ -8,6 +8,7 @@ cc_library(
         "//lib/common:lib",
         "//lib/freertos:freertos",
         "//lib/hal/common:lib",
+        "//lib/hal/cortexm:lib",
         "//lib/hardware_manual:manual",
     ],
     visibility=["//lib/hal:__subpackages__"],
