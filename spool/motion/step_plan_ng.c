@@ -16,8 +16,6 @@ struct StepperPlanBuf {
     struct PlannerJob buf[MOTION_LOOKAHEAD];
 };
 
-#define X_AND_Y 2
-
 static struct StepperPlanBuf stepperPlanBuf;
 const static struct PlannerJob empty;
 
@@ -36,25 +34,25 @@ uint32_t plannerAvailableSpace(void)
     return MOTION_LOOKAHEAD - plannerSize();
 }
 
-static fix16_t vecUnit(const int32_t a[NR_AXES], fix16_t out[NR_AXES])
+static fix16_t vecUnit(const int32_t a[NR_AXES], fix16_t out[X_AND_Y])
 {
     float accum = 0;
     float af[NR_AXES];
-    for_each_axis(i) {
+    for (uint8_t i = 0; i < X_AND_Y; ++i) {
         float x = (float)a[i];
         accum += x * x;
         af[i] = x;
     }
     float len = sqrtf(accum);
     accum = 1.0f / len;
-    for_each_axis(i) {
+    for (uint8_t i = 0; i < X_AND_Y; ++i) {
         out[i] = fix16_from_float(af[i] * accum);
     }
     return fix16_from_float(len);
 }
 
 void planCoreXy(const int32_t movement[NR_AXES], int32_t plan[NR_STEPPERS],
-                fix16_t unit_vec[NR_AXES], fix16_t *len)
+                fix16_t unit_vec[X_AND_Y], fix16_t *len)
 {
     _Static_assert(NR_AXES >= X_AND_Y,
                    "number of axes insufficient for corexy");
@@ -82,11 +80,16 @@ void __dequeuePlan(struct PlannerJob *out)
 
 static void calcReverse(struct PlannerJob *);
 
-static fix16_t vecDot(const fix16_t a[NR_AXES], const fix16_t b[NR_AXES])
+static fix16_t vecDot(const fix16_t a[X_AND_Y], const fix16_t b[X_AND_Y])
 {
     fix16_t res = 0;
-    for_each_axis(i) {
-        res += fix16_mul(a[i], b[i]);
+    dbgPrintf("===\n");
+    for (uint8_t i = 0; i < X_AND_Y; ++i) {
+        char astr[20], bstr[20];
+        fix16_to_str(a[i], astr, 5);
+        fix16_to_str(b[i], bstr, 5);
+        dbgPrintf("%s %s\n", astr, bstr);
+        res = fix16_add(res, fix16_mul(a[i], b[i]));
     }
     return res;
 }
@@ -134,24 +137,31 @@ static void populateBlock(const struct PlannerJob *prev, struct PlannerJob *new,
     uint32_t v = (uint32_t)((float)new->steppers[maxStepper].x / timeEst);
     new->vSq = v *v;
 
-    fix16_t cosTheta = vecDot(prev->unit_vec, new->unit_vec);
+    /* cos(pi - theta) = -cos(theta) */
+    fix16_t cosTheta = -vecDot(prev->unit_vec, new->unit_vec);
+    char needful[20];
+    fix16_to_str(cosTheta, needful, 5);
+    dbgPrintf("%s\n", needful);
 
-    if (cosTheta >= JUNCTION_INHERIT_VEL_THRES) {
+    if (cosTheta <= JUNCTION_INHERIT_VEL_THRES) {
         /* essentially the same direction */
         /* TODO handle junction velocity like marlin */
         uint32_t viSq = min(prev->vfSq, new->vSq);
         new->viSq = viSq;
+        dbgPrintf("same_vel\n");
     } else if (new->len <= JUNCTION_SMOOTHING_DIST_THRES &&
-               cosTheta >= JUNCTION_SMOOTHING_THRES) {
+               cosTheta <= JUNCTION_SMOOTHING_THRES) {
         /* is this where we do rounded corners? */
         /* for now, we pretend cos is linear */
-        uint32_t viSq = min((uint32_t)((float)prev->vfSq * fix16_to_float(cosTheta)), new->vSq);
-        uint32_t a = min((uint32_t)((float)prev->a * fix16_to_float(cosTheta)), new->a);
-        new->a = a;
+        uint32_t viSq =
+            min((uint32_t)((float)prev->vfSq * abs(fix16_to_float(cosTheta))),
+                new->vSq);
         new->viSq = viSq;
+        dbgPrintf("smooth_vel\n");
     } else {
         /* is a minimum speed helpful here? why? */
-        new->viSq = 0;
+        new->viSq = MIN_STEP_RATE[maxStepper];
+        dbgPrintf("zero_vel\n");
     }
 
     if (stop) {
@@ -171,10 +181,8 @@ static void populateBlock(const struct PlannerJob *prev, struct PlannerJob *new,
 
 static void calcReverse(struct PlannerJob *curr)
 {
-    uint32_t accelerationX =
-        (curr->vSq - curr->viSq) / (2 * curr->a);
-    uint32_t decelerationX =
-        (curr->vSq - curr->vfSq) / (2 * curr->a);
+    uint32_t accelerationX = (curr->vSq - curr->viSq) / (2 * curr->a);
+    uint32_t decelerationX = (curr->vSq - curr->vfSq) / (2 * curr->a);
     uint32_t sum = accelerationX + decelerationX;
 
     if (curr->x < sum) {
@@ -241,7 +249,7 @@ static void reversePass(void)
 }
 
 void __enqueuePlan(enum JobType k, const int32_t plan[NR_STEPPERS],
-                   const fix16_t unit_vec[NR_AXES],
+                   const fix16_t unit_vec[X_AND_Y],
                    const uint32_t max_v[NR_STEPPERS],
                    const uint32_t acc[NR_STEPPERS], fix16_t len, bool stop)
 {
@@ -257,7 +265,7 @@ void __enqueuePlan(enum JobType k, const int32_t plan[NR_STEPPERS],
     struct PlannerJob *tail = &stepperPlanBuf.buf[stepperPlanBuf.tail];
     memset(tail, 0, sizeof(*tail));
     tail->type = k;
-    for_each_axis(i)
+    for (uint8_t i = 0; i < X_AND_Y; ++i)
         tail->unit_vec[i] = unit_vec[i];
     tail->len = len;
     populateBlock(prev, tail, plan, max_v, acc, stop);

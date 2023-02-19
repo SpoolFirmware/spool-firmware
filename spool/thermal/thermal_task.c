@@ -122,15 +122,10 @@ static void sSetBedTemperature(fix16_t newTemp, bool wait)
     xSemaphoreGive(pidMutex);
 
     if (wait) {
-        fix16_t lastReading = platformReadTemp(-1);
         for (;;) {
             vTaskDelay(pdMS_TO_TICKS(1000));
-            fix16_t currentReading = platformReadTemp(-1);
-            if ((currentReading == newTemp) &&
-                (lastReading == currentReading)) {
+            if (pidStable(&bedPid))
                 break;
-            }
-            lastReading = currentReading;
         }
     }
 }

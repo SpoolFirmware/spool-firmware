@@ -13,7 +13,6 @@ static status_t peekCurrChar(struct Tokenizer *s, char *out)
     ASSERT_OR_RETURN(receiveChar(&c));
     s->currChar = c;
     s->hasCurrChar = true;
-    dbgPutc(c);
     *out = c;
     return StatusOk;
 }
@@ -42,7 +41,6 @@ static status_t nextChar(struct Tokenizer *s, char *out)
     s->currChar = '\0';
     ASSERT_OR_RETURN(receiveChar(&c));
     s->currChar = c;
-    dbgPutc(c);
     s->hasCurrChar = true;
     *out = c;
     return StatusOk;
@@ -458,7 +456,7 @@ static status_t parseFan(struct GcodeParser *s, struct GcodeCommand *cmd,
 
     ASSERT_OR_RETURN(eatToken(s));
     ASSERT_OR_RETURN(assertAndEatNumber(s, &t));
-    *target = t.fix16;
+    ASSERT_OR_RETURN(assertGetFix16(&t, target));
 
     next->f = parseFan;
     return StatusAgain;

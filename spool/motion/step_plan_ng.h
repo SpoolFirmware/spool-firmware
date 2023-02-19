@@ -23,6 +23,14 @@ const static uint32_t STEPPER_STEPS_PER_MM[] = {
 };
 STATIC_ASSERT(ARRAY_SIZE(STEPPER_STEPS_PER_MM) == NR_STEPPERS);
 
+const static uint32_t MIN_STEP_RATE[] = {
+    STEPS_PER_MM / 4,
+    STEPS_PER_MM / 4,
+    STEPS_PER_MM_Z / 4,
+    STEPS_PER_MM_E / 4,
+};
+STATIC_ASSERT(ARRAY_SIZE(MIN_STEP_RATE) == NR_STEPPERS);
+
 #define MOTION_LOOKAHEAD 10
 
 #define PLANNING_TASK_NOTIFY_SLOT 1
@@ -31,11 +39,13 @@ STATIC_ASSERT(ARRAY_SIZE(STEPPER_STEPS_PER_MM) == NR_STEPPERS);
 /* TODO MAKE CONFIGURABLE */
 #define SECONDS_IN_MIN 60
 
-#define JUNCTION_INHERIT_VEL_THRES F16(0.99f)
+#define JUNCTION_INHERIT_VEL_THRES F16(-0.99f)
 /* for distances less than DIST, and angles cos greater than octagon (from marlin)
  * we smooth out the velocity */
 #define JUNCTION_SMOOTHING_DIST_THRES F16(1)
-#define JUNCTION_SMOOTHING_THRES      F16(0.7071067812f)
+#define JUNCTION_SMOOTHING_THRES      F16(-0.5f)
+
+#define X_AND_Y 2
 
 struct PlannerBlock {
     uint32_t x;
@@ -62,7 +72,7 @@ struct PlannerJob {
     uint32_t vSq;
     uint32_t vfSq;
     fix16_t len;
-    fix16_t unit_vec[NR_AXES];
+    fix16_t unit_vec[X_AND_Y];
     struct PlannerBlock steppers[NR_STEPPERS];
     enum JobType type;
     uint8_t stepDirs;
@@ -71,14 +81,14 @@ struct PlannerJob {
 void initPlanner(void);
 
 void planCoreXy(const int32_t movement[NR_AXES], int32_t plan[NR_STEPPERS],
-                fix16_t unit_vec[NR_AXES], fix16_t *len);
+                fix16_t unit_vec[X_AND_Y], fix16_t *len);
 
 uint32_t plannerAvailableSpace(void);
 uint32_t plannerSize(void);
 
 void __dequeuePlan(struct PlannerJob *out);
 void __enqueuePlan(enum JobType k, const int32_t plan[NR_STEPPERS],
-                   const fix16_t unit_vec[NR_AXES],
+                   const fix16_t unit_vec[X_AND_Y],
                    const uint32_t max_v[NR_STEPPERS],
                    const uint32_t acc[NR_STEPPERS], fix16_t len, bool stop);
 

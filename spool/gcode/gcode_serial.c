@@ -99,11 +99,8 @@ portTASK_FUNCTION(gcodeSerialTask, pvParameters)
             case GcodeG92:
             case GcodeM82:
             case GcodeM83:
-                xQueueSend(MotionPlannerTaskQueue, &cmd, portMAX_DELAY);
-                platformSendResponse(OK, sizeof(OK) - 1);
-                break;
             case GcodeM84:
-                platformDisableStepper(0xFF);
+                xQueueSend(MotionPlannerTaskQueue, &cmd, portMAX_DELAY);
                 platformSendResponse(OK, sizeof(OK) - 1);
                 break;
             case GcodeM104:

@@ -37,7 +37,7 @@ void motionPlannerTaskInit(void)
 
 #define SECONDS_PER_MIN 60
 
-static void scheduleMoveTo(const struct PrinterState state)
+static void scheduleMoveTo(const struct PrinterMove state)
 {
     BUG_ON(state.x < 0);
     BUG_ON(state.y < 0);
@@ -47,31 +47,34 @@ static void scheduleMoveTo(const struct PrinterState state)
     BUG_ON(state.y > (MAX_Y * STEPS_PER_MM));
     BUG_ON(state.z > (MAX_Z * STEPS_PER_MM_Z));
 
-    int32_t dx = state.x - currentState.x;
-    int32_t dy = state.y - currentState.y;
-    int32_t dz = state.z - currentState.z;
+    int32_t dx = currentState.homedX ? (state.x - currentState.x) : 0;
+    int32_t dy = currentState.homedY ? (state.y - currentState.y) : 0;
+    int32_t dz = currentState.homedZ ? (state.z - currentState.z) : 0;
     int32_t de = state.e - currentState.e;
 
     /* MOVE CONSTANTS */
     const uint32_t move_max_v[] = {
-        min(state.feedrate / SECONDS_PER_MIN, VEL * STEPS_PER_MM),
-        min(state.feedrate / SECONDS_PER_MIN, VEL * STEPS_PER_MM),
-        min(state.feedrate / SECONDS_PER_MIN, VEL_Z * STEPS_PER_MM_Z),
-        min(state.feedrate / SECONDS_PER_MIN, VEL_E * STEPS_PER_MM_E),
+        min(currentState.feedrate / SECONDS_PER_MIN, VEL * STEPS_PER_MM),
+        min(currentState.feedrate / SECONDS_PER_MIN, VEL * STEPS_PER_MM),
+        min(currentState.feedrate / SECONDS_PER_MIN, VEL_Z * STEPS_PER_MM_Z),
+        min(currentState.feedrate / SECONDS_PER_MIN, VEL_E * STEPS_PER_MM_E),
     };
     STATIC_ASSERT(ARRAY_SIZE(move_max_v) == NR_STEPPERS);
 
     int32_t plan[NR_STEPPERS];
     /* TODO fix fixed z inversion */
     const int32_t dir[NR_AXES] = { dx, dy, -dz, -de };
-    fix16_t unitVec[NR_AXES];
+    fix16_t unitVec[X_AND_Y];
     fix16_t len;
 
     planCoreXy(dir, plan, unitVec, &len);
     __enqueuePlan(StepperJobRun, plan, unitVec, move_max_v, STEPPER_ACC, len,
-                  state.continuousMode);
+                  currentState.continuousMode);
 
-    currentState = state;
+    currentState.x = currentState.homedX ? state.x : currentState.x;
+    currentState.y = currentState.homedY ? state.y : currentState.y;
+    currentState.z = currentState.homedZ ? state.z : currentState.z;
+    currentState.e = state.e;
 }
 
 const static uint32_t home_max_v[] = {
@@ -87,13 +90,14 @@ static void scheduleHomeX(void)
     const static int32_t home_x[] = { -MAX_X * STEPS_PER_MM, 0, 0, 0 };
     STATIC_ASSERT(ARRAY_SIZE(home_x) == NR_AXES);
     int32_t plan[NR_STEPPERS];
-    fix16_t unitVec[NR_AXES];
+    fix16_t unitVec[X_AND_Y];
     fix16_t len;
 
     planCoreXy(home_x, plan, unitVec, &len);
     __enqueuePlan(StepperJobHomeX, plan, unitVec, home_max_v, STEPPER_ACC, len,
                   false);
     currentState.x = 0;
+    currentState.homedX = true;
 }
 
 static void scheduleHomeY(void)
@@ -101,18 +105,24 @@ static void scheduleHomeY(void)
     const static int32_t home_y[] = { 0, -MAX_Y * STEPS_PER_MM, 0, 0 };
     STATIC_ASSERT(ARRAY_SIZE(home_y) == NR_AXES);
     int32_t plan[NR_STEPPERS];
-    fix16_t unitVec[NR_AXES];
+    fix16_t unitVec[X_AND_Y];
     fix16_t len;
 
     planCoreXy(home_y, plan, unitVec, &len);
     __enqueuePlan(StepperJobHomeY, plan, unitVec, home_max_v, STEPPER_ACC, len,
                   false);
     currentState.y = 0;
+    currentState.homedY = true;
 }
 
 static void scheduleHomeZ(void)
 {
     /* TODO fix z inversion */
+    static struct PrinterMove home_z_move = { 0 };
+    home_z_move.x = Z_HOME_X * STEPPER_STEPS_PER_MM[X_AXIS];
+    home_z_move.y = Z_HOME_Y * STEPPER_STEPS_PER_MM[Y_AXIS];
+    static struct PrinterMove home_z_after = { 0 };
+
     const static int32_t home_z[] = { 0, 0, MAX_Z * STEPS_PER_MM_Z, 0 };
     STATIC_ASSERT(ARRAY_SIZE(home_z) == NR_AXES);
     const static int32_t home_z_bounce[] = { 0, 0, -5 * STEPS_PER_MM_Z, 0 };
@@ -124,9 +134,14 @@ static void scheduleHomeZ(void)
         HOMING_VEL_Z * STEPS_PER_MM_Z / 4,
         0,
     };
+
+    /* move x and y to the right spot to home z */
+    if (home_z_move.x || home_z_move.y)
+        scheduleMoveTo(home_z_move);
+
     STATIC_ASSERT(ARRAY_SIZE(home_bounce_max_v) == NR_STEPPERS);
     int32_t plan[NR_STEPPERS];
-    fix16_t unitVec[NR_AXES];
+    fix16_t unitVec[X_AND_Y];
     fix16_t len;
 
     planCoreXy(home_z, plan, unitVec, &len);
@@ -140,7 +155,12 @@ static void scheduleHomeZ(void)
     planCoreXy(home_z, plan, unitVec, &len);
     __enqueuePlan(StepperJobHomeZ, plan, unitVec, home_bounce_max_v,
                   STEPPER_ACC, len, false);
-    currentState.z = 0;
+
+    currentState.z = fix16_mul_int32(Z_OFFSET, STEPPER_STEPS_PER_MM[Z_AXIS]);
+    currentState.homedZ = true;
+
+    if (Z_OFFSET)
+        scheduleMoveTo(home_z_after);
 }
 
 uint32_t getRequiredSpace(enum GcodeKind kind)
@@ -171,7 +191,7 @@ static void enqueueAvailableGcode()
     static bool commandAvailable = false;
     bool continuousMode = false;
     static struct GcodeCommand cmd;
-    static struct PrinterState nextState = { 0 };
+    static struct PrinterMove nextState = { 0 };
 
     static bool inRelativeMode = false;
     static bool eRelativeMode = false;
@@ -215,32 +235,35 @@ static void enqueueAvailableGcode()
                               currentState.e;
 
             WARN_ON(cmd.xyzef.f < 0);
-            nextState.feedrate =
+            currentState.feedrate =
                 (cmd.xyzef.fSet && cmd.xyzef.f != 0) ?
                     fix16_mul_int32(cmd.xyzef.f, STEPS_PER_MM) :
                     currentState.feedrate;
-            nextState.continuousMode = continuousMode;
+            currentState.continuousMode = continuousMode;
             scheduleMoveTo(nextState);
             break;
         case GcodeG28:
             /* TODO, make this a stepper job */
             platformEnableStepper(0xFF);
+            currentState.feedrate = VEL * STEPS_PER_MM * SECONDS_PER_MIN;
+            currentState.continuousMode = false;
             if (!(cmd.xyzef.xSet || cmd.xyzef.ySet || cmd.xyzef.zSet)) {
                 scheduleHomeX();
                 scheduleHomeY();
                 scheduleHomeZ();
             } else {
-                if (cmd.xyzef.xSet)
+                if (cmd.xyzef.xSet) {
                     scheduleHomeX();
-                if (cmd.xyzef.ySet)
+                }
+                if (cmd.xyzef.ySet) {
                     scheduleHomeY();
-                if (cmd.xyzef.zSet)
+                }
+                if (cmd.xyzef.zSet) {
                     scheduleHomeZ();
+                }
             }
             WARN_ON(cmd.xyzef.eSet);
             WARN_ON(cmd.xyzef.fSet);
-            currentState.feedrate = VEL * STEPS_PER_MM * SECONDS_PER_MIN;
-            currentState.continuousMode = false;
             break;
         case GcodeG90:
             inRelativeMode = false;
@@ -267,6 +290,12 @@ static void enqueueAvailableGcode()
             break;
         case GcodeM83:
             eRelativeMode = true;
+            break;
+        case GcodeM84:
+            currentState.homedX = false;
+            currentState.homedY = false;
+            currentState.homedZ = false;
+            platformDisableStepper(0xFF);
             break;
         default:
             panic();

@@ -14,7 +14,7 @@
 #define STEPS_PER_MM   80
 #define STEPS_PER_MM_Z 800
 
-#define STEPS_PER_MM_E 195
+#define STEPS_PER_MM_E 764
 
 #define VEL_Z 5
 #define ACC_Z 50
@@ -28,6 +28,13 @@
 
 #define HOMING_VEL   50
 #define HOMING_VEL_Z 5
+
+/* move x and y by a bit when homing z */
+#define Z_HOME_X 30
+#define Z_HOME_Y 30
+
+/* in case the z endstop is not z=0 */
+#define Z_OFFSET F16(1.2)
 
 #define MAX_X 160
 #define MAX_Y 160

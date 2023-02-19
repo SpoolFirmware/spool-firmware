@@ -5,6 +5,13 @@
 #include "core/magic_config.h"
 #include "step_plan_ng.h"
 
+struct PrinterMove {
+    int32_t x; /* unit: steps */
+    int32_t y;
+    int32_t z;
+    int32_t e;
+};
+
 struct PrinterState {
     int32_t x; /* unit: steps */
     int32_t y;
@@ -12,6 +19,7 @@ struct PrinterState {
     int32_t e;
     int32_t feedrate;
     bool continuousMode;
+    bool homedX : 1, homedY : 1, homedZ : 1;
 };
 
 typedef struct MotionBlock {
