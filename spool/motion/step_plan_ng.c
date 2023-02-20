@@ -34,52 +34,6 @@ uint32_t plannerAvailableSpace(void)
     return MOTION_LOOKAHEAD - plannerSize();
 }
 
-static fix16_t vecUnit(const int32_t a[NR_AXES], fix16_t out[X_AND_Y])
-{
-    float accum = 0;
-    float af[NR_AXES];
-    for (uint8_t i = 0; i < X_AND_Y; ++i) {
-        float x = (float)a[i];
-        accum += x * x;
-        af[i] = x;
-    }
-    float len = sqrtf(accum);
-    accum = 1.0f / len;
-    for (uint8_t i = 0; i < X_AND_Y; ++i) {
-        out[i] = fix16_from_float(af[i] * accum);
-    }
-    return fix16_from_float(len);
-}
-
-void planI3(const int32_t movement[NR_AXES], int32_t plan[NR_STEPPERS],
-            fix16_t unit_vec[X_AND_Y], fix16_t *len)
-{
-    for_each_stepper(i) {
-        plan[i] = movement[i];
-    }
-
-    *len = vecUnit(movement, unit_vec);
-}
-
-void planCoreXy(const int32_t movement[NR_AXES], int32_t plan[NR_STEPPERS],
-                fix16_t unit_vec[X_AND_Y], fix16_t *len)
-{
-    _Static_assert(NR_AXES >= X_AND_Y,
-                   "number of axes insufficient for corexy");
-
-    int32_t aX = movement[X_AXIS] + movement[Y_AXIS];
-    int32_t bX = movement[X_AXIS] - movement[Y_AXIS];
-    for_each_stepper(i) {
-        if (i < X_AND_Y)
-            continue;
-        plan[i] = movement[i];
-    }
-    plan[STEPPER_A_IDX] = aX;
-    plan[STEPPER_B_IDX] = bX;
-
-    *len = vecUnit(movement, unit_vec);
-}
-
 void __dequeuePlan(struct PlannerJob *out)
 {
     BUG_ON(plannerSize() == 0);

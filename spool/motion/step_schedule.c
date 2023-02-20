@@ -14,6 +14,7 @@
 #include "compiler.h"
 #include "core/spool.h"
 #include <string.h>
+#include "motion/kinematic.h"
 
 /* Records the state of the printer ends up in after the stepper queue
  * finishes. We could have the state be attached to each stepper job.
@@ -126,18 +127,7 @@ static void scheduleMoveTo(const struct PrinterMove state)
     fix16_t unitVec[X_AND_Y];
     fix16_t len;
 
-
-    switch (PLATFORM_FEATURE_ENABLED(Kinematic)) {
-        case KinematicKindCoreXY:
-            planCoreXy(dir, plan, unitVec, &len);
-            break;
-        case KinematicKindI3:
-            planI3(dir, plan, unitVec, &len);
-            break;
-        default:
-            panic();
-            break;
-    }
+    planMove(dir, plan, unitVec, &len);
     __enqueuePlan(StepperJobRun, plan, unitVec, move_max_v, STEPPER_ACC, len,
                   !currentState.continuousMode);
 
@@ -167,7 +157,7 @@ static void scheduleHomeX(void)
     fix16_t unitVec[X_AND_Y];
     fix16_t len;
 
-    planCoreXy(home_x, plan, unitVec, &len);
+    planMove(home_x, plan, unitVec, &len);
     s_scheduleHomeMove(StepperJobHomeX, plan, unitVec, home_max_v, STEPPER_ACC,
                        len);
     currentState.x = 0;
@@ -182,7 +172,7 @@ static void scheduleHomeY(void)
     fix16_t unitVec[X_AND_Y];
     fix16_t len;
 
-    planCoreXy(home_y, plan, unitVec, &len);
+    planMove(home_y, plan, unitVec, &len);
     s_scheduleHomeMove(StepperJobHomeY, plan, unitVec, home_max_v, STEPPER_ACC,
                        len);
     currentState.y = 0;
@@ -204,7 +194,7 @@ static uint32_t s_scheduleZMeasure(uint32_t velSteps)
     fix16_t unitVec[X_AND_Y];
     fix16_t len;
 
-    planCoreXy(home_z, plan, unitVec, &len);
+    planMove(home_z, plan, unitVec, &len);
     return s_scheduleHomeMove(StepperJobHomeZ, plan, unitVec, home_z_max_v,
                               STEPPER_ACC, len);
 }

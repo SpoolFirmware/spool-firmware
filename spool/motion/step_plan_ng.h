@@ -1,5 +1,6 @@
 #pragma once
 #include "fix16.h"
+#include "motion/motion.h"
 #include "core/magic_config.h"
 #include <stdbool.h>
 #include "error.h"
@@ -45,8 +46,6 @@ STATIC_ASSERT(ARRAY_SIZE(MIN_STEP_RATE) == NR_STEPPERS);
 #define JUNCTION_SMOOTHING_DIST_THRES F16(1 * STEPS_PER_MM)
 #define JUNCTION_SMOOTHING_THRES      F16(-0.5f)
 
-#define X_AND_Y 2
-
 struct PlannerBlock {
     uint32_t x;
 };
@@ -80,11 +79,6 @@ struct PlannerJob {
 
 void initPlanner(void);
 
-void planCoreXy(const int32_t movement[NR_AXES], int32_t plan[NR_STEPPERS],
-                fix16_t unit_vec[X_AND_Y], fix16_t *len);
-void planI3(const int32_t movement[NR_AXES], int32_t plan[NR_STEPPERS],
-                fix16_t unit_vec[X_AND_Y], fix16_t *len);
-
 uint32_t plannerAvailableSpace(void);
 uint32_t plannerSize(void);
 
@@ -93,8 +87,3 @@ void __enqueuePlan(enum JobType k, const int32_t plan[NR_STEPPERS],
                    const fix16_t unit_vec[X_AND_Y],
                    const uint32_t max_v[NR_STEPPERS],
                    const uint32_t acc[NR_STEPPERS], fix16_t len, bool stop);
-
-#define for_each_axis(iter) for (uint8_t iter = 0; iter < NR_AXES; iter++)
-
-#define for_each_stepper(iter) \
-    for (uint8_t iter = 0; iter < NR_STEPPERS; iter++)

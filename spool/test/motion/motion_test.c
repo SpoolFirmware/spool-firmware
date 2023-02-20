@@ -4,6 +4,7 @@
 #include <math.h>
 #include "error.h"
 #include "step_plan_ng.h"
+#include "kinematic.h"
 #include "compiler.h"
 #include "gcode/gcode_parser.h"
 #include "number.h"
