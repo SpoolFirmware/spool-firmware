@@ -36,9 +36,6 @@ bool pidStable(pid_t *pPid)
 fix16_t pidUpdateLoop(pid_t *pPid, fix16_t input)
 {
     // Make sure we never heat if the target is 0.
-    if (!pPid->setPoint) {
-        return 0;
-    }
 
     fix16_t error = fix16_sub(pPid->setPoint, input);
     fix16_t dInput;
@@ -70,5 +67,8 @@ fix16_t pidUpdateLoop(pid_t *pPid, fix16_t input)
 
     output = fix16_clamp(output, pPid->outputMin, pPid->outputMax);
 
+    if (!pPid->setPoint) {
+        return 0;
+    }
     return output;
 }

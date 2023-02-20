@@ -42,6 +42,7 @@ void platformInit(struct PlatformConfig *config)
     // Initialize comm first, this gives us dbgPrintf
     privCommInit();
     privStepperInit();
+    privThermalInit();
 
     // Configure ENDStops
     for (size_t i = 0; i < ARRAY_LENGTH(endStops); i++) {
@@ -54,6 +55,7 @@ void platformPostInit(void)
 {
     privCommPostInit();
     privStepperPostInit();
+    privThermalPostInit();
 }
 
 bool platformGetEndstop(uint8_t axis)
@@ -61,17 +63,4 @@ bool platformGetEndstop(uint8_t axis)
     if (axis < ARRAY_LENGTH(endStops))
         return !halGpioRead(endStops[axis]);
     return true;
-}
-
-fix16_t platformReadTemp(int8_t idx)
-{
-    return F16(0);
-}
-
-void platformSetHeater(int8_t idx, uint8_t pwm)
-{
-}
-
-void platformSetFan(int8_t idx, uint8_t pwm)
-{
 }

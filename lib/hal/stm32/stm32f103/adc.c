@@ -88,6 +88,20 @@ void halADCStart(struct ADCDriver *pD)
                  DRF_DEF(_ADC1, _CR1, _EOCIE, _ENABLED));
         REG_WR32(ADCList[i] + DRF_ADC1_CR2,
                  DRF_DEF(_ADC1, _CR2, _ADON, _ENABLED));
+
+        // Do Calibration
+        REG_WR32(ADCList[i] + DRF_ADC1_CR2,
+                 FLD_SET_DRF(_ADC1, _CR2, _RSTCAL, _INITIALIZE,
+                             REG_RD32(ADCList[i] + DRF_ADC1_CR2)));
+        while (FLD_TEST_DRF(_ADC1, _CR2, _RSTCAL, _NOT_INITIALIZED,
+                            REG_RD32(ADCList[i] + DRF_ADC1_CR2)))
+            ;
+        REG_WR32(ADCList[i] + DRF_ADC1_CR2,
+                 FLD_SET_DRF(_ADC1, _CR2, _CAL, _START,
+                             REG_RD32(ADCList[i] + DRF_ADC1_CR2)));
+        while (FLD_TEST_DRF(_ADC1, _CR2, _CAL, _NOT_COMPLETE,
+                            REG_RD32(ADCList[i] + DRF_ADC1_CR2)))
+            ;
     }
 
     halIrqPrioritySet(IRQ_ADC, configMAX_SYSCALL_INTERRUPT_PRIORITY);
@@ -107,14 +121,10 @@ uint16_t halADCConvertSingle(struct ADCDriver *pD, uint32_t streamId)
         panic();
     }
     const uint32_t adcBase = s_getADCBaseFromStream(streamId);
-    REG_WR32(adcBase + DRF_ADC1_SQR1,
-             DRF_NUM(_ADC1, _SQR1, _L, 0));
-    REG_WR32(adcBase + DRF_ADC1_SQR3,
-             DRF_NUM(_ADC1, _SQR3, _SQ1, channel));
-    
-    REG_WR32(adcBase + DRF_ADC1_CR2, 
-        FLD_SET_DRF(_ADC1, _CR2, _SWSTART, _START, 
-        REG_RD32(adcBase + DRF_ADC1_CR2)));
+    REG_WR32(adcBase + DRF_ADC1_SQR1, DRF_NUM(_ADC1, _SQR1, _L, 0));
+    REG_WR32(adcBase + DRF_ADC1_SQR3, DRF_NUM(_ADC1, _SQR3, _SQ1, channel));
+
+    REG_WR32(adcBase + DRF_ADC1_CR2, DRF_DEF(_ADC1, _CR2, _ADON, _ENABLED));
 
     xSemaphoreTake(adcSemaphore, portMAX_DELAY);
     convertResult =

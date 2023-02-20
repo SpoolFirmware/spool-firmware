@@ -23,3 +23,5 @@ void privCommInit(void);
 void privCommPostInit(void);
 void privStepperInit(void);
 void privStepperPostInit(void);
+void privThermalInit(void);
+void privThermalPostInit(void);

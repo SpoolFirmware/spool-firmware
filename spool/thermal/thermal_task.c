@@ -40,7 +40,7 @@ pid_t bedPid = {
     .ki = F16(0.1),
     .kd = F16(40),
 
-    .m = F16(1.0/0.837),
+    .m = F16(1.0 / 0.837),
     .b = F16(-11.6),
 
     .outputMin = F16(0),
@@ -98,8 +98,8 @@ static void thermalCallback(TimerHandle_t timerHandle)
     static uint8_t log = 0;
     if (log == 16) {
         log = 0;
-        /* dbgPrintf("s=%d c=%d o=%d; B:s=%d c=%d o=%d\n", targetCE, tempCExtruder, */
-        /*           eControl, targetCBed, tempCBed, bControl); */
+        // dbgPrintf("s=%d c=%d o=%d; B:s=%d c=%d o=%d\n", targetCE, tempCExtruder,
+        //          eControl, targetCBed, tempCBed, bControl);
     }
     log++;
 }

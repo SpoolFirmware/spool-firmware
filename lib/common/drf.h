@@ -1,6 +1,7 @@
 #pragma once
 
 #include <stdint.h>
+#include <stddef.h>
 
 /* stolen from https://github.com/NVIDIA/open-gpu-kernel-modules/blob/758b4ee8189c5198504cb1c3c5bc29027a9118a3/src/common/sdk/nvidia/inc/nvmisc.h */
 
@@ -109,8 +110,8 @@
 #define FLD_TEST_DRF_NUM(d,r,f,n,v)             ((DRF_VAL(d, r, f, (v)) == (n)))
 #define FLD_IDX_TEST_DRF(d,r,f,i,c,v)           ((DRF_IDX_VAL(d, r, f, i, (v)) == DRF##d##r##f##c))
 
-#define REG_RD32(reg)	(*((volatile uint32_t*)(reg)))
-#define REG_WR32(reg, val) (*((volatile uint32_t*)(reg)) = (val))
+#define REG_RD32(reg)	(*((volatile uint32_t*)(size_t)(reg)))
+#define REG_WR32(reg, val) (*((volatile uint32_t*)(size_t)(reg)) = (val))
 
 #define REG_FLD_SET_DRF(d,r,f,c)		\
 	(REG_WR32(DRF_REG(d, r), FLD_SET_DRF(d, r, f, c, REG_RD32(DRF_REG(d, r)))))

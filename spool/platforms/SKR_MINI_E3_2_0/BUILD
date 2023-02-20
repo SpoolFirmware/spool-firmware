@@ -36,12 +36,15 @@ cc_library(
         "comm.c",
         "stepper.c",
         "platform.c",
+        "thermal.c",
         "config.c",
     ],
     copts = ["-Ispool"],
     deps = [
         ":config",
         "//spool/platforms/common:lib",
+        "//spool/lib/thermistor:lib",
+
         "//lib/dbg:lib",
         "//lib/syslib:lib",
         "//spool/lib/tmc_driver:lib",
