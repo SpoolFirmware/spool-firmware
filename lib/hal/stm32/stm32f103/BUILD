@@ -1,7 +1,15 @@
 cc_library(
     name = "lib",
-    srcs = glob(["*.c"]),
-    hdrs = glob(["*.h"]),
+    srcs = [
+        "clock.c",
+        "adc.c",
+        "adc_private.h",
+    ],
+    hdrs = [
+        "hal.h",
+        "adc.h",
+        "clock.h",
+    ],
     include_prefix = "hal/stm32",
     visibility = ["//spool/platforms:__subpackages__"],
     deps = [
