@@ -123,6 +123,7 @@ class DRFHeaderGenerator:
 
         # Write headers
         self.out.write_line(f"// Generated from (patched) SVD files. DO NOT EDIT.")
+        self.out.write_line(f'/* {self.device.name} */ ')
         self.out.write_line("#pragma once\n")
 
         for peripheral in self.device.peripherals:
@@ -142,7 +143,8 @@ class IRQHeaderGenerator:
         FIRST_VECTOR_OFFSET = 0x40
 
         self.out.write_line('#pragma once')
-        self.out.write_line('// THIS FILE IS GENERATED, DO NOT EDIT')
+        self.out.write_line('/* THIS FILE IS GENERATED, DO NOT EDIT */')
+        self.out.write_line(f'/* {self.device.name} */')
 
         p: SVDPeripheral
         for p in self.device.peripherals:
