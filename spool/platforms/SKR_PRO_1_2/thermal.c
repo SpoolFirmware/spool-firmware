@@ -82,11 +82,11 @@ static void s_configurePWMTimer(void)
     halTimerStart(&pwmTimer1, &pwmTimer1Cfg);
 
     REG_WR32(DRF_REG(_TIM1, _CCER), 0);
+    REG_WR32(DRF_REG(_TIM1, _CCR3), 0);
     REG_WR32(DRF_REG(_TIM1, _CCMR2_OUTPUT),
              DRF_DEF(_TIM1, _CCMR2_OUTPUT, _OC3M, _PWM_MODE1) |
                  DRF_DEF(_TIM1, _CCMR2_OUTPUT, _OC3PE, _ENABLED));
     REG_WR32(DRF_REG(_TIM1, _CCER), DRF_DEF(_TIM1, _CCER, _CC3NE, _SET));
-    REG_WR32(DRF_REG(_TIM1, _CCR3), 0);
     REG_WR32(DRF_REG(_TIM1, _BDTR), DRF_DEF(_TIM1, _BDTR, _MOE, _ENABLED));
     halTimerStartContinous(&pwmTimer1, 100 - 1);
 
@@ -96,11 +96,11 @@ static void s_configurePWMTimer(void)
     halTimerStart(&pwmTimer4, &pwmTimer4Cfg);
 
     REG_WR32(DRF_REG(_TIM4, _CCER), 0);
+    REG_WR32(DRF_REG(_TIM4, _CCR1), 0);
     REG_WR32(DRF_REG(_TIM4, _CCMR1_OUTPUT),
              DRF_DEF(_TIM4, _CCMR1_OUTPUT, _OC1M, _PWM_MODE1) |
                  DRF_DEF(_TIM4, _CCMR1_OUTPUT, _OC1PE, _ENABLED));
     REG_WR32(DRF_REG(_TIM4, _CCER), DRF_DEF(_TIM4, _CCER, _CC1E, _SET));
-    REG_WR32(DRF_REG(_TIM4, _CCR3), 0);
     halTimerStartContinous(&pwmTimer4, 100 - 1);
 }
 

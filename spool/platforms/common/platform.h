@@ -66,6 +66,7 @@ fix16_t platformReadTemp(int8_t idx);
 void platformSetHeater(int8_t idx, uint8_t pwm);
 
 // -1 is Hotend Fan
+#define PLATFORM_FAN_IDX_HOTEND     (-1)
 void platformSetFan(int8_t idx, uint8_t pwm);
 
 // Communication

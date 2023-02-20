@@ -98,8 +98,8 @@ static void thermalCallback(TimerHandle_t timerHandle)
     static uint8_t log = 0;
     if (log == 16) {
         log = 0;
-        // dbgPrintf("s=%d c=%d o=%d; B:s=%d c=%d o=%d\n", targetCE, tempCExtruder,
-        //          eControl, targetCBed, tempCBed, bControl);
+        dbgPrintf("s=%d c=%d o=%d; B:s=%d c=%d o=%d\n", targetCE, tempCExtruder,
+                 eControl, targetCBed, tempCBed, bControl);
     }
     log++;
 }
