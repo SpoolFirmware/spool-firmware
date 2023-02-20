@@ -34,7 +34,7 @@ void platformSendResponse(const char *pBuffer, size_t len)
 
 void communicationInit(void)
 {
-    struct IOLine dbgUartTx = { .group = GPIOD, .pin = 8 };
+    struct IOLine dbgUartTx = { .group = DRF_BASE(DRF_GPIOD), .pin = 8 };
     halGpioSetMode(dbgUartTx,
                    DRF_DEF(_HAL_GPIO, _MODE, _MODE, _AF) |
                        DRF_DEF(_HAL_GPIO, _MODE, _TYPE, _PUSHPULL) |
@@ -45,8 +45,8 @@ void communicationInit(void)
     // printUart is started early here
     halUartStart(&printUart);
 
-    struct IOLine commUartTx = { .group = GPIOB, .pin = 6 };
-    struct IOLine commUartRx = { .group = GPIOB, .pin = 7 };
+    struct IOLine commUartTx = { .group = DRF_BASE(DRF_GPIOB), .pin = 6 };
+    struct IOLine commUartRx = { .group = DRF_BASE(DRF_GPIOB), .pin = 7 };
     halGpioSetMode(commUartTx,
                    DRF_DEF(_HAL_GPIO, _MODE, _MODE, _AF) |
                        DRF_DEF(_HAL_GPIO, _MODE, _TYPE, _PUSHPULL) |

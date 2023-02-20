@@ -14,8 +14,7 @@ const struct HalClockConfig halClockConfig = {
     .ahbPrescaler = 1,
 };
 
-// const static struct IOLine statusLED = { .group = GPIOA, .pin = 7 };
-const static struct IOLine statusLED = { .group = GPIOE, .pin = 0 };
+const static struct IOLine statusLED = { .group = DRF_BASE(DRF_GPIOA), .pin = 7 };
 
 const static uint32_t stepperFrequency = 100000;
 
@@ -35,43 +34,43 @@ struct TimerDriver stepperExecutionTimer = { 0 };
 #define NR_AXES 4
 
 const static struct IOLine endstops[NR_AXES] = {
-    { .group = GPIOB, .pin = 10 }, /* X */
-    { .group = GPIOE, .pin = 12 }, /* Y */
+    { .group = DRF_BASE(DRF_GPIOB), .pin = 10 }, /* X */
+    { .group = DRF_BASE(DRF_GPIOE), .pin = 12 }, /* Y */
     { .group = DRF_BASE(DRF_GPIOG), .pin = 8 }, /* Z */
     { 0 },
 };
 
 const static struct IOLine step[NR_STEPPERS] = {
     /* X */
-    { .group = GPIOE, .pin = 9 },
+    { .group = DRF_BASE(DRF_GPIOE), .pin = 9 },
     /* Y */
-    { .group = GPIOE, .pin = 11 },
+    { .group = DRF_BASE(DRF_GPIOE), .pin = 11 },
     /* Z */
-    { .group = GPIOE, .pin = 13 },
+    { .group = DRF_BASE(DRF_GPIOE), .pin = 13 },
     /* E */
-    { .group = GPIOE, .pin = 14 },
+    { .group = DRF_BASE(DRF_GPIOE), .pin = 14 },
 };
 
 const static struct IOLine dir[NR_STEPPERS] = {
     /* X */
-    { .group = GPIOF, .pin = 1 },
+    { .group = DRF_BASE(DRF_GPIOF), .pin = 1 },
     /* Y */
-    { .group = GPIOE, .pin = 8 },
+    { .group = DRF_BASE(DRF_GPIOE), .pin = 8 },
     /* Z */
-    { .group = GPIOC, .pin = 2 },
+    { .group = DRF_BASE(DRF_GPIOC), .pin = 2 },
     /* E */
-    { .group = GPIOA, .pin = 0 },
+    { .group = DRF_BASE(DRF_GPIOA), .pin = 0 },
 };
 
 const static struct IOLine en[NR_STEPPERS] = {
     /* X */
-    { .group = GPIOF, .pin = 2 },
+    { .group = DRF_BASE(DRF_GPIOF), .pin = 2 },
     /* Y */
-    { .group = GPIOD, .pin = 7 },
+    { .group = DRF_BASE(DRF_GPIOD), .pin = 7 },
     /* Z */
-    { .group = GPIOC, .pin = 0 },
+    { .group = DRF_BASE(DRF_GPIOC), .pin = 0 },
     /* E */
-    { .group = GPIOC, .pin = 3 },
+    { .group = DRF_BASE(DRF_GPIOC), .pin = 3 },
 };
 
 void platformEnableStepper(uint8_t stepperMask)

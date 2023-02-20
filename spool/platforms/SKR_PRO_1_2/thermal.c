@@ -9,10 +9,10 @@ const static struct IOLine th0 = { .group = DRF_BASE(DRF_GPIOF),
 const static struct IOLine th1 = { .group = DRF_BASE(DRF_GPIOF),
                                    .pin = 4 }; // E0
 
-const static struct IOLine heater0 = { .group = GPIOB, .pin = 1 }; // E0
-const static struct IOLine bedHeater = { .group = GPIOD, .pin = 12 }; // E0
-const static struct IOLine extruderFan = { .group = GPIOC, .pin = 8 }; // E0 Fan
-const static struct IOLine fan0 = { .group = GPIOE, .pin = 5 }; // Part Fan
+const static struct IOLine heater0 = { .group = DRF_BASE(DRF_GPIOB), .pin = 1 }; // E0
+const static struct IOLine bedHeater = { .group = DRF_BASE(DRF_GPIOD), .pin = 12 }; // E0
+const static struct IOLine extruderFan = { .group = DRF_BASE(DRF_GPIOC), .pin = 8 }; // E0 Fan
+const static struct IOLine fan0 = { .group = DRF_BASE(DRF_GPIOE), .pin = 5 }; // Part Fan
 
 /* ---------------------- HAL Drivers & Configurations --------------------- */
 struct TimerConfig pwmTimer1Cfg = {
