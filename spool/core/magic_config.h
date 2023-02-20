@@ -34,7 +34,7 @@
 #define Z_HOME_Y 30
 
 /* in case the z endstop is not z=0 */
-#define Z_OFFSET F16(0.7)
+#define Z_OFFSET F16(0.8)
 
 #define MAX_X 160
 #define MAX_Y 160

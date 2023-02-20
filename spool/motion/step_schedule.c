@@ -54,13 +54,13 @@ static inline int32_t s_lerpi32(int32_t x1, int32_t v1, int32_t x2, int32_t v2,
     return ((x2 - x) * v1 / (x2 - x1)) + ((x - x1) * v2 / (x2 - x1));
 }
 
-static inline int32_t s_evaulateBedLevelingForCurrentPosition(void)
+static inline int32_t s_evaulateBedLevelingForCurrentPosition(int32_t x, int32_t y)
 {
     int32_t xy1 = s_lerpi32(lvlX1, bedLevelingFactors.points[0],
-        lvlX2, bedLevelingFactors.points[1], currentState.x);
+        lvlX2, bedLevelingFactors.points[1], x);
     int32_t xy2 = s_lerpi32(lvlX1, bedLevelingFactors.points[3],
-        lvlX2, bedLevelingFactors.points[2], currentState.x);
-    return s_lerpi32(lvlY1, xy1, lvlY2, xy2, currentState.y);
+        lvlX2, bedLevelingFactors.points[2], x);
+    return -s_lerpi32(lvlY1, xy1, lvlY2, xy2, y);
 }
 
 static inline void s_bedLevelingReset(void)
@@ -105,9 +105,9 @@ static void scheduleMoveTo(const struct PrinterMove state)
     int32_t dy = currentState.homedY ? (state.y - currentState.y) : 0;
     int32_t dz = currentState.homedZ ? (state.z - currentState.z) : 0;
     int32_t de = state.e - currentState.e;
-    
+
     if (PLATFORM_FEATURE_ENABLED(BedLeveling)){
-        zLevelingTarget = s_evaulateBedLevelingForCurrentPosition();
+        zLevelingTarget = s_evaulateBedLevelingForCurrentPosition(state.x, state.y);
         dzLeveling = zLevelingTarget - bedLevelingFactors.current;
     }
 
@@ -263,6 +263,7 @@ static void s_performBedLeveling(void)
     static struct PrinterMove move_position = {
         .z = 5 * STEPPER_STEPS_PER_MM[Z_AXIS],
     };
+    int32_t travels[ARRAY_LENGTH(BedLevelingPositions)];
     for (int i = 0; i < ARRAY_LENGTH(BedLevelingPositions); i++) {
         move_position.x = BedLevelingPositions[i].x;
         move_position.y = BedLevelingPositions[i].y;
@@ -271,12 +272,15 @@ static void s_performBedLeveling(void)
             HOMING_VEL_Z * STEPPER_STEPS_PER_MM[Z_AXIS] / 4);
         BedLevelingPositions->x = actualTravel;
         currentState.z -= actualTravel;
+        travels[i] = actualTravel;
         scheduleMoveTo(move_position);
     }
     move_position.x = Z_HOME_X * STEPPER_STEPS_PER_MM[X_AXIS];
     move_position.y = Z_HOME_Y * STEPPER_STEPS_PER_MM[Y_AXIS];
     scheduleMoveTo(move_position);
-    bedLevelingFactors.current = s_evaulateBedLevelingForCurrentPosition();
+    memcpy(bedLevelingFactors.points, travels, sizeof(travels));
+    bedLevelingFactors.current =
+        s_evaulateBedLevelingForCurrentPosition(currentState.x, currentState.y);
 }
 
 uint32_t getRequiredSpace(enum GcodeKind kind)
