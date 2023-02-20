@@ -11,16 +11,40 @@
 struct PlatformConfig {
     uint8_t _rsvd;
 };
+/* ------------------- Types to be implemented by platform ------------------ */
+enum Axis;
+enum Stepper;
 /* ----------------- Configuration Types ------------------------------------ */
 enum KinematicKind {
     KinematicKindUndef = 0,
-    KinematicKindI3,
-    KinematicKindCoreXY,
+    KinematicKindI3, /* Uses STEPPER_A,B,C for X,Y,Z */
+    KinematicKindCoreXY, /* Uses STEPPER_A,B for corexy, C for Z */
+};
+
+struct ZHomingPos {
+    int32_t x_mm;
+    int32_t y_mm;
 };
 /* ----------------- Variables to be implemented by platform ---------------- */
 extern const bool platformFeatureBedLeveling;
 extern const enum KinematicKind platformFeatureKinematic;
 
+extern const float platformFeatureZOffset;
+extern const struct ZHomingPos platformFeatureZHomingPos;
+extern const enum Stepper platformFeatureExtruderStepper;
+
+/* Motion, in mm, mm/s, mm/s^2 */
+extern const int32_t platformMotionLimits[];
+extern const bool platformMotionInvertStepper[];
+extern const int32_t platformMotionDefaultMaxVel[];
+extern const int32_t platformMotionDefaultAcc[];
+extern const int32_t platformMotionHomingVel[];
+extern const int32_t platformMotionHomingAcc[];
+
+/* Steps, TODO per stepper/per-axis steps, it doesn't make sense */
+extern const int32_t platformMotionStepsPerMM[];
+extern const int32_t platformMotionStepsPerMMAxis[];
+extern const int32_t platformMotionMinVel[];
 /* ---------------- Functions to be implemented by platform ----------------- */
 void platformInit(struct PlatformConfig *config);
 void platformPostInit(void);

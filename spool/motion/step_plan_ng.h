@@ -1,36 +1,12 @@
 #pragma once
 #include "fix16.h"
 #include "motion/motion.h"
-#include "core/magic_config.h"
+#include "platform/platform.h"
 #include <stdbool.h>
 #include "error.h"
 #include "compiler.h"
 
 const static uint32_t VEL_CHANGE_THRESHOLD = 10;
-
-const static uint32_t STEPPER_ACC[] = {
-    ACC * STEPS_PER_MM,
-    ACC *STEPS_PER_MM,
-    ACC_Z *STEPS_PER_MM_Z,
-    ACC_E *STEPS_PER_MM_E,
-};
-STATIC_ASSERT(ARRAY_SIZE(STEPPER_ACC) == NR_STEPPERS);
-
-const static uint32_t STEPPER_STEPS_PER_MM[] = {
-    STEPS_PER_MM,
-    STEPS_PER_MM,
-    STEPS_PER_MM_Z,
-    STEPS_PER_MM_E,
-};
-STATIC_ASSERT(ARRAY_SIZE(STEPPER_STEPS_PER_MM) == NR_STEPPERS);
-
-const static uint32_t MIN_STEP_RATE[] = {
-    STEPS_PER_MM / 4,
-    STEPS_PER_MM / 4,
-    STEPS_PER_MM_Z / 4,
-    STEPS_PER_MM_E / 4,
-};
-STATIC_ASSERT(ARRAY_SIZE(MIN_STEP_RATE) == NR_STEPPERS);
 
 #define MOTION_LOOKAHEAD 10
 
@@ -43,7 +19,7 @@ STATIC_ASSERT(ARRAY_SIZE(MIN_STEP_RATE) == NR_STEPPERS);
 #define JUNCTION_INHERIT_VEL_THRES F16(-0.99999f)
 /* for distances less than DIST, and angles cos greater than octagon (from marlin)
  * we smooth out the velocity */
-#define JUNCTION_SMOOTHING_DIST_THRES F16(1 * STEPS_PER_MM)
+#define JUNCTION_SMOOTHING_DIST_THRES(STEPPER) F16(1 * platformMotionStepsPerMM[STEPPER])
 #define JUNCTION_SMOOTHING_THRES      F16(-0.5f)
 
 struct PlannerBlock {
@@ -72,7 +48,7 @@ struct PlannerJob {
     uint32_t vfSq;
     fix16_t len;
     fix16_t unit_vec[X_AND_Y];
-    struct PlannerBlock steppers[NR_STEPPERS];
+    struct PlannerBlock steppers[NR_STEPPER];
     enum JobType type;
     uint8_t stepDirs;
 };
@@ -83,7 +59,7 @@ uint32_t plannerAvailableSpace(void);
 uint32_t plannerSize(void);
 
 void __dequeuePlan(struct PlannerJob *out);
-void __enqueuePlan(enum JobType k, const int32_t plan[NR_STEPPERS],
+void __enqueuePlan(enum JobType k, const int32_t plan[NR_STEPPER],
                    const fix16_t unit_vec[X_AND_Y],
-                   const uint32_t max_v[NR_STEPPERS],
-                   const uint32_t acc[NR_STEPPERS], fix16_t len, bool stop);
+                   const uint32_t max_v[NR_STEPPER],
+                   const uint32_t acc[NR_STEPPER], fix16_t len, bool stop);

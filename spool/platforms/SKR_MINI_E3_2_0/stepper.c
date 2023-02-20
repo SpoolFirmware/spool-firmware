@@ -1,30 +1,41 @@
 #include "config_private.h"
+#include "compiler.h"
+#include "configuration.h"
+#include "error.h"
 #include "lib/tmc_driver/tmc_driver.h"
-
-const size_t NR_STEPPERS = 2;
 
 const struct {
     struct IOLine en;
     struct IOLine step;
     struct IOLine dir;
     bool invertEn;
-    bool invertDir;
 } steppers[] = {
     {
         .en = { .group = DRF_BASE(DRF_GPIOB), .pin = 14 },
         .step = { .group = DRF_BASE(DRF_GPIOB), .pin = 13 },
         .dir = { .group = DRF_BASE(DRF_GPIOB), .pin = 12 },
         .invertEn = true,
-        .invertDir = false,
-    },
+    }, /* X */
     {
         .en = { .group = DRF_BASE(DRF_GPIOB), .pin = 11 },
         .step = { .group = DRF_BASE(DRF_GPIOB), .pin = 10 },
         .dir = { .group = DRF_BASE(DRF_GPIOB), .pin = 2 },
         .invertEn = true,
-        .invertDir = false,
-    },
+    }, /* Y */
+    {
+        .en = { .group = DRF_BASE(DRF_GPIOB), .pin = 1 },
+        .step = { .group = DRF_BASE(DRF_GPIOB), .pin = 0 },
+        .dir = { .group = DRF_BASE(DRF_GPIOC), .pin = 5 },
+        .invertEn = true,
+    }, /* Z */
+    {
+        .en = { .group = DRF_BASE(DRF_GPIOD), .pin = 2 },
+        .step = { .group = DRF_BASE(DRF_GPIOB), .pin = 3 },
+        .dir = { .group = DRF_BASE(DRF_GPIOB), .pin = 4 },
+        .invertEn = true,
+    }, /* E */
 };
+STATIC_ASSERT(ARRAY_SIZE(steppers) == NR_STEPPER);
 
 struct TMCDriver tmcDrivers[] = { { 0 }, { 0 }, { 0 }, { 0 } };
 
@@ -209,7 +220,7 @@ void platformDisableStepper(uint8_t stepperMask)
 void platformSetStepperDir(uint8_t dirMask)
 {
     for (uint8_t i = 0; i < ARRAY_LENGTH(steppers); ++i) {
-        if (((dirMask & BIT(i)) == 0) ^ steppers[i].invertDir) {
+        if ((dirMask & BIT(i)) == 0) {
             halGpioSet(steppers[i].dir);
         } else {
             halGpioClear(steppers[i].dir);
@@ -219,7 +230,7 @@ void platformSetStepperDir(uint8_t dirMask)
 
 static void setStepper(uint8_t stepperMask)
 {
-    for (uint8_t i = 0; i < NR_STEPPERS; ++i) {
+    for (uint8_t i = 0; i < NR_STEPPER; ++i) {
         if (stepperMask & BIT(i)) {
             halGpioSet(steppers[i].step);
         }
@@ -228,7 +239,7 @@ static void setStepper(uint8_t stepperMask)
 
 static void clrStepper(uint8_t stepperMask)
 {
-    for (uint8_t i = 0; i < NR_STEPPERS; ++i) {
+    for (uint8_t i = 0; i < NR_STEPPER; ++i) {
         if (stepperMask & BIT(i)) {
             halGpioClear(steppers[i].step);
         }

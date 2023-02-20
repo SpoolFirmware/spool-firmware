@@ -8,16 +8,15 @@
 
 #include "step_execute.h"
 #include "step_schedule.h"
-#include "core/magic_config.h"
 
 static struct StepperJob job = { 0 };
 static uint32_t sIterationCompleted = 0;
 // Line Drawing
 static uint32_t sAccelerationTime;
 static uint32_t sDecelerationTime;
-static int32_t sDeltaError[NR_STEPPERS]; // "error"
-static uint32_t sIncrementRatio[NR_STEPPERS]; // "m". This expect slope <= 1
-static uint32_t sStepsExecuted[NR_STEPPERS]; // steps executed
+static int32_t sDeltaError[NR_STEPPER]; // "error"
+static uint32_t sIncrementRatio[NR_STEPPER]; // "m". This expect slope <= 1
+static uint32_t sStepsExecuted[NR_STEPPER]; // steps executed
 static uint32_t sStepSize; // "x" step size
 static uint32_t
     sStepCounter; // Counter to keep track of the desired axis movement.
@@ -49,8 +48,8 @@ static uint16_t sCalcInterval(struct StepperJob *pJob)
         stepRate = pJob->cruise_steps_s;
     }
 
-    if (stepRate < STEPS_PER_MM) { // TODO: CONFIG: MIN_STEP_RATE
-        stepRate = STEPS_PER_MM;
+    if (stepRate < motionGetMinVelocity(STEPPER_A)) { // TODO: CONFIG: MIN_STEP_RATE
+        stepRate = motionGetMinVelocity(STEPPER_A);
     }
 
     uint32_t interval = (platformGetStepperTimerFreq() / stepRate);
@@ -68,19 +67,19 @@ uint16_t executeStep(uint16_t ticksElapsed)
 {
     /* Check endstops first */
     if (job.type != StepperJobUndef && job.type != StepperJobRun) {
-        for (uint8_t i = 0; i < NR_AXES; ++i) {
+        for (uint8_t i = 0; i < NR_AXIS; ++i) {
             if (platformGetEndstop(i)) {
-                if (job.type == StepperJobHomeX && i == ENDSTOP_X) {
+                if (job.type == StepperJobHomeX && i == X_AXIS) {
                     sDiscardJob();
                     notifyHomeISR(sStepCounter);
                     return 0;
                 }
-                if (job.type == StepperJobHomeY && i == ENDSTOP_Y) {
+                if (job.type == StepperJobHomeY && i == Y_AXIS) {
                     sDiscardJob();
                     notifyHomeISR(sStepCounter);
                     return 0;
                 }
-                if (job.type == StepperJobHomeZ && i == ENDSTOP_Z) {
+                if (job.type == StepperJobHomeZ && i == Z_AXIS) {
                     sDiscardJob();
                     notifyHomeISR(sStepCounter);
                     return 0;
@@ -92,7 +91,7 @@ uint16_t executeStep(uint16_t ticksElapsed)
     // Executes Steps *FIRST*
     if (job.type != StepperJobUndef) {
         uint8_t stepperMask = 0;
-        for (uint8_t i = 0; i < NR_STEPPERS; i++) {
+        for (uint8_t i = 0; i < NR_STEPPER; i++) {
             sDeltaError[i] += sIncrementRatio[i];
             if (sDeltaError[i] >= 0) {
                 sDeltaError[i] -= sStepSize;
@@ -117,7 +116,7 @@ uint16_t executeStep(uint16_t ticksElapsed)
         }
         
         // TODO: THIS IS KIND OF BAD, maybe generic
-        if (stepperMask & STEPPER_C) {
+        if (stepperMask & BIT(STEPPER_C)) {
             sStepCounter++;
         }
     }
@@ -129,6 +128,10 @@ uint16_t executeStep(uint16_t ticksElapsed)
         }
         // Acquired new block
         sStepCounter = 0;
+        for_each_stepper(i) {
+            if (platformMotionInvertStepper[i])
+                job.stepDirs ^= BIT(i);
+        }
         platformSetStepperDir(job.stepDirs);
 
         sIterationCompleted = 0;
@@ -136,7 +139,7 @@ uint16_t executeStep(uint16_t ticksElapsed)
             sStepsExecuted[i] = 0;
         sAccelerationTime = sDecelerationTime = 0;
         sStepSize = job.totalStepEvents * 2;
-        for (int i = 0; i < NR_STEPPERS; i++) {
+        for (int i = 0; i < NR_STEPPER; i++) {
             sDeltaError[i] = -((int32_t)job.totalStepEvents);
             sIncrementRatio[i] = job.blocks[i].totalSteps * 2;
         }

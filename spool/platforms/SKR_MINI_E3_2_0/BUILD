@@ -18,38 +18,39 @@ platform(
 cc_library(
     name = "config",
     hdrs = [
-        "FreeRTOSConfig.h"
+        "FreeRTOSConfig.h",
+        "configuration.h",
     ],
+    include_prefix = ".",
     textual_hdrs = [
+        "configuration.h",
         "FreeRTOSConfig.h",
     ],
     deps = [
         "//spool/cfg:core_config",
     ],
-    include_prefix="."
 )
 
 cc_library(
     name = "runtime",
     srcs = [
-        "config_private.h",
         "comm.c",
         "stepper.c",
         "platform.c",
         "thermal.c",
         "config.c",
+        "config_private.h",
     ],
     copts = ["-Ispool"],
     deps = [
         ":config",
         "//spool/platforms/common:lib",
         "//spool/lib/thermistor:lib",
-
         "//lib/dbg:lib",
-        "//lib/syslib:lib",
-        "//spool/lib/tmc_driver:lib",
         "//lib/crt/stm32:stm32f1xx",
         "//lib/hal/stm32/stm32f103:lib",
+        "//lib/syslib:lib",
+        "//spool/lib/tmc_driver:lib",
     ],
     alwayslink = True,
 )

@@ -34,7 +34,7 @@ const static struct IOLine endstops[NR_AXIS] = {
     { 0 }, // E
 };
 
-const static struct IOLine step[NR_STEPPERS] = {
+const static struct IOLine step[NR_STEPPER] = {
     /* X */
     { .group = DRF_BASE(DRF_GPIOE), .pin = 9 },
     /* Y */
@@ -45,7 +45,7 @@ const static struct IOLine step[NR_STEPPERS] = {
     { .group = DRF_BASE(DRF_GPIOE), .pin = 14 },
 };
 
-const static struct IOLine dir[NR_STEPPERS] = {
+const static struct IOLine dir[NR_STEPPER] = {
     /* X */
     { .group = DRF_BASE(DRF_GPIOF), .pin = 1 },
     /* Y */
@@ -56,7 +56,7 @@ const static struct IOLine dir[NR_STEPPERS] = {
     { .group = DRF_BASE(DRF_GPIOA), .pin = 0 },
 };
 
-const static struct IOLine en[NR_STEPPERS] = {
+const static struct IOLine en[NR_STEPPER] = {
     /* X */
     { .group = DRF_BASE(DRF_GPIOF), .pin = 2 },
     /* Y */
@@ -69,7 +69,7 @@ const static struct IOLine en[NR_STEPPERS] = {
 
 void platformEnableStepper(uint8_t stepperMask)
 {
-    for (uint8_t i = 0; i < NR_STEPPERS; ++i) {
+    for (uint8_t i = 0; i < NR_STEPPER; ++i) {
         if (stepperMask & BIT(i)) {
             halGpioClear(en[i]);
         }
@@ -78,7 +78,7 @@ void platformEnableStepper(uint8_t stepperMask)
 
 void platformDisableStepper(uint8_t stepperMask)
 {
-    for (uint8_t i = 0; i < NR_STEPPERS; ++i) {
+    for (uint8_t i = 0; i < NR_STEPPER; ++i) {
         if (stepperMask & BIT(i)) {
             halGpioSet(en[i]);
         }
@@ -87,7 +87,7 @@ void platformDisableStepper(uint8_t stepperMask)
 
 void platformSetStepperDir(uint8_t dirMask)
 {
-    for (uint8_t i = 0; i < NR_STEPPERS; ++i) {
+    for (uint8_t i = 0; i < NR_STEPPER; ++i) {
         if (dirMask & BIT(i)) {
             halGpioSet(dir[i]);
         } else {
@@ -98,7 +98,7 @@ void platformSetStepperDir(uint8_t dirMask)
 
 static void setStepper(uint8_t stepperMask, uint8_t stepMask)
 {
-    for (uint8_t i = 0; i < NR_STEPPERS; ++i) {
+    for (uint8_t i = 0; i < NR_STEPPER; ++i) {
         if (stepperMask & BIT(i)) {
             if (stepMask & BIT(i)) {
                 halGpioSet(step[i]);
@@ -213,7 +213,7 @@ void platformInit(struct PlatformConfig *config)
     halGpioSetMode(statusLED, DRF_DEF(_HAL_GPIO, _MODE, _MODE, _OUTPUT) |
                                   DRF_DEF(_HAL_GPIO, _MODE, _TYPE, _PUSHPULL) |
                                   DRF_DEF(_HAL_GPIO, _MODE, _SPEED, _HIGH));
-    for (uint8_t i = 0; i < NR_STEPPERS; ++i) {
+    for (uint8_t i = 0; i < NR_STEPPER; ++i) {
         halGpioSetMode(step[i],
                        DRF_DEF(_HAL_GPIO, _MODE, _MODE, _OUTPUT) |
                            DRF_DEF(_HAL_GPIO, _MODE, _TYPE, _PUSHPULL) |

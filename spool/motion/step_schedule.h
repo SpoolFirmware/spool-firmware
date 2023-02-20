@@ -2,7 +2,6 @@
 #include "FreeRTOS.h"
 #include "task.h"
 #include "queue.h"
-#include "core/magic_config.h"
 #include "step_plan_ng.h"
 
 struct PrinterMove {
@@ -10,7 +9,6 @@ struct PrinterMove {
     int32_t y;
     int32_t z;
     int32_t e;
-    uint32_t fr;
 };
 
 struct PrinterState {
@@ -18,7 +16,6 @@ struct PrinterState {
     int32_t y;
     int32_t z;
     int32_t e;
-    int32_t feedrate; /* unit: mm/s */
     bool continuousMode;
     bool homedX : 1, homedY : 1, homedZ : 1;
 };
@@ -28,7 +25,7 @@ typedef struct MotionBlock {
 } motion_block_t;
 
 typedef struct StepperJob {
-    motion_block_t blocks[NR_STEPPERS];
+    motion_block_t blocks[NR_STEPPER];
     enum JobType type;
     uint8_t stepDirs;
 

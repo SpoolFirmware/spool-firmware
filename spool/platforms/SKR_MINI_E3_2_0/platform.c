@@ -19,7 +19,7 @@ const struct HalClockConfig halClockConfig = {
 };
 
 const static struct HalGPIOConfig gpioConfig = {
-    .groupEnable = EnableGPIOA | EnableGPIOB | EnableGPIOC,
+    .groupEnable = EnableGPIOA | EnableGPIOB | EnableGPIOC | EnableGPIOD,
 };
 
 const static struct IOLine endStops[] = {
@@ -61,6 +61,6 @@ void platformPostInit(void)
 bool platformGetEndstop(uint8_t axis)
 {
     if (axis < ARRAY_LENGTH(endStops))
-        return !halGpioRead(endStops[axis]);
+        return halGpioRead(endStops[axis]);
     return true;
 }

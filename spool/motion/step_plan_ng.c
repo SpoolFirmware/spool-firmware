@@ -53,18 +53,10 @@ static fix16_t vecDot(const fix16_t a[X_AND_Y], const fix16_t b[X_AND_Y])
     return res;
 }
 
-// static void vecSub(const fix16_t a[NR_AXES], const fix16_t b[NR_AXES],
-//                       fix16_t out[NR_AXES])
-// {
-//     for_each_axis(i) {
-//         out[i] = a[i] - b[i];
-//     }
-// }
-
 static void populateBlock(const struct PlannerJob *prev, struct PlannerJob *new,
-                          const int32_t plan[NR_STEPPERS],
-                          const uint32_t max_v[NR_STEPPERS],
-                          const uint32_t acc[NR_STEPPERS], bool stop)
+                          const int32_t plan[NR_STEPPER],
+                          const uint32_t max_v[NR_STEPPER],
+                          const uint32_t acc[NR_STEPPER], bool stop)
 {
     float timeEst = 0;
     uint32_t maxStepper = 0;
@@ -104,7 +96,7 @@ static void populateBlock(const struct PlannerJob *prev, struct PlannerJob *new,
         /* TODO handle junction velocity like marlin */
         uint32_t viSq = min(prev->vfSq, new->vSq);
         new->viSq = viSq;
-    } else if (new->len <= JUNCTION_SMOOTHING_DIST_THRES &&
+    } else if (new->len <= JUNCTION_SMOOTHING_DIST_THRES(maxStepper) &&
                cosTheta <= JUNCTION_SMOOTHING_THRES) {
         /* is this where we do rounded corners? */
         /* for now, we pretend cos is linear */
@@ -114,7 +106,7 @@ static void populateBlock(const struct PlannerJob *prev, struct PlannerJob *new,
         new->viSq = viSq;
     } else {
         /* is a minimum speed helpful here? why? */
-        new->viSq = MIN_STEP_RATE[maxStepper];
+        new->viSq = motionGetMinVelocity(maxStepper);
     }
 
     if (stop) {
@@ -201,10 +193,10 @@ static void reversePass(void)
     }
 }
 
-void __enqueuePlan(enum JobType k, const int32_t plan[NR_STEPPERS],
+void __enqueuePlan(enum JobType k, const int32_t plan[NR_STEPPER],
                    const fix16_t unit_vec[X_AND_Y],
-                   const uint32_t max_v[NR_STEPPERS],
-                   const uint32_t acc[NR_STEPPERS], fix16_t len, bool stop)
+                   const uint32_t max_v[NR_STEPPER],
+                   const uint32_t acc[NR_STEPPER], fix16_t len, bool stop)
 {
     BUG_ON(plannerAvailableSpace() == 0);
     const struct PlannerJob *prev;
