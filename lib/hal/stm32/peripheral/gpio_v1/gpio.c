@@ -26,6 +26,7 @@ void halGpioInit(const struct HalGPIOConfig *cfg)
 
 void halGpioSetMode(struct IOLine line, GPIOMode mode)
 {
+    if (!line.group) return;
     uint32_t cr_addr = line.group;
     uint32_t position = line.pin;
     if (line.pin < DRF_GPIO_CRL_MODE__COUNT) {

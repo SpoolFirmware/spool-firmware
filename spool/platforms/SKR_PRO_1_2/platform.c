@@ -1,6 +1,8 @@
 #include "FreeRTOS.h"
+#include "configuration.h"
 #include "platform_private.h"
 #include "misc.h"
+#include "platforms/common/platform.h"
 
 const struct HalClockConfig halClockConfig = {
     .hseFreqHz = 8000000,
@@ -25,19 +27,11 @@ struct TimerConfig stepperExecutionTimerCfg = {
 };
 struct TimerDriver stepperExecutionTimer = { 0 };
 
-#define NR_STEPPERS 4
-
-#define STEPPER_A BIT(0)
-#define STEPPER_B BIT(1)
-#define STEPPER_C BIT(2)
-
-#define NR_AXES 4
-
-const static struct IOLine endstops[NR_AXES] = {
+const static struct IOLine endstops[NR_AXIS] = {
     { .group = DRF_BASE(DRF_GPIOB), .pin = 10 }, /* X */
     { .group = DRF_BASE(DRF_GPIOE), .pin = 12 }, /* Y */
-    { .group = DRF_BASE(DRF_GPIOG), .pin = 8 }, /* Z */
-    { 0 },
+    { .group = DRF_BASE(DRF_GPIOG), .pin = 8 },  /* Z */
+    { 0 }, // E
 };
 
 const static struct IOLine step[NR_STEPPERS] = {
@@ -234,7 +228,7 @@ void platformInit(struct PlatformConfig *config)
                            DRF_DEF(_HAL_GPIO, _MODE, _SPEED, _VERY_HIGH));
     }
 
-    for (uint8_t i = 0; i < NR_AXES; ++i) {
+    for (uint8_t i = 0; i < NR_AXIS; ++i) {
         halGpioSetMode(endstops[i], DRF_DEF(_HAL_GPIO, _MODE, _MODE, _INPUT));
     }
 

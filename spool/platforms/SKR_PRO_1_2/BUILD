@@ -18,10 +18,15 @@ platform(
 cc_library(
     name = "config",
     hdrs = [
-        "FreeRTOSConfig.h"
+        "configuration.h",
+        "FreeRTOSConfig.h",
     ],
     textual_hdrs = [
+        "configuration.h",
         "FreeRTOSConfig.h",
+    ],
+    deps = [
+        "//spool/cfg:core_config",
     ],
     include_prefix="."
 )

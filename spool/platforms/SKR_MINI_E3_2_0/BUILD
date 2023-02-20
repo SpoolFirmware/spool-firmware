@@ -23,6 +23,9 @@ cc_library(
     textual_hdrs = [
         "FreeRTOSConfig.h",
     ],
+    deps = [
+        "//spool/cfg:core_config",
+    ],
     include_prefix="."
 )
 
