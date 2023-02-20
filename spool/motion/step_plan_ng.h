@@ -82,6 +82,8 @@ void initPlanner(void);
 
 void planCoreXy(const int32_t movement[NR_AXES], int32_t plan[NR_STEPPERS],
                 fix16_t unit_vec[X_AND_Y], fix16_t *len);
+void planI3(const int32_t movement[NR_AXES], int32_t plan[NR_STEPPERS],
+                fix16_t unit_vec[X_AND_Y], fix16_t *len);
 
 uint32_t plannerAvailableSpace(void);
 uint32_t plannerSize(void);

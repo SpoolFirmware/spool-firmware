@@ -11,7 +11,15 @@
 struct PlatformConfig {
     uint8_t _rsvd;
 };
+/* ----------------- Configuration Types ------------------------------------ */
+enum KinematicKind {
+    KinematicKindUndef = 0,
+    KinematicKindI3,
+    KinematicKindCoreXY,
+};
 /* ----------------- Variables to be implemented by platform ---------------- */
+extern const bool platformFeatureBedLeveling;
+extern const enum KinematicKind platformFeatureKinematic;
 
 /* ---------------- Functions to be implemented by platform ----------------- */
 void platformInit(struct PlatformConfig *config);

@@ -33,6 +33,7 @@ cc_library(
         "comm.c",
         "stepper.c",
         "platform.c",
+        "config.c",
     ],
     copts = ["-Ispool"],
     deps = [

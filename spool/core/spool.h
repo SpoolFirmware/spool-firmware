@@ -5,6 +5,9 @@
 #include "task.h"
 #include "queue.h"
 
+/* ------------------ Common Constants ---------------- */
+#define SECONDS_PER_MIN 60
+
 /*!
  * Thermal Task Inbound Queue
  */
@@ -29,3 +32,5 @@ extern QueueHandle_t MotionPlannerTaskQueue;
  */
 #define STEPPER_EXECUTION_QUEUE_SIZE 20
 extern QueueHandle_t StepperExecutionQueue;
+
+#define PLATFORM_FEATURE_ENABLED(feature) platformFeature ## feature

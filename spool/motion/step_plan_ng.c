@@ -51,6 +51,16 @@ static fix16_t vecUnit(const int32_t a[NR_AXES], fix16_t out[X_AND_Y])
     return fix16_from_float(len);
 }
 
+void planI3(const int32_t movement[NR_AXES], int32_t plan[NR_STEPPERS],
+            fix16_t unit_vec[X_AND_Y], fix16_t *len)
+{
+    for_each_stepper(i) {
+        plan[i] = movement[i];
+    }
+
+    *len = vecUnit(movement, unit_vec);
+}
+
 void planCoreXy(const int32_t movement[NR_AXES], int32_t plan[NR_STEPPERS],
                 fix16_t unit_vec[X_AND_Y], fix16_t *len)
 {

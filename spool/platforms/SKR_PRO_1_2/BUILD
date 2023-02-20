@@ -33,6 +33,7 @@ cc_library(
         "platform.c",
         "thermal.c",
         "communication.c",
+        "config.c",
     ],
     copts = ["-Ispool"],
     deps = [

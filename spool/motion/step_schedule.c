@@ -63,6 +63,11 @@ static inline int32_t s_evaulateBedLevelingForCurrentPosition(void)
     return s_lerpi32(lvlY1, xy1, lvlY2, xy2, currentState.y);
 }
 
+static inline void s_bedLevelingReset(void)
+{
+    memset(&bedLevelingFactors, 0, sizeof(bedLevelingFactors));
+}
+
 static uint32_t s_scheduleHomeMove(enum JobType k,
                                    const int32_t plan[NR_STEPPERS],
                                    const fix16_t unitVec[X_AND_Y],
@@ -85,10 +90,9 @@ void motionPlannerTaskInit(void)
     }
 }
 
-#define SECONDS_PER_MIN 60
-
 static void scheduleMoveTo(const struct PrinterMove state)
 {
+    int32_t dzLeveling = 0, zLevelingTarget;
     BUG_ON(state.x < 0);
     BUG_ON(state.y < 0);
     // BUG_ON(state.z < 0);
@@ -101,8 +105,11 @@ static void scheduleMoveTo(const struct PrinterMove state)
     int32_t dy = currentState.homedY ? (state.y - currentState.y) : 0;
     int32_t dz = currentState.homedZ ? (state.z - currentState.z) : 0;
     int32_t de = state.e - currentState.e;
-    const int32_t zLevelingTarget = s_evaulateBedLevelingForCurrentPosition();
-    const int32_t dzLeveling = zLevelingTarget - bedLevelingFactors.current;
+    
+    if (PLATFORM_FEATURE_ENABLED(BedLeveling)){
+        zLevelingTarget = s_evaulateBedLevelingForCurrentPosition();
+        dzLeveling = zLevelingTarget - bedLevelingFactors.current;
+    }
 
     /* MOVE CONSTANTS */
     const uint32_t move_max_v[] = {
@@ -119,7 +126,18 @@ static void scheduleMoveTo(const struct PrinterMove state)
     fix16_t unitVec[X_AND_Y];
     fix16_t len;
 
-    planCoreXy(dir, plan, unitVec, &len);
+
+    switch (PLATFORM_FEATURE_ENABLED(Kinematic)) {
+        case KinematicKindCoreXY:
+            planCoreXy(dir, plan, unitVec, &len);
+            break;
+        case KinematicKindI3:
+            planI3(dir, plan, unitVec, &len);
+            break;
+        default:
+            panic();
+            break;
+    }
     __enqueuePlan(StepperJobRun, plan, unitVec, move_max_v, STEPPER_ACC, len,
                   !currentState.continuousMode);
 
@@ -127,7 +145,10 @@ static void scheduleMoveTo(const struct PrinterMove state)
     currentState.y = currentState.homedY ? state.y : currentState.y;
     currentState.z = currentState.homedZ ? state.z : currentState.z;
     currentState.e = state.e;
-    bedLevelingFactors.current = zLevelingTarget;
+
+    if (PLATFORM_FEATURE_ENABLED(BedLeveling)) {
+        bedLevelingFactors.current = zLevelingTarget;
+    }
 }
 
 const static uint32_t home_max_v[] = {
