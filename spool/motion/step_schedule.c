@@ -1,4 +1,5 @@
 #include "step_schedule.h"
+#include "core/magic_config.h"
 #include "lib/fxp/src/fix16.h"
 #include "step_plan_ng.h"
 #include <stdint.h>
@@ -12,19 +13,55 @@
 #include "number.h"
 #include "compiler.h"
 #include "core/spool.h"
+#include <string.h>
 
 /* Records the state of the printer ends up in after the stepper queue
  * finishes. We could have the state be attached to each stepper job.
  * However, if we do not care about displaying the state of the print
  * head, then this is sufficient.
  */
-/* only touched in scheduleMoveTo */
+/* mainly used by scheduleMoveTo */
 static struct PrinterState currentState;
-static struct {
+
+const int32_t lvlX1 = 5 * STEPPER_STEPS_PER_MM[X_AXIS],
+              lvlX2 = 120 * STEPPER_STEPS_PER_MM[X_AXIS];
+const int32_t lvlY1 = 10 * STEPPER_STEPS_PER_MM[Y_AXIS],
+              lvlY2 = 150 * STEPPER_STEPS_PER_MM[Y_AXIS];
+struct {
     int32_t x;
     int32_t y;
+} BedLevelingPositions[4] = {
+    { lvlX1, lvlY1 },
+    { lvlX2, lvlY1 },
+    { lvlX2, lvlY2 },
+    { lvlX1, lvlY2 },
+};
+static struct {
+    /*
+        12 ----- 22
+        |         |
+        |         |
+        11 ----- 21
+    */
+    // {11, 21, 22, 12}
+    int32_t points[4];
     int32_t current;
 } bedLevelingFactors = { 0 };
+
+static inline int32_t s_lerpi32(int32_t x1, int32_t v1, int32_t x2, int32_t v2,
+                                int32_t x)
+{
+    return ((x2 - x) * v1 / (x2 - x1)) + ((x - x1) * v2 / (x2 - x1));
+}
+
+static inline int32_t s_evaulateBedLevelingForCurrentPosition(void)
+{
+    int32_t xy1 = s_lerpi32(lvlX1, bedLevelingFactors.points[0],
+        lvlX2, bedLevelingFactors.points[1], currentState.x);
+    int32_t xy2 = s_lerpi32(lvlX1, bedLevelingFactors.points[3],
+        lvlX2, bedLevelingFactors.points[2], currentState.x);
+    return s_lerpi32(lvlY1, xy1, lvlY2, xy2, currentState.y);
+}
 
 static uint32_t s_scheduleHomeMove(enum JobType k,
                                    const int32_t plan[NR_STEPPERS],
@@ -64,11 +101,7 @@ static void scheduleMoveTo(const struct PrinterMove state)
     int32_t dy = currentState.homedY ? (state.y - currentState.y) : 0;
     int32_t dz = currentState.homedZ ? (state.z - currentState.z) : 0;
     int32_t de = state.e - currentState.e;
-    int32_t zLevelingTarget = 0;
-    if (bedLevelingFactors.x)
-        zLevelingTarget += (currentState.homedX ? state.x : currentState.x) / bedLevelingFactors.x;
-    if (bedLevelingFactors.y)
-        zLevelingTarget += (currentState.homedY ? state.y : currentState.y) / bedLevelingFactors.y;
+    const int32_t zLevelingTarget = s_evaulateBedLevelingForCurrentPosition();
     const int32_t dzLeveling = zLevelingTarget - bedLevelingFactors.current;
 
     /* MOVE CONSTANTS */
@@ -160,8 +193,6 @@ static void scheduleHomeZ(void)
     if (!(currentState.homedX && currentState.homedY))
         return;
     bedLevelingFactors.current = 0;
-    bedLevelingFactors.x = 0;
-    bedLevelingFactors.y = 0;
     /* TODO fix z inversion */
     int32_t savedFR, savedX = 0, savedY = 0;
     struct PrinterMove home_z_move = { 0 };
@@ -181,8 +212,7 @@ static void scheduleHomeZ(void)
 
     home_z_move.z = 3 * STEPPER_STEPS_PER_MM[Z_AXIS];
     savedFR = currentState.feedrate;
-    currentState.feedrate =
-        HOMING_VEL_Z / 4;
+    currentState.feedrate = HOMING_VEL_Z / 4;
     scheduleMoveTo(home_z_move);
     currentState.feedrate = savedFR;
 
@@ -205,47 +235,27 @@ static void s_performBedLeveling(void)
     }
 
     // Reset leveling factor
-    bedLevelingFactors.current = 0;
-    bedLevelingFactors.x = 0;
-    bedLevelingFactors.y = 0;
+    memset(&bedLevelingFactors, 0, sizeof(bedLevelingFactors));
 
     currentState.feedrate = 60;
     // Probe (5,10), (120, 10), (5, 155)
     static struct PrinterMove move_position = {
         .z = 5 * STEPPER_STEPS_PER_MM[Z_AXIS],
     };
-    int32_t travels[3] = {0};
-    struct {
-        int32_t x;
-        int32_t y;
-    } positions[] = { { 5, 10 }, { 120, 10 }, { 5, 155 } };
-    for (int i = 0; i < ARRAY_LENGTH(positions); i++) {
-        move_position.x = positions[i].x * STEPPER_STEPS_PER_MM[X_AXIS];
-        move_position.y = positions[i].y * STEPPER_STEPS_PER_MM[X_AXIS];
+    for (int i = 0; i < ARRAY_LENGTH(BedLevelingPositions); i++) {
+        move_position.x = BedLevelingPositions[i].x;
+        move_position.y = BedLevelingPositions[i].y;
         scheduleMoveTo(move_position);
         int32_t actualTravel = (int32_t)s_scheduleZMeasure(
             HOMING_VEL_Z * STEPPER_STEPS_PER_MM[Z_AXIS] / 4);
-        travels[i] = actualTravel;
+        BedLevelingPositions->x = actualTravel;
         currentState.z -= actualTravel;
         scheduleMoveTo(move_position);
     }
     move_position.x = Z_HOME_X * STEPPER_STEPS_PER_MM[X_AXIS];
     move_position.y = Z_HOME_Y * STEPPER_STEPS_PER_MM[Y_AXIS];
     scheduleMoveTo(move_position);
-
-    if (travels[1] != travels[0]) {
-        bedLevelingFactors.x =
-            -(((positions[1].x - positions[0].x) * STEPPER_STEPS_PER_MM[X_AXIS]) /
-            (travels[1] - travels[0]));
-    }
-    if (travels[2] != travels[1]) {
-        bedLevelingFactors.y =
-            -(((positions[2].y - positions[0].y) * STEPPER_STEPS_PER_MM[X_AXIS]) /
-            (travels[2] - travels[0]));
-    }
-    bedLevelingFactors.current = move_position.x / bedLevelingFactors.x;
-    bedLevelingFactors.current += move_position.y / bedLevelingFactors.y;
-    dbgPrintf("BLVL: z/x=%d, z/y=%d\n", bedLevelingFactors.x, bedLevelingFactors.y);
+    bedLevelingFactors.current = s_evaulateBedLevelingForCurrentPosition();
 }
 
 uint32_t getRequiredSpace(enum GcodeKind kind)
