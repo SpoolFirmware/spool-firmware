@@ -38,6 +38,7 @@ void platformInit(struct PlatformConfig *config)
 {
     halClockInit(&halClockConfig);
     halGpioInit(&gpioConfig);
+    REG_FLD_SET_DRF_NUM(_AFIO, _MAPR, _SWJ_CFG, 0x2);
 
     // Initialize comm first, this gives us dbgPrintf
     privCommInit();

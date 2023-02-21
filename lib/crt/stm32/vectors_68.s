@@ -70,7 +70,6 @@ _vectors:
 
 
         .long Vector140, Vector144, Vector148, Vector14C
-# 256 "vectors.s.template"
         .text
 
         .align 2
@@ -142,12 +141,13 @@ Reset_Handler:
 
 
         .weak Vector140, Vector144, Vector148, Vector14C
-# 458 "vectors.s.template"
         .thumb_func
 NMI_Handler:
         .thumb_func
+        b NMI_Handler
 HardFault_Handler:
         .thumb_func
+        b HardFault_Handler
 MemManage_Handler:
         .thumb_func
 BusFault_Handler:
@@ -330,7 +330,6 @@ Vector154:
 Vector158:
         .thumb_func
 Vector15C:
-# 1024 "vectors.s.template"
         bl _unhandled_exception
 
         .thumb_func

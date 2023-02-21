@@ -115,5 +115,7 @@
 
 #define REG_FLD_SET_DRF(d,r,f,c)		\
 	(REG_WR32(DRF_REG(d, r), FLD_SET_DRF(d, r, f, c, REG_RD32(DRF_REG(d, r)))))
+#define REG_FLD_SET_DRF_NUM(d,r,f,n)		\
+	(REG_WR32(DRF_REG(d, r), FLD_SET_DRF_NUM(d, r, f, n, REG_RD32(DRF_REG(d, r)))))
 #define REG_FLD_TEST_DRF(d,r,f,c)		\
 	(FLD_TEST_DRF(d,r,f,c,REG_RD32(DRF_REG(d,r))))

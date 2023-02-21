@@ -121,4 +121,7 @@ void platformSetHeater(int8_t idx, uint8_t pwm)
 
 void platformSetFan(int8_t idx, uint8_t pwm)
 {
+    if (idx == 0) {
+        REG_WR32(DRF_REG(_TIM8, _CCR1), pwm);
+    }
 }
