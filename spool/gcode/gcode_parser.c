@@ -402,8 +402,9 @@ static status_t assertAndEatNumber(struct GcodeParser *s, struct Token *out)
         return StatusInvalidGcodeCommand;
     }
     ASSERT_OR_RETURN(eatToken(s));
-    if (out)
+    if (out) {
         *out = curr;
+    }
     return StatusOk;
 }
 
@@ -496,8 +497,12 @@ static status_t parseTemperature(struct GcodeParser *s,
     }
 
     ASSERT_OR_RETURN(eatToken(s));
-    ASSERT_OR_RETURN(assertAndEatNumber(s, &t));
-    ASSERT_OR_RETURN(assertGetFix16(&t, target));
+    if (target) {
+        ASSERT_OR_RETURN(assertAndEatNumber(s, &t));
+        ASSERT_OR_RETURN(assertGetFix16(&t, target));
+    } else {
+        eatToken(s);
+    }
 
     next->f = parseTemperature;
     return StatusAgain;
