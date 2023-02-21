@@ -20,7 +20,7 @@ void motionInit(void)
     }
     platformDisableStepper(0xFF);
     motionPlannerTaskInit();
-    initPlanner();
+    plannerInit();
 }
 
 fix16_t vecUnit(const int32_t a[NR_AXIS], fix16_t out[X_AND_Y])

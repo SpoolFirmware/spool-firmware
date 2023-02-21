@@ -8,6 +8,7 @@
 
 const static uint32_t VEL_CHANGE_THRESHOLD = 10;
 
+/* maximum size of the plan buffer */
 #define MOTION_LOOKAHEAD 10
 
 #define PLANNING_TASK_NOTIFY_SLOT 1
@@ -31,35 +32,67 @@ struct PlannerBlock {
 enum JobType {
     /* default value is to not run */
     StepperJobUndef = 0,
+    /* moves */
     StepperJobRun,
     StepperJobHomeX,
     StepperJobHomeY,
     StepperJobHomeZ,
+    /* not moves */
+    StepperJobEnableSteppers,
     StepperJobDisableSteppers,
+    StepperJobSync,
 };
 
 struct PlannerJob {
-    uint32_t x;
-    uint32_t accelerationX;
-    uint32_t decelerationX;
-    uint32_t a;
-    uint32_t viSq;
-    uint32_t vSq;
-    uint32_t vfSq;
-    fix16_t len;
-    fix16_t unit_vec[X_AND_Y];
-    struct PlannerBlock steppers[NR_STEPPER];
     enum JobType type;
-    uint8_t stepDirs;
+    union {
+        struct {
+            uint32_t x;
+            uint32_t accelerationX;
+            uint32_t decelerationX;
+            uint32_t a;
+            uint32_t viSq;
+            uint32_t vSq;
+            uint32_t vfSq;
+            fix16_t len;
+            fix16_t unit_vec[X_AND_Y];
+            struct PlannerBlock steppers[NR_STEPPER];
+            uint8_t stepDirs;
+        };
+        struct {
+            TaskHandle_t notify;
+            uint32_t seq;
+        }; /* StepperJobSync */
+    };
 };
 
-void initPlanner(void);
+static inline bool plannerJobIsMove(const struct PlannerJob *j)
+{
+    switch (j->type) {
+    case StepperJobRun:
+    case StepperJobHomeX:
+    case StepperJobHomeY:
+    case StepperJobHomeZ:
+        return true;
+    case StepperJobSync:
+    case StepperJobEnableSteppers:
+    case StepperJobDisableSteppers:
+        return false;
+    default:
+        panic();
+        break;
+    }
+}
+
+void plannerInit(void);
 
 uint32_t plannerAvailableSpace(void);
 uint32_t plannerSize(void);
 
-void __dequeuePlan(struct PlannerJob *out);
-void __enqueuePlan(enum JobType k, const int32_t plan[NR_STEPPER],
+void plannerDequeue(struct PlannerJob *out);
+void plannerEnqueue(enum JobType k);
+void plannerEnqueueNotify(enum JobType k, TaskHandle_t notify, uint32_t seq);
+void plannerEnqueueMove(enum JobType k, const int32_t plan[NR_STEPPER],
                    const fix16_t unit_vec[X_AND_Y],
                    const uint32_t max_v[NR_STEPPER],
                    const uint32_t acc[NR_STEPPER], fix16_t len, bool stop);

@@ -83,6 +83,7 @@ static void waitAndRespond(void)
 portTASK_FUNCTION(gcodeSerialTask, pvParameters)
 {
     status_t err = initParser(&gcodeParser);
+    uint32_t seqCounter = 0;
     struct GcodeCommand cmd;
 
     WARN_ON_ERR(err);
@@ -90,6 +91,8 @@ portTASK_FUNCTION(gcodeSerialTask, pvParameters)
         err = parseGcode(&gcodeParser, &cmd);
         WARN_ON_ERR(err);
         if (STATUS_OK(err)) {
+            cmd.seq.seqNumber = seqCounter++;
+
             switch (cmd.kind) {
             case GcodeG0:
             case GcodeG1:
@@ -104,14 +107,30 @@ portTASK_FUNCTION(gcodeSerialTask, pvParameters)
                 xQueueSend(MotionPlannerTaskQueue, &cmd, portMAX_DELAY);
                 platformSendResponse(OK, sizeof(OK) - 1);
                 break;
-            case GcodeM104:
-            case GcodeM105:
-            case GcodeM106:
+            /* pretend ok, wait for sync */
             case GcodeM107:
+            case GcodeM106:
             case GcodeM108:
-            case GcodeM109:
             case GcodeM140:
-            case GcodeM190:
+            case GcodeM104: {
+                platformSendResponse(OK, sizeof(OK) - 1);
+                xQueueSend(ThermalTaskQueue, &cmd, portMAX_DELAY);
+                struct GcodeCommand syncCmd = { .kind = GcodeISRSync };
+                syncCmd.seq.seqNumber = seqCounter++;
+                xQueueSend(MotionPlannerTaskQueue, &syncCmd, portMAX_DELAY);
+                break;
+            }
+            /* wait to heatup */
+            case GcodeM109:
+            case GcodeM190: {
+                xQueueSend(ThermalTaskQueue, &cmd, portMAX_DELAY);
+                struct GcodeCommand syncCmd = { .kind = GcodeISRSync };
+                syncCmd.seq.seqNumber = seqCounter++;
+                xQueueSend(MotionPlannerTaskQueue, &syncCmd, portMAX_DELAY);
+                waitAndRespond();
+                break;
+            }
+            case GcodeM105:
                 xQueueSend(ThermalTaskQueue, &cmd, portMAX_DELAY);
                 waitAndRespond();
                 break;
@@ -120,7 +139,6 @@ portTASK_FUNCTION(gcodeSerialTask, pvParameters)
                 break;
             default:
                 panic();
-                platformSendResponse(OK, sizeof(OK) - 1);
                 break;
             }
             continue;

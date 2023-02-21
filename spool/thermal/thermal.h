@@ -2,6 +2,7 @@
 
 #include <stdint.h>
 #include "FreeRTOS.h"
+#include "task.h"
 
 struct TemperatureReport {
     uint16_t bed;
@@ -9,6 +10,8 @@ struct TemperatureReport {
     uint16_t extruders[1];
     uint16_t extrudersTarget[1];
 };
+
+extern TaskHandle_t thermalTaskHandle;
 
 void thermalTaskInit(void);
 

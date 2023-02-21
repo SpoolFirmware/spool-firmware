@@ -25,19 +25,27 @@ typedef struct MotionBlock {
 } motion_block_t;
 
 typedef struct StepperJob {
-    motion_block_t blocks[NR_STEPPER];
     enum JobType type;
-    uint8_t stepDirs;
+    union {
+        struct {
+            motion_block_t blocks[NR_STEPPER];
+            // v2 Stuff (Line Drawing Meme)
+            uint32_t totalStepEvents;
+            uint32_t accelerateUntil;
+            uint32_t decelerateAfter;
 
-    // v2 Stuff (Line Drawing Meme)
-    uint32_t totalStepEvents;
-    uint32_t accelerateUntil;
-    uint32_t decelerateAfter;
+            uint32_t entry_steps_s;
+            uint32_t cruise_steps_s;
+            uint32_t exit_steps_s;
+            uint32_t accel_steps_s2;
 
-    uint32_t entry_steps_s;
-    uint32_t cruise_steps_s;
-    uint32_t exit_steps_s;
-    uint32_t accel_steps_s2;
+            uint8_t stepDirs;
+        };
+        struct {
+            TaskHandle_t notify;
+            uint32_t seq;
+        };
+    };
 } job_t;
 
 void motionPlannerTaskInit(void);

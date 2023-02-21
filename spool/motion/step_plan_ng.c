@@ -9,17 +9,19 @@
 
 struct StepperPlanBuf {
     uint32_t size;
-    /* consumer */
+    /* consumer, if buf is not empty, points to the slot before the head */
     uint32_t head;
-    /* producer */
+    /* producer, if buf is not full, points to the first available slot */
     uint32_t tail;
     struct PlannerJob buf[MOTION_LOOKAHEAD];
 };
 
 static struct StepperPlanBuf stepperPlanBuf;
-const static struct PlannerJob empty;
+const static struct PlannerJob empty = {
+    .type = StepperJobRun,
+};
 
-void initPlanner()
+void plannerInit()
 {
     stepperPlanBuf.head = MOTION_LOOKAHEAD - 1;
 }
@@ -34,11 +36,21 @@ uint32_t plannerAvailableSpace(void)
     return MOTION_LOOKAHEAD - plannerSize();
 }
 
-void __dequeuePlan(struct PlannerJob *out)
+static inline uint32_t planBufNextIdx(uint32_t i)
+{
+    return (i == MOTION_LOOKAHEAD - 1 ? 0 : i + 1);
+}
+
+static inline uint32_t planBufPrevIdx(uint32_t i)
+{
+    return (i == 0 ? MOTION_LOOKAHEAD - 1 : i - 1);
+}
+
+void plannerDequeue(struct PlannerJob *out)
 {
     BUG_ON(plannerSize() == 0);
     stepperPlanBuf.size--;
-    stepperPlanBuf.head = (stepperPlanBuf.head + 1) % MOTION_LOOKAHEAD;
+    stepperPlanBuf.head = planBufNextIdx(stepperPlanBuf.head);
     *out = stepperPlanBuf.buf[stepperPlanBuf.head];
 }
 
@@ -124,6 +136,7 @@ static void populateBlock(const struct PlannerJob *prev, struct PlannerJob *new,
     }
 }
 
+/* curr needs to be a move */
 static void calcReverse(struct PlannerJob *curr)
 {
     uint32_t accelerationX = (curr->vSq - curr->viSq) / (2 * curr->a);
@@ -153,6 +166,7 @@ static void calcReverse(struct PlannerJob *curr)
     }
 }
 
+/* requires both arguments to be moves */
 static bool recalculate(const struct PlannerJob *next, struct PlannerJob *curr)
 {
     bool dirty = false;
@@ -167,7 +181,7 @@ static bool recalculate(const struct PlannerJob *next, struct PlannerJob *curr)
 
 static void reversePass(void)
 {
-    uint32_t i = stepperPlanBuf.tail;
+    uint32_t i = planBufPrevIdx(stepperPlanBuf.tail);
     uint32_t size = plannerSize();
     struct PlannerJob *next = NULL;
 
@@ -176,45 +190,80 @@ static void reversePass(void)
             next = &stepperPlanBuf.buf[i];
         } else {
             struct PlannerJob *curr = &stepperPlanBuf.buf[i];
-            if (recalculate(next, curr)) {
-                calcReverse(curr);
-                next = curr;
+            if (plannerJobIsMove(curr)) {
+                if (recalculate(next, curr)) {
+                    calcReverse(curr);
+                    next = curr;
+                } else {
+                    break;
+                }
             } else {
-                break;
+                /* this one does not have a move, lookahead another one */
             }
         }
 
-        if (i == 0) {
-            i = MOTION_LOOKAHEAD - 1;
-        } else {
-            i--;
-        }
+        i = planBufPrevIdx(i);
         size--;
     }
 }
 
-void __enqueuePlan(enum JobType k, const int32_t plan[NR_STEPPER],
+/* returns the job just enqueued */
+static struct PlannerJob *__plannerEnqueue(enum JobType k)
+{
+    BUG_ON(plannerAvailableSpace() == 0);
+    struct PlannerJob *tail = &stepperPlanBuf.buf[stepperPlanBuf.tail];
+    memset(tail, 0, sizeof(*tail));
+
+    tail->type = k;
+
+    stepperPlanBuf.tail = (stepperPlanBuf.tail + 1) % MOTION_LOOKAHEAD;
+    stepperPlanBuf.size++;
+    return tail;
+}
+void plannerEnqueue(enum JobType k)
+{
+    __plannerEnqueue(k);
+}
+
+void plannerEnqueueNotify(enum JobType k, TaskHandle_t notify, uint32_t seq)
+{
+    struct PlannerJob *job = __plannerEnqueue(k);
+
+    job->notify = notify;
+    job->seq = seq;
+}
+
+/* requires planner to be non-empty */
+static const struct PlannerJob *findPrevMovePlan(void)
+{
+    uint32_t i = planBufPrevIdx(stepperPlanBuf.tail);
+    uint32_t size = plannerSize();
+
+    while (size > 0) {
+        struct PlannerJob *curr = &stepperPlanBuf.buf[i];
+        if (plannerJobIsMove(curr)) {
+            return curr;
+        } else {
+            /* this one does not have a move, lookahead another one */
+        }
+
+        i = planBufPrevIdx(i);
+        size--;
+    }
+    return &empty;
+}
+
+void plannerEnqueueMove(enum JobType k, const int32_t plan[NR_STEPPER],
                    const fix16_t unit_vec[X_AND_Y],
                    const uint32_t max_v[NR_STEPPER],
                    const uint32_t acc[NR_STEPPER], fix16_t len, bool stop)
 {
-    BUG_ON(plannerAvailableSpace() == 0);
-    const struct PlannerJob *prev;
-    if (plannerSize() == 0) {
-        prev = &empty;
-    } else {
-        prev = &stepperPlanBuf
-                    .buf[(stepperPlanBuf.tail == 0 ? MOTION_LOOKAHEAD - 1 :
-                                                     stepperPlanBuf.tail - 1)];
-    }
-    struct PlannerJob *tail = &stepperPlanBuf.buf[stepperPlanBuf.tail];
-    memset(tail, 0, sizeof(*tail));
+    const struct PlannerJob *prev = findPrevMovePlan();
+    struct PlannerJob *tail = __plannerEnqueue(k);
+
     for (uint8_t i = 0; i < X_AND_Y; ++i)
         tail->unit_vec[i] = unit_vec[i];
-    tail->type = k;
     tail->len = len;
     populateBlock(prev, tail, plan, max_v, acc, stop);
     reversePass();
-    stepperPlanBuf.tail = (stepperPlanBuf.tail + 1) % MOTION_LOOKAHEAD;
-    stepperPlanBuf.size++;
 }

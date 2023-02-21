@@ -18,6 +18,7 @@
 #include "gcode/gcode.h"
 
 static void thermalCallback(TimerHandle_t timerHandle);
+TaskHandle_t thermalTaskHandle;
 
 SemaphoreHandle_t pidMutex;
 pid_t e0Pid = {
@@ -145,6 +146,18 @@ void thermalGetTempReport(struct TemperatureReport *pReport)
     pReport->bed = fix16_to_int(bedTempF16);
 }
 
+static uint32_t maxSeq;
+void waitForSeq(uint32_t targetSeq)
+{
+    if (targetSeq <= maxSeq)
+        return;
+
+    uint32_t currSeq = maxSeq;
+    while (currSeq < targetSeq) {
+        xTaskNotifyWait(0, 0, &currSeq, portMAX_DELAY);
+    }
+}
+
 portTASK_FUNCTION(ThermalTask, args)
 {
     (void)args;
@@ -161,19 +174,25 @@ portTASK_FUNCTION(ThermalTask, args)
             cmd.fan.speed = 0;
             // fall-through
         case GcodeM106:
+            waitForSeq(cmd.seq.seqNumber);
             platformSetFan(0, fix16_to_int(cmd.fan.speed));
             break;
         case GcodeM108:
+            waitForSeq(cmd.seq.seqNumber);
             sSetHotendTemperature(F16(0));
             break;
         case GcodeM140:
+            waitForSeq(cmd.seq.seqNumber);
             sSetBedTemperature(cmd.temperature.sTemp, false);
             break;
         case GcodeM190:
+            waitForSeq(cmd.seq.seqNumber);
             sSetBedTemperature(cmd.temperature.sTemp, true);
+            xQueueSend(ResponseQueue, &resp, portMAX_DELAY);
             break;
         case GcodeM104:
         case GcodeM109: // Set Temp / Set Temp and Wait
+            waitForSeq(cmd.seq.seqNumber);
             sSetHotendTemperature(cmd.temperature.sTemp);
             if (cmd.kind == GcodeM109) {
                 for (;;) {
@@ -185,12 +204,14 @@ portTASK_FUNCTION(ThermalTask, args)
                         break;
                     vTaskDelay(pdMS_TO_TICKS(500));
                 }
+                xQueueSend(ResponseQueue, &resp, portMAX_DELAY);
             }
             break;
         case GcodeM105: // Get Temp
         {
             resp.respKind = ResponseTemp;
             thermalGetTempReport(&resp.tempReport);
+            xQueueSend(ResponseQueue, &resp, portMAX_DELAY);
         } break;
         default:
             dbgPrintf("EPERM: Thermal\n");
@@ -198,14 +219,12 @@ portTASK_FUNCTION(ThermalTask, args)
             break;
         }
 
-        xQueueSend(ResponseQueue, &resp, portMAX_DELAY);
     }
 }
 
 void thermalTaskInit(void)
 {
     TimerHandle_t thermalTimer;
-    TaskHandle_t thermalTaskHandle;
     if ((thermalTimer = xTimerCreate("thermalManager", pdMS_TO_TICKS(50),
                                      pdTRUE, NULL, thermalCallback)) == NULL) {
         panic();

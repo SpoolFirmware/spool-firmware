@@ -26,11 +26,16 @@ enum GcodeKind {
     GcodeM140,  // Set Bed
     GcodeM190,  // Set Bed and Wait
     GcodeM_IDGAF,  // IDGAF
+    GcodeISRSync, // ISR synchronization with non-ISR
 };
 
 enum GcodeResponseKind {
     ResponseOK,
     ResponseTemp,
+};
+
+struct GcodeSeq {
+    uint32_t seqNumber;
 };
 
 struct GcodeXYZEF {
@@ -49,6 +54,7 @@ struct GcodeTemp {
 
 struct GcodeCommand {
     enum GcodeKind kind;
+    struct GcodeSeq seq;
     union {
         struct GcodeXYZEF xyzef;
         struct GcodeTemp temperature;

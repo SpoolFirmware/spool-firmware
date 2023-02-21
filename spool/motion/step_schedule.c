@@ -13,6 +13,7 @@
 #include "core/spool.h"
 #include "motion/kinematic.h"
 #include "motion/motion.h"
+#include "thermal/thermal.h"
 #include "configuration.h"
 #include "step_plan_ng.h"
 #include "fix16.h"
@@ -142,7 +143,7 @@ static void scheduleMoveTo(const struct PrinterMove state,
     fix16_t len;
 
     planMove(dir, plan, unitVec, &len);
-    __enqueuePlan(StepperJobRun, plan, unitVec, maxVel, moveAcceleration, len,
+    plannerEnqueueMove(StepperJobRun, plan, unitVec, maxVel, moveAcceleration, len,
                   !currentState.continuousMode);
 
     currentState.x = currentState.homedX ? state.x : currentState.x;
@@ -309,8 +310,12 @@ uint32_t getRequiredSpace(enum GcodeKind kind)
         return 0;
     case GcodeG0:
     case GcodeG1:
-    case GcodeG29: // Correct? Do we even need this?
+        /* FIXME: G29 is not correct, this works right now 
+         * because it's run when the buffer is empty
+         */
+    case GcodeG29:
     case GcodeM84:
+    case GcodeISRSync:
         return 1;
     case GcodeG28:
         return 3;
@@ -347,6 +352,10 @@ static void enqueueAvailableGcode()
             return;
         }
         switch (cmd.kind) {
+        case GcodeISRSync:
+            plannerEnqueueNotify(StepperJobSync, thermalTaskHandle,
+                                 cmd.seq.seqNumber);
+            break;
         case GcodeG0:
         case GcodeG1:
             nextState.x = cmd.xyzef.xSet ?
@@ -385,8 +394,7 @@ static void enqueueAvailableGcode()
             scheduleMoveTo(nextState, NULL);
             break;
         case GcodeG28:
-            /* TODO, make this a stepper job */
-            platformEnableStepper(0xFF);
+            plannerEnqueue(StepperJobEnableSteppers);
             currentState.continuousMode = false;
             if (!(cmd.xyzef.xSet || cmd.xyzef.ySet || cmd.xyzef.zSet)) {
                 scheduleHomeX();
@@ -436,10 +444,10 @@ static void enqueueAvailableGcode()
             eRelativeMode = true;
             break;
         case GcodeM84:
+            plannerEnqueue(StepperJobDisableSteppers);
             currentState.homedX = false;
             currentState.homedY = false;
             currentState.homedZ = false;
-            platformDisableStepper(0xFF);
             break;
         default:
             panic();
@@ -453,42 +461,52 @@ static void sendStepperJob(const struct PlannerJob *j)
 {
     QueueHandle_t queue = StepperExecutionQueue;
     job_t job = { 0 };
-    for_each_stepper(i) {
-        motion_block_t *mb = &job.blocks[i];
-        const struct PlannerBlock *pb = &j->steppers[i];
-        mb->totalSteps = pb->x;
-    }
-    job.totalStepEvents = j->x;
-    job.accelerateUntil = j->accelerationX;
-    job.decelerateAfter = j->x - j->decelerationX;
-
-    job.entry_steps_s = (uint32_t)sqrtf((float)j->viSq);
-    job.cruise_steps_s = (uint32_t)sqrtf((float)j->vSq);
-    job.exit_steps_s = (uint32_t)sqrtf((float)j->vfSq);
-    job.accel_steps_s2 = j->a;
-
-    job.stepDirs = j->stepDirs;
     job.type = j->type;
 
     switch (j->type) {
+    /* move */
     case StepperJobRun:
     case StepperJobHomeX:
     case StepperJobHomeY:
     case StepperJobHomeZ:
-        while (xQueueSend(queue, &job, portMAX_DELAY) != pdTRUE)
-            ;
+        for_each_stepper(i) {
+            motion_block_t *mb = &job.blocks[i];
+            const struct PlannerBlock *pb = &j->steppers[i];
+            mb->totalSteps = pb->x;
+        }
+        job.totalStepEvents = j->x;
+        job.accelerateUntil = j->accelerationX;
+        job.decelerateAfter = j->x - j->decelerationX;
+
+        job.entry_steps_s = (uint32_t)sqrtf((float)j->viSq);
+        job.cruise_steps_s = (uint32_t)sqrtf((float)j->vSq);
+        job.exit_steps_s = (uint32_t)sqrtf((float)j->vfSq);
+        job.accel_steps_s2 = j->a;
+
+        job.stepDirs = j->stepDirs;
+        break;
+    /* no move */
+    case StepperJobSync:
+        job.notify = j->notify;
+        job.seq = j->seq;
+        break;
+    case StepperJobEnableSteppers:
+    case StepperJobDisableSteppers:
         break;
     case StepperJobUndef:
     default:
-        WARN();
+        PR_WARN("unknown job type %d\n", j->type);
+        return;
     }
+    while (xQueueSend(queue, &job, portMAX_DELAY) != pdTRUE)
+        ;
 }
 
 static bool s_executePlannerJobs(void)
 {
     struct PlannerJob j;
     if (plannerSize() > 0) {
-        __dequeuePlan(&j);
+        plannerDequeue(&j);
         sendStepperJob(&j);
     }
     return plannerSize() > 0;
@@ -501,7 +519,7 @@ uint32_t s_scheduleHomeMove(enum JobType k, const int32_t plan[NR_STEPPER],
 {
     uint32_t stepsMoved = 0;
     xTaskNotifyStateClear(NULL);
-    __enqueuePlan(k, plan, unitVec, maxV, acc, len, true);
+    plannerEnqueueMove(k, plan, unitVec, maxV, acc, len, true);
     // Empty Planner Queue
     while (s_executePlannerJobs())
         ;

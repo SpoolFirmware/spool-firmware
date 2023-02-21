@@ -3,6 +3,8 @@
 
 #include "misc.h"
 #include "string.h"
+#include "error.h"
+#include "dbgprintf.h"
 
 #include "core/spool.h"
 
@@ -69,17 +71,9 @@ uint16_t executeStep(uint16_t ticksElapsed)
     if (job.type != StepperJobUndef && job.type != StepperJobRun) {
         for (uint8_t i = 0; i < NR_AXIS; ++i) {
             if (platformGetEndstop(i)) {
-                if (job.type == StepperJobHomeX && i == X_AXIS) {
-                    sDiscardJob();
-                    notifyHomeISR(sStepCounter);
-                    return 0;
-                }
-                if (job.type == StepperJobHomeY && i == Y_AXIS) {
-                    sDiscardJob();
-                    notifyHomeISR(sStepCounter);
-                    return 0;
-                }
-                if (job.type == StepperJobHomeZ && i == Z_AXIS) {
+                if ((job.type == StepperJobHomeX && i == X_AXIS) ||
+                    (job.type == StepperJobHomeY && i == Y_AXIS) ||
+                    (job.type == StepperJobHomeZ && i == Z_AXIS)) {
                     sDiscardJob();
                     notifyHomeISR(sStepCounter);
                     return 0;
@@ -127,6 +121,32 @@ uint16_t executeStep(uint16_t ticksElapsed)
             return platformGetStepperTimerFreq() / 1000; // 1ms
         }
         // Acquired new block
+        switch (job.type) {
+        /* move */
+        case StepperJobRun:
+        case StepperJobHomeX:
+        case StepperJobHomeY:
+        case StepperJobHomeZ:
+            break;
+        /* no move */
+        case StepperJobEnableSteppers:
+            platformEnableStepper(0xFF);
+            sDiscardJob();
+            return 0;
+        case StepperJobDisableSteppers:
+            platformDisableStepper(0xFF);
+            sDiscardJob();
+            return 0;
+        case StepperJobSync:
+            xTaskNotifyFromISR(job.notify, job.seq, eSetValueWithOverwrite,
+                               NULL);
+            sDiscardJob();
+            return 0;
+        case StepperJobUndef:
+        default:
+            PR_WARN("job type %d in execute\n", job.type);
+            break;
+        }
         sStepCounter = 0;
         for_each_stepper(i) {
             if (platformMotionInvertStepper[i])
