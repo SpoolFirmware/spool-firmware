@@ -307,18 +307,18 @@ uint32_t getRequiredSpace(enum GcodeKind kind)
     case GcodeG92:
     case GcodeM82:
     case GcodeM83:
+    case GcodeM101:
+    case GcodeM103:
         return 0;
     case GcodeG0:
     case GcodeG1:
-        /* FIXME: G29 is not correct, this works right now 
-         * because it's run when the buffer is empty
-         */
-    case GcodeG29:
     case GcodeM84:
     case GcodeISRSync:
         return 1;
+    /* require planner queue to be empty, G28/29 routinely flushes planner */
+    case GcodeG29:
     case GcodeG28:
-        return 3;
+        return plannerCapacity();
     default:
         panic();
     }
@@ -330,12 +330,15 @@ uint32_t getRequiredSpace(enum GcodeKind kind)
 static void enqueueAvailableGcode()
 {
     static bool commandAvailable = false;
-    bool continuousMode = false;
+    static bool extrudersEnabled = true;
+    static bool steppersEnabled = false;
     static struct GcodeCommand cmd;
     static struct PrinterMove nextState = { 0 };
 
     static bool inRelativeMode = false;
     static bool eRelativeMode = false;
+
+    bool continuousMode = false;
 
     while (plannerAvailableSpace() > 0) {
         continuousMode = uxQueueSpacesAvailable(MotionPlannerTaskQueue) <
@@ -348,9 +351,17 @@ static void enqueueAvailableGcode()
             }
             commandAvailable = true;
         }
+
+        /* only accept G28 when steppers are disabled */
+        if (!steppersEnabled && cmd.kind != GcodeG28) {
+            commandAvailable = false;
+            return;
+        }
+
         if (plannerAvailableSpace() < getRequiredSpace(cmd.kind)) {
             return;
         }
+
         switch (cmd.kind) {
         case GcodeISRSync:
             plannerEnqueueNotify(StepperJobSync, thermalTaskHandle,
@@ -373,11 +384,16 @@ static void enqueueAvailableGcode()
                                fix16_mul_int32(cmd.xyzef.z,
                                                platformMotionStepsPerMMAxis[Z_AXIS])) :
                               currentState.z;
-            nextState.e = cmd.xyzef.eSet ?
-                              ((eRelativeMode ? currentState.e : 0) +
-                               fix16_mul_int32(cmd.xyzef.e,
-                                               platformMotionStepsPerMMAxis[E_AXIS])) :
-                              currentState.e;
+            if (extrudersEnabled) {
+                nextState.e = cmd.xyzef.eSet ?
+                                  ((eRelativeMode ? currentState.e : 0) +
+                                   fix16_mul_int32(
+                                       cmd.xyzef.e,
+                                       platformMotionStepsPerMMAxis[E_AXIS])) :
+                                  currentState.e;
+            } else {
+                nextState.e = currentState.e;
+            }
 
             WARN_ON(cmd.xyzef.f < 0);
             if (cmd.xyzef.fSet && cmd.xyzef.f != 0) {
@@ -395,6 +411,7 @@ static void enqueueAvailableGcode()
             break;
         case GcodeG28:
             plannerEnqueue(StepperJobEnableSteppers);
+            steppersEnabled = true;
             currentState.continuousMode = false;
             if (!(cmd.xyzef.xSet || cmd.xyzef.ySet || cmd.xyzef.zSet)) {
                 scheduleHomeX();
@@ -443,8 +460,15 @@ static void enqueueAvailableGcode()
         case GcodeM83:
             eRelativeMode = true;
             break;
+        case GcodeM101:
+            extrudersEnabled = true;
+            break;
+        case GcodeM103:
+            extrudersEnabled = false;
+            break;
         case GcodeM84:
             plannerEnqueue(StepperJobDisableSteppers);
+            steppersEnabled = false;
             currentState.homedX = false;
             currentState.homedY = false;
             currentState.homedZ = false;

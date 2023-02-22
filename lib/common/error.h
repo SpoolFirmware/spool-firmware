@@ -86,7 +86,7 @@ void __warn_on_err(const char *file, int line, status_t err);
     } while (0)
 
 #define PR_WARN(s, ...) \
-    dbgPrintf("WARN at %s:%s " s, __FILE__, __LINE__, ##__VA_ARGS__)
+    dbgPrintf("WARN at %s:%d " s, __FILE__, __LINE__, ##__VA_ARGS__)
 
 #define __ASSERT_GE0(x) x >= 0
 

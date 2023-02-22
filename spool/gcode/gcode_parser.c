@@ -625,6 +625,12 @@ static status_t parseCmdM(struct GcodeParser *s, struct GcodeCommand *cmd,
     case 84:
         cmd->kind = GcodeM84;
         return StatusOk;
+    case 101:
+        cmd->kind = GcodeM101;
+        return StatusOk;
+    case 103:
+        cmd->kind = GcodeM103;
+        return StatusOk;
     case 104:
         cmd->kind = GcodeM104;
         next->f = parseTemperature;

@@ -46,6 +46,11 @@ fix16_t pidUpdateLoop(pid_t *pPid, fix16_t input)
     pPid->head = (pPid->head + 1) % ARRAY_LENGTH(pPid->inputHistory);
     dInput = fix16_sub(input, oldInput);
 
+    /* TODO(yaotian): if reading is insane we need to HALT */
+    if (!pPid->setPoint) {
+        return 0;
+    }
+
     if (fix16_abs(error) > pPid->effectiveRange) {
         pidReset(pPid);
         if (error > F16(0)) {
@@ -66,9 +71,5 @@ fix16_t pidUpdateLoop(pid_t *pPid, fix16_t input)
     output = fix16_sub(output, dVal); // D
 
     output = fix16_clamp(output, pPid->outputMin, pPid->outputMax);
-
-    if (!pPid->setPoint) {
-        return 0;
-    }
     return output;
 }

@@ -9,7 +9,7 @@
 const static uint32_t VEL_CHANGE_THRESHOLD = 10;
 
 /* maximum size of the plan buffer */
-#define MOTION_LOOKAHEAD 10
+#define MOTION_LOOKAHEAD 15
 
 #define PLANNING_TASK_NOTIFY_SLOT 1
 
@@ -87,6 +87,7 @@ static inline bool plannerJobIsMove(const struct PlannerJob *j)
 void plannerInit(void);
 
 uint32_t plannerAvailableSpace(void);
+uint32_t plannerCapacity(void);
 uint32_t plannerSize(void);
 
 void plannerDequeue(struct PlannerJob *out);

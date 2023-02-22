@@ -31,6 +31,11 @@ uint32_t plannerSize(void)
     return stepperPlanBuf.size;
 }
 
+uint32_t plannerCapacity(void)
+{
+    return MOTION_LOOKAHEAD;
+}
+
 uint32_t plannerAvailableSpace(void)
 {
     return MOTION_LOOKAHEAD - plannerSize();
