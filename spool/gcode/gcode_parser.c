@@ -437,6 +437,25 @@ struct ParserState {
 static parse_fun_t parseXYZEF, parseTemperature, parseFan, parseCmdG, parseCmdM,
     _parseGcode;
 
+/**
+ * @brief skip until a newline is found.
+ * 
+ * @param s the parser
+ * @return status_t 
+ */
+static status_t s_skipUntilNewline(struct GcodeParser *s)
+{   
+    struct Token t = { .kind=TokenUndef };
+    do {
+        if (t.kind != TokenUndef) {
+            eatToken(s);
+        }
+        peekToken(s, &t);
+    } while(t.kind != TokenNewline);
+
+    return StatusOk;
+}
+
 static status_t parseFan(struct GcodeParser *s, struct GcodeCommand *cmd,
                          struct ParserState *next)
 {
@@ -501,6 +520,7 @@ static status_t parseTemperature(struct GcodeParser *s,
         ASSERT_OR_RETURN(assertAndEatNumber(s, &t));
         ASSERT_OR_RETURN(assertGetFix16(&t, target));
     } else {
+        peekToken(s, &t);
         eatToken(s);
     }
 
@@ -630,7 +650,7 @@ static status_t parseCmdM(struct GcodeParser *s, struct GcodeCommand *cmd,
         return StatusOk;
     case 103:
         cmd->kind = GcodeM103;
-        return StatusOk;
+        return s_skipUntilNewline(s);
     case 104:
         cmd->kind = GcodeM104;
         next->f = parseTemperature;

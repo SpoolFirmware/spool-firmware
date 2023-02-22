@@ -241,6 +241,7 @@ static void scheduleHomeZ(void)
     scheduleMoveTo(home_z_move, homeVelocity);
 
     s_scheduleZMeasure(motionGetHomingVelocity(STEPPER_C) / 4);
+    currentState.z = 0;
 
     if (platformFeatureZOffset != 0) {
         currentState.z = (int32_t)(platformFeatureZOffset *

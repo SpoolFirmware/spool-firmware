@@ -96,13 +96,13 @@ static void thermalCallback(TimerHandle_t timerHandle)
     }
 
     // Logging
-    static uint8_t log = 0;
-    if (log == 16) {
-        log = 0;
-        dbgPrintf("s=%d c=%d o=%d; B:s=%d c=%d o=%d\n", targetCE, tempCExtruder,
-                 eControl, targetCBed, tempCBed, bControl);
-    }
-    log++;
+    // static uint8_t log = 0;
+    // if (log == 16) {
+    //     log = 0;
+    //     dbgPrintf("s=%d c=%d o=%d; B:s=%d c=%d o=%d\n", targetCE, tempCExtruder,
+    //              eControl, targetCBed, tempCBed, bControl);
+    // }
+    // log++;
 }
 
 static void sSetHotendTemperature(fix16_t newTemp)

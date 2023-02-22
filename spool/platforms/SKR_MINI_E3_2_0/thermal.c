@@ -109,11 +109,11 @@ fix16_t platformReadTemp(int8_t idx)
 }
 
 void platformSetHeater(int8_t idx, uint8_t pwm)
-{    
+{   
     if (idx == 0) {
         REG_WR32(DRF_REG(_TIM8, _CCR3), pwm);
     } else if (idx == -1) { // BED
-        // REG_WR32(DRF_REG(_TIM4, _CCR1), pwm);
+        REG_WR32(DRF_REG(_TIM8, _CCR4), pwm);
     } else {
         panic();
     }

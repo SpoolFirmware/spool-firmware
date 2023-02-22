@@ -34,7 +34,7 @@ const int32_t platformMotionDefaultMaxVel[] = {
 };
 const int32_t platformMotionDefaultAcc[] = {
     500,
-    500,
+    300,
     100,
     1000,
 };
