@@ -27,9 +27,9 @@
 static struct PrinterState currentState;
 
 const static int32_t lvlX1 = 5 * PLATFORM_MOTION_STEPS_PER_MM_AXIS(X_AXIS),
-              lvlX2 = 120 * PLATFORM_MOTION_STEPS_PER_MM_AXIS(X_AXIS);
+                     lvlX2 = 120 * PLATFORM_MOTION_STEPS_PER_MM_AXIS(X_AXIS);
 const static int32_t lvlY1 = 10 * PLATFORM_MOTION_STEPS_PER_MM_AXIS(Y_AXIS),
-              lvlY2 = 150 * PLATFORM_MOTION_STEPS_PER_MM(Y_AXIS);
+                     lvlY2 = 150 * PLATFORM_MOTION_STEPS_PER_MM(Y_AXIS);
 static struct {
     int32_t x;
     int32_t y;
@@ -58,12 +58,13 @@ static inline int32_t s_lerpi32(int32_t x1, int32_t v1, int32_t x2, int32_t v2,
     return ((x2 - x) * v1 / (x2 - x1)) + ((x - x1) * v2 / (x2 - x1));
 }
 
-static inline int32_t s_evaulateBedLevelingForCurrentPosition(int32_t x, int32_t y)
+static inline int32_t s_evaulateBedLevelingForCurrentPosition(int32_t x,
+                                                              int32_t y)
 {
-    int32_t xy1 = s_lerpi32(lvlX1, bedLevelingFactors.points[0],
-        lvlX2, bedLevelingFactors.points[1], x);
-    int32_t xy2 = s_lerpi32(lvlX1, bedLevelingFactors.points[3],
-        lvlX2, bedLevelingFactors.points[2], x);
+    int32_t xy1 = s_lerpi32(lvlX1, bedLevelingFactors.points[0], lvlX2,
+                            bedLevelingFactors.points[1], x);
+    int32_t xy2 = s_lerpi32(lvlX1, bedLevelingFactors.points[3], lvlX2,
+                            bedLevelingFactors.points[2], x);
     return -s_lerpi32(lvlY1, xy1, lvlY2, xy2, y);
 }
 
@@ -76,8 +77,7 @@ static uint32_t s_scheduleHomeMove(enum JobType k,
                                    const int32_t plan[NR_STEPPER],
                                    const fix16_t unitVec[X_AND_Y],
                                    const uint32_t maxV[NR_STEPPER],
-                                   const uint32_t acc[NR_STEPPER],
-                                   fix16_t len);
+                                   const uint32_t acc[NR_STEPPER], fix16_t len);
 
 TaskHandle_t stepScheduleTaskHandle;
 
@@ -123,8 +123,9 @@ static void scheduleMoveTo(const struct PrinterMove state,
     int32_t dz = currentState.homedZ ? (state.z - currentState.z) : 0;
     int32_t de = state.e - currentState.e;
 
-    if (PLATFORM_FEATURE_ENABLED(BedLeveling)){
-        zLevelingTarget = s_evaulateBedLevelingForCurrentPosition(state.x, state.y);
+    if (PLATFORM_FEATURE_ENABLED(BedLeveling)) {
+        zLevelingTarget =
+            s_evaulateBedLevelingForCurrentPosition(state.x, state.y);
         dzLeveling = zLevelingTarget - bedLevelingFactors.current;
     }
 
@@ -143,8 +144,8 @@ static void scheduleMoveTo(const struct PrinterMove state,
     fix16_t len;
 
     planMove(dir, plan, unitVec, &len);
-    plannerEnqueueMove(StepperJobRun, plan, unitVec, maxVel, moveAcceleration, len,
-                  !currentState.continuousMode);
+    plannerEnqueueMove(StepperJobRun, plan, unitVec, maxVel, moveAcceleration,
+                       len, !currentState.continuousMode);
 
     currentState.x = currentState.homedX ? state.x : currentState.x;
     currentState.y = currentState.homedY ? state.y : currentState.y;
@@ -159,7 +160,8 @@ static void scheduleMoveTo(const struct PrinterMove state,
 static void scheduleHomeX(void)
 {
     const static int32_t home_x[NR_AXIS] = {
-        -PLATFORM_MOTION_LIMIT(X_AXIS) * PLATFORM_MOTION_STEPS_PER_MM_AXIS(X_AXIS),
+        -PLATFORM_MOTION_LIMIT(X_AXIS) *
+            PLATFORM_MOTION_STEPS_PER_MM_AXIS(X_AXIS),
         0,
         0,
     };
@@ -168,8 +170,8 @@ static void scheduleHomeX(void)
     fix16_t len;
 
     planMove(home_x, plan, unitVec, &len);
-    s_scheduleHomeMove(StepperJobHomeX, plan, unitVec, homeVelocity, homeAcceleration,
-                       len);
+    s_scheduleHomeMove(StepperJobHomeX, plan, unitVec, homeVelocity,
+                       homeAcceleration, len);
     currentState.x = 0;
     currentState.homedX = true;
 }
@@ -178,7 +180,8 @@ static void scheduleHomeY(void)
 {
     const static int32_t home_y[NR_AXIS] = {
         0,
-        -PLATFORM_MOTION_LIMIT(Y_AXIS) * PLATFORM_MOTION_STEPS_PER_MM_AXIS(Y_AXIS),
+        -PLATFORM_MOTION_LIMIT(Y_AXIS) *
+            PLATFORM_MOTION_STEPS_PER_MM_AXIS(Y_AXIS),
         0,
     };
     int32_t plan[NR_STEPPER];
@@ -186,8 +189,8 @@ static void scheduleHomeY(void)
     fix16_t len;
 
     planMove(home_y, plan, unitVec, &len);
-    s_scheduleHomeMove(StepperJobHomeY, plan, unitVec, homeVelocity, homeAcceleration,
-                       len);
+    s_scheduleHomeMove(StepperJobHomeY, plan, unitVec, homeVelocity,
+                       homeAcceleration, len);
     currentState.y = 0;
     currentState.homedY = true;
 }
@@ -197,7 +200,8 @@ static uint32_t s_scheduleZMeasure(uint32_t velSteps)
     const static int32_t home_z[NR_AXIS] = {
         0,
         0,
-        -PLATFORM_MOTION_LIMIT(Z_AXIS) * PLATFORM_MOTION_STEPS_PER_MM_AXIS(Z_AXIS),
+        -PLATFORM_MOTION_LIMIT(Z_AXIS) *
+            PLATFORM_MOTION_STEPS_PER_MM_AXIS(Z_AXIS),
     };
     static uint32_t rehomeZVelocity[NR_STEPPER];
     for_each_stepper(i)
@@ -353,8 +357,9 @@ static void enqueueAvailableGcode()
             commandAvailable = true;
         }
 
-        /* only accept G28 when steppers are disabled */
-        if (!steppersEnabled && cmd.kind != GcodeG28) {
+        /* only accept G28 and sync when steppers are disabled */
+        if (!steppersEnabled && cmd.kind != GcodeG28 &&
+            cmd.kind != GcodeISRSync) {
             commandAvailable = false;
             return;
         }
@@ -370,21 +375,24 @@ static void enqueueAvailableGcode()
             break;
         case GcodeG0:
         case GcodeG1:
-            nextState.x = cmd.xyzef.xSet ?
-                              ((inRelativeMode ? currentState.x : 0) +
-                               fix16_mul_int32(cmd.xyzef.x,
-                                               platformMotionStepsPerMMAxis[X_AXIS])) :
-                              currentState.x;
-            nextState.y = cmd.xyzef.ySet ?
-                              ((inRelativeMode ? currentState.y : 0) +
-                               fix16_mul_int32(cmd.xyzef.y,
-                                               platformMotionStepsPerMMAxis[Y_AXIS])) :
-                              currentState.y;
-            nextState.z = cmd.xyzef.zSet ?
-                              ((inRelativeMode ? currentState.z : 0) +
-                               fix16_mul_int32(cmd.xyzef.z,
-                                               platformMotionStepsPerMMAxis[Z_AXIS])) :
-                              currentState.z;
+            nextState.x =
+                cmd.xyzef.xSet ?
+                    ((inRelativeMode ? currentState.x : 0) +
+                     fix16_mul_int32(cmd.xyzef.x,
+                                     platformMotionStepsPerMMAxis[X_AXIS])) :
+                    currentState.x;
+            nextState.y =
+                cmd.xyzef.ySet ?
+                    ((inRelativeMode ? currentState.y : 0) +
+                     fix16_mul_int32(cmd.xyzef.y,
+                                     platformMotionStepsPerMMAxis[Y_AXIS])) :
+                    currentState.y;
+            nextState.z =
+                cmd.xyzef.zSet ?
+                    ((inRelativeMode ? currentState.z : 0) +
+                     fix16_mul_int32(cmd.xyzef.z,
+                                     platformMotionStepsPerMMAxis[Z_AXIS])) :
+                    currentState.z;
             if (extrudersEnabled) {
                 nextState.e = cmd.xyzef.eSet ?
                                   ((eRelativeMode ? currentState.e : 0) +
@@ -398,7 +406,6 @@ static void enqueueAvailableGcode()
 
             WARN_ON(cmd.xyzef.f < 0);
             if (cmd.xyzef.fSet && cmd.xyzef.f != 0) {
-
                 for_each_stepper(i) {
                     const int32_t clampedVelMM =
                         min(abs(fix16_to_int(cmd.xyzef.f)) / SECONDS_PER_MIN,
@@ -443,17 +450,17 @@ static void enqueueAvailableGcode()
             break;
         case GcodeG92:
             if (cmd.xyzef.xSet)
-                currentState.x =
-                    fix16_mul_int32(cmd.xyzef.x, platformMotionStepsPerMMAxis[X_AXIS]);
+                currentState.x = fix16_mul_int32(
+                    cmd.xyzef.x, platformMotionStepsPerMMAxis[X_AXIS]);
             if (cmd.xyzef.ySet)
-                currentState.y =
-                    fix16_mul_int32(cmd.xyzef.y, platformMotionStepsPerMMAxis[Y_AXIS]);
+                currentState.y = fix16_mul_int32(
+                    cmd.xyzef.y, platformMotionStepsPerMMAxis[Y_AXIS]);
             if (cmd.xyzef.zSet)
-                currentState.z =
-                    fix16_mul_int32(cmd.xyzef.z, platformMotionStepsPerMMAxis[Z_AXIS]);
+                currentState.z = fix16_mul_int32(
+                    cmd.xyzef.z, platformMotionStepsPerMMAxis[Z_AXIS]);
             if (cmd.xyzef.eSet)
-                currentState.e =
-                    fix16_mul_int32(cmd.xyzef.e, platformMotionStepsPerMMAxis[E_AXIS]);
+                currentState.e = fix16_mul_int32(
+                    cmd.xyzef.e, platformMotionStepsPerMMAxis[E_AXIS]);
             break;
         case GcodeM82:
             eRelativeMode = false;

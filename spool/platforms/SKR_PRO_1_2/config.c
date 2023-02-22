@@ -6,7 +6,7 @@
 const bool platformFeatureBedLeveling = true;
 const enum KinematicKind platformFeatureKinematic = KinematicKindCoreXY;
 
-const float platformFeatureZOffset = 0.8;
+const float platformFeatureZOffset = 0.9;
 const struct ZHomingPos platformFeatureZHomingPos = {
     .x_mm = 30,
     .y_mm = 30,
