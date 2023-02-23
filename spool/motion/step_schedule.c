@@ -395,7 +395,7 @@ static void enqueueAvailableGcode()
                     currentState.z;
             if (extrudersEnabled) {
                 nextState.e = cmd.xyzef.eSet ?
-                                  ((eRelativeMode ? currentState.e : 0) +
+                                  (((eRelativeMode || inRelativeMode) ? currentState.e : 0) +
                                    fix16_mul_int32(
                                        cmd.xyzef.e,
                                        platformMotionStepsPerMMAxis[E_AXIS])) :
@@ -444,6 +444,7 @@ static void enqueueAvailableGcode()
             break;
         case GcodeG90:
             inRelativeMode = false;
+            eRelativeMode = false;
             break;
         case GcodeG91:
             inRelativeMode = true;
