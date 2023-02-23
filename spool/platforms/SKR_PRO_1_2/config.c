@@ -6,7 +6,7 @@
 const bool platformFeatureBedLeveling = true;
 const enum KinematicKind platformFeatureKinematic = KinematicKindCoreXY;
 
-const float platformFeatureZOffset = 0.9;
+const float platformFeatureZOffset = 1.1;
 const struct ZHomingPos platformFeatureZHomingPos = {
     .x_mm = 30,
     .y_mm = 30,
@@ -33,8 +33,8 @@ const int32_t platformMotionDefaultMaxVel[] = {
     45,
 };
 const int32_t platformMotionDefaultAcc[] = {
-    1000,
-    1000,
+    800,
+    800,
     50,
     1000,
 };
@@ -45,8 +45,8 @@ const int32_t platformMotionHomingVel[] = {
     0,
 };
 const int32_t platformMotionHomingAcc[] = {
-    1000,
-    1000,
+    800,
+    800,
     500,
     0,
 };
