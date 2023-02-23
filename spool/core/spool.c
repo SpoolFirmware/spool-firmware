@@ -47,21 +47,14 @@ static portTASK_FUNCTION(DebugPrintTask, pvParameters)
     }
 }
 
-/* Timer Task Support */
-static StaticTask_t TimerTaskTCBBuffer;
-static StackType_t TimerTaskStack[configTIMER_TASK_STACK_DEPTH];
-void vApplicationGetTimerTaskMemory(StaticTask_t **ppxTimerTaskTCBBuffer,
-                                    StackType_t **ppxTimerTaskStackBuffer,
-                                    uint32_t *pulTimerTaskStackSize)
-{
-    *ppxTimerTaskTCBBuffer = &TimerTaskTCBBuffer;
-    *ppxTimerTaskStackBuffer = TimerTaskStack;
-    *pulTimerTaskStackSize = configTIMER_TASK_STACK_DEPTH;
-}
-
 void vApplicationMallocFailedHook(void)
 {
     dbgPrintf("NOMEM, %d free\n", xPortGetFreeHeapSize());
+}
+
+void vApplicationDaemonTaskStartupHook(void) {
+    // Inform platform that execution is about to begin
+    platformPostInit();
 }
 
 void main(void)
@@ -81,9 +74,6 @@ void main(void)
     configASSERT(xTaskCreate(DebugPrintTask, "dbgPrintf",
                              configMINIMAL_STACK_SIZE, NULL,
                              configMAX_PRIORITIES - 1, &dbgPrintTaskHandle));
-
-    // Inform platform that execution is about to begin
-    platformPostInit();
 
     // Disable Allocation at this point
     vPortDisableHeapAllocation();

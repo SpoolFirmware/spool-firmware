@@ -140,6 +140,15 @@ void privStepperPostInit(void)
     halIrqEnable(IRQ_UART4);
 
     halTimerStartContinous(&stepperExecTimerDriver, 1);
+    for (size_t i = 0; i < ARRAY_LENGTH(tmcDrivers); i++) {
+        tmcDriverPreInit(&tmcDrivers[i]);
+    }
+
+    for (size_t i = 0; i < ARRAY_LENGTH(tmcDrivers); i++) {
+        tmcDriverInitialize(&tmcDrivers[i]);
+        // 17/32 ~1A, 9/32 ~.49A, ~1s
+        tmcDriverSetCurrent(&tmcDrivers[i], 16, 8, 4);
+    }
 }
 
 // Stepper UART IRQ
@@ -176,19 +185,6 @@ stepperTimerHandler_begin:
 
 void platformEnableStepper(uint8_t stepperMask)
 {
-    static bool firstInit = true;
-    if (firstInit) {
-        for (size_t i = 0; i < ARRAY_LENGTH(tmcDrivers); i++) {
-            tmcDriverPreInit(&tmcDrivers[i]);
-        }
-
-        for (size_t i = 0; i < ARRAY_LENGTH(tmcDrivers); i++) {
-            tmcDriverInitialize(&tmcDrivers[i]);
-            // 17/32 ~1A, 9/32 ~.49A, ~1s
-            tmcDriverSetCurrent(&tmcDrivers[i], 16, 8, 4);
-        }
-        firstInit = false;
-    }
     for (size_t i = 0; i < ARRAY_LENGTH(steppers); i++) {
         if (stepperMask & BIT(i)) {
             if (steppers[i].invertEn) {

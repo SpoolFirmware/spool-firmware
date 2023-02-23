@@ -46,6 +46,11 @@ extern const int32_t platformMotionStepsPerMM[];
 extern const int32_t platformMotionStepsPerMMAxis[];
 extern const int32_t platformMotionMinVel[];
 /* ---------------- Functions to be implemented by platform ----------------- */
+/**
+ * @brief Initialization Function, called before all
+ * 
+ * @param config 
+ */
 void platformInit(struct PlatformConfig *config);
 void platformPostInit(void);
 struct IOLine platformGetStatusLED(void);
