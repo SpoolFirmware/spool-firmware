@@ -12,9 +12,9 @@ cc_test(
         "core/magic_config.h",
         "gcode/gcode_parser.c",
         "gcode/gcode_parser.h",
-        "test/motion/motion_test.c",
         "motion/step_plan_ng.c",
         "motion/step_plan_ng.h",
+        "test/motion/motion_test.c",
     ],
     copts = [
         "-Wconversion",
@@ -102,6 +102,7 @@ cc_binary_with_platforms(
         "//lib/fxp:lib",
         "//lib/hal/common:lib",
         "//lib/syslib:lib",
+        "//spool/lib/ui:lib",
         "//spool/lib/thermistor:lib",
         "//spool/platforms:linker.ld",
         "//spool/platforms:runtime",
