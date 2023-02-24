@@ -21,17 +21,24 @@ enum KinematicKind {
     KinematicKindCoreXY, /* Uses STEPPER_A,B for corexy, C for Z */
 };
 
-struct ZHomingPos {
+struct XYPositionMM {
     int32_t x_mm;
     int32_t y_mm;
 };
+
+struct PIDConifg {
+
+};
+
 /* ----------------- Variables to be implemented by platform ---------------- */
 extern const bool platformFeatureBedLeveling;
 extern const enum KinematicKind platformFeatureKinematic;
 
 extern const float platformFeatureZOffset;
-extern const struct ZHomingPos platformFeatureZHomingPos;
+extern const struct XYPositionMM platformFeatureZHomingPos;
 extern const enum Stepper platformFeatureExtruderStepper;
+
+extern const struct XYPositionMM platformBedLevelingCorners[2];
 
 /* Motion, in mm, mm/s, mm/s^2 */
 extern const int32_t platformMotionLimits[];

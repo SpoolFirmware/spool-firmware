@@ -27,19 +27,12 @@
 /* mainly used by scheduleMoveTo */
 static struct PrinterState currentState;
 
-const static int32_t lvlX1 = 5 * PLATFORM_MOTION_STEPS_PER_MM_AXIS(X_AXIS),
-                     lvlX2 = 120 * PLATFORM_MOTION_STEPS_PER_MM_AXIS(X_AXIS);
-const static int32_t lvlY1 = 10 * PLATFORM_MOTION_STEPS_PER_MM_AXIS(Y_AXIS),
-                     lvlY2 = 150 * PLATFORM_MOTION_STEPS_PER_MM(Y_AXIS);
-static struct {
-    int32_t x;
-    int32_t y;
-} BedLevelingPositions[4] = {
-    { lvlX1, lvlY1 },
-    { lvlX2, lvlY1 },
-    { lvlX2, lvlY2 },
-    { lvlX1, lvlY2 },
-};
+#define lvlX1                             \
+    (platformBedLevelingCorners[0].x_mm * \
+     PLATFORM_MOTION_STEPS_PER_MM_AXIS(X_AXIS))
+#define lvlX2 (platformBedLevelingCorners[1].x_mm * PLATFORM_MOTION_STEPS_PER_MM_AXIS(X_AXIS))
+#define lvlY1 (platformBedLevelingCorners[0].y_mm * PLATFORM_MOTION_STEPS_PER_MM_AXIS(Y_AXIS))
+#define lvlY2 (platformBedLevelingCorners[1].y_mm * PLATFORM_MOTION_STEPS_PER_MM(Y_AXIS))
 
 static struct {
     /*
@@ -62,6 +55,10 @@ static inline int32_t s_lerpi32(int32_t x1, int32_t v1, int32_t x2, int32_t v2,
 static inline int32_t s_evaulateBedLevelingForCurrentPosition(int32_t x,
                                                               int32_t y)
 {
+    if (!PLATFORM_FEATURE_ENABLED(BedLeveling)) {
+        return 0;
+    }
+
     int32_t xy1 = s_lerpi32(lvlX1, bedLevelingFactors.points[0], lvlX2,
                             bedLevelingFactors.points[1], x);
     int32_t xy2 = s_lerpi32(lvlX1, bedLevelingFactors.points[3], lvlX2,
@@ -244,15 +241,16 @@ static void scheduleHomeZ(void)
         savedY = currentState.y;
         scheduleMoveTo(home_z_move, homeVelocity);
     }
-    
-    while(s_scheduleZMeasure(motionGetHomingVelocity(STEPPER_C)) == 0) {
+
+    while (s_scheduleZMeasure(motionGetHomingVelocity(STEPPER_C)) == 0) {
         currentState.homedZ = true;
-        currentState.z = 0;   
+        currentState.z = 0;
 
         home_z_move.z = 5 * platformMotionStepsPerMMAxis[Z_AXIS];
         scheduleMoveTo(home_z_move, homeVelocity);
     }
-    
+
+    currentState.z = 0;
     home_z_move.z = 5 * platformMotionStepsPerMMAxis[Z_AXIS];
     scheduleMoveTo(home_z_move, homeVelocity);
 
@@ -276,17 +274,27 @@ static void s_performBedLeveling(void)
         return;
     }
 
-    struct PrinterMove saved;
-    saved.x = currentState.x;
-    saved.y = currentState.y;
-    saved.z = currentState.z;
-    saved.e = currentState.e;
-
     // Reset leveling factor
     memset(&bedLevelingFactors, 0, sizeof(bedLevelingFactors));
 
     if (!PLATFORM_FEATURE_ENABLED(BedLeveling))
         return;
+
+    const struct {
+        int32_t x;
+        int32_t y;
+    } BedLevelingPositions[4] = {
+        { lvlX1, lvlY1 },
+        { lvlX2, lvlY1 },
+        { lvlX2, lvlY2 },
+        { lvlX1, lvlY2 },
+    };
+
+    struct PrinterMove saved;
+    saved.x = currentState.x;
+    saved.y = currentState.y;
+    saved.z = currentState.z;
+    saved.e = currentState.e;
 
     // Probe (5,10), (120, 10), (5, 155)
     static struct PrinterMove move_position = {
@@ -299,7 +307,6 @@ static void s_performBedLeveling(void)
         scheduleMoveTo(move_position, homeVelocity);
         int32_t actualTravel =
             (int32_t)s_scheduleZMeasure(motionGetHomingVelocity(STEPPER_C) / 4);
-        BedLevelingPositions->x = actualTravel;
         currentState.z -= actualTravel;
         travels[i] = actualTravel;
         scheduleMoveTo(move_position, homeVelocity);

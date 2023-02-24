@@ -1,6 +1,6 @@
 #include "FreeRTOS.h"
 #include "stream_buffer.h"
-
+#include "configuration.h"
 #include "config_private.h"
 
 // TIMER 6 is used for stepper scheduler
@@ -61,7 +61,10 @@ void platformPostInit(void)
 
 bool platformGetEndstop(uint8_t axis)
 {
+    bool endStop = halGpioRead(endStops[axis]);
+    if (axis == Z_AXIS)
+        endStop = !endStop;
     if (axis < ARRAY_LENGTH(endStops))
-        return halGpioRead(endStops[axis]);
+        return endStop;
     return true;
 }
