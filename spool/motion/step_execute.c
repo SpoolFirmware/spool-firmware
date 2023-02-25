@@ -65,6 +65,7 @@ static uint16_t sCalcInterval(struct StepperJob *pJob)
     return interval;
 }
 
+__attribute__((noinline))
 uint16_t executeStep(uint16_t ticksElapsed)
 {
     /* Check endstops first */
