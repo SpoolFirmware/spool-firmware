@@ -41,19 +41,27 @@ static void configurePrescalers(const struct HalClockConfig *config)
     // PLL use HSE 
     cfgr = FLD_SET_DRF(_RCC, _CFGR, _PLLSRC, _HSE__DIV_PREDIV, cfgr);
 
-    const uint32_t cfgrPPRE2 = (31 - __builtin_clz(config->apb2Prescaler | 1));
+    // This is a bit magic not great, but greatly reduce code size
+    // The values are not contigous, 0,4,5,6,7 <=> div1,2,4,8,16
+    uint32_t cfgrPPRE2 = 31U - (__builtin_clz(config->apb2Prescaler | 1));
+    if (cfgrPPRE2 > 0) {
+        cfgrPPRE2 += 3;
+    }
     if (cfgrPPRE2 > DRF_RCC_CFGR_PPRE2_DIV16) {
         panic();
     }
     cfgr = FLD_SET_DRF_NUM(_RCC, _CFGR, _PPRE2, cfgrPPRE2, cfgr);
     
-    const uint32_t cfgrPPRE1 = (31 - __builtin_clz(config->apb1Prescaler | 1));
+    uint32_t cfgrPPRE1 = (31U - __builtin_clz(config->apb1Prescaler | 1));
+    if (cfgrPPRE1 > 0) {
+        cfgrPPRE1 += 3;
+    }
     if (cfgrPPRE1 > DRF_RCC_CFGR_PPRE1_DIV16) {
         panic();
     }
     cfgr = FLD_SET_DRF_NUM(_RCC, _CFGR, _PPRE1, cfgrPPRE1, cfgr);
     
-    uint32_t ahbPre = (31 - __builtin_clz(config->ahbPrescaler | 1));
+    uint32_t ahbPre = (31U - __builtin_clz(config->ahbPrescaler | 1));
     if (config->ahbPrescaler > 16) {
         ahbPre -= 1;
     }
