@@ -41,93 +41,32 @@ static void configurePrescalers(const struct HalClockConfig *config)
     // PLL use HSE 
     cfgr = FLD_SET_DRF(_RCC, _CFGR, _PLLSRC, _HSE__DIV_PREDIV, cfgr);
 
-    switch (config->apb2Prescaler) {
-    case 1:
-        cfgr = FLD_SET_DRF(_RCC, _CFGR, _PPRE2, _DIV1, cfgr);
-        break;
-    case 2:
-        cfgr = FLD_SET_DRF(_RCC, _CFGR, _PPRE2, _DIV2, cfgr);
-        break;
-    case 4:
-        cfgr = FLD_SET_DRF(_RCC, _CFGR, _PPRE2, _DIV4, cfgr);
-        break;
-    case 8:
-        cfgr = FLD_SET_DRF(_RCC, _CFGR, _PPRE2, _DIV8, cfgr);
-        break;
-    case 16:
-        cfgr = FLD_SET_DRF(_RCC, _CFGR, _PPRE2, _DIV16, cfgr);
-        break;
-    default:
+    const uint32_t cfgrPPRE2 = (31 - __builtin_clz(config->apb2Prescaler | 1));
+    if (cfgrPPRE2 > DRF_RCC_CFGR_PPRE2_DIV16) {
         panic();
     }
-    switch (config->apb1Prescaler) {
-    case 1:
-        cfgr = FLD_SET_DRF(_RCC, _CFGR, _PPRE1, _DIV1, cfgr);
-        break;
-    case 2:
-        cfgr = FLD_SET_DRF(_RCC, _CFGR, _PPRE1, _DIV2, cfgr);
-        break;
-    case 4:
-        cfgr = FLD_SET_DRF(_RCC, _CFGR, _PPRE1, _DIV4, cfgr);
-        break;
-    case 8:
-        cfgr = FLD_SET_DRF(_RCC, _CFGR, _PPRE1, _DIV8, cfgr);
-        break;
-    case 16:
-        cfgr = FLD_SET_DRF(_RCC, _CFGR, _PPRE1, _DIV16, cfgr);
-        break;
-    default:
+    cfgr = FLD_SET_DRF_NUM(_RCC, _CFGR, _PPRE2, cfgrPPRE2, cfgr);
+    
+    const uint32_t cfgrPPRE1 = (31 - __builtin_clz(config->apb1Prescaler | 1));
+    if (cfgrPPRE1 > DRF_RCC_CFGR_PPRE1_DIV16) {
         panic();
     }
+    cfgr = FLD_SET_DRF_NUM(_RCC, _CFGR, _PPRE1, cfgrPPRE1, cfgr);
+    
+    uint32_t ahbPre = (31 - __builtin_clz(config->ahbPrescaler | 1));
+    if (config->ahbPrescaler > 16) {
+        ahbPre -= 1;
+    }
+    if (ahbPre > DRF_RCC_CFGR_HPRE_DIV256) {
+        panic();
+    }
+    cfgr = FLD_SET_DRF_NUM(_RCC, _CFGR, _HPRE, ahbPre, cfgr);
 
-    switch (config->ahbPrescaler) {
-    case 1:
-        cfgr = FLD_SET_DRF(_RCC, _CFGR, _HPRE, _DIV1, cfgr);
-        break;
-    case 2:
-        cfgr = FLD_SET_DRF(_RCC, _CFGR, _HPRE, _DIV2, cfgr);
-        break;
-    case 4:
-        cfgr = FLD_SET_DRF(_RCC, _CFGR, _HPRE, _DIV4, cfgr);
-        break;
-    case 8:
-        cfgr = FLD_SET_DRF(_RCC, _CFGR, _HPRE, _DIV8, cfgr);
-        break;
-    case 16:
-        cfgr = FLD_SET_DRF(_RCC, _CFGR, _HPRE, _DIV16, cfgr);
-        break;
-    case 64:
-        cfgr = FLD_SET_DRF(_RCC, _CFGR, _HPRE, _DIV64, cfgr);
-        break;
-    case 128:
-        cfgr = FLD_SET_DRF(_RCC, _CFGR, _HPRE, _DIV128, cfgr);
-        break;
-    case 256:
-        cfgr = FLD_SET_DRF(_RCC, _CFGR, _HPRE, _DIV256, cfgr);
-        break;
-    case 512:
-        cfgr = FLD_SET_DRF(_RCC, _CFGR, _HPRE, _DIV512, cfgr);
-        break;
-    default:
+    const uint32_t adcPre = (config->adcPrescaler / 2) - 1;
+    if (adcPre > DRF_RCC_CFGR_ADCPRE_DIV8) {
         panic();
     }
-
-    switch(config->adcPrescaler) {
-    case 2:
-        cfgr = FLD_SET_DRF(_RCC, _CFGR, _ADCPRE, _DIV2, cfgr);
-        break;
-    case 4:
-        cfgr = FLD_SET_DRF(_RCC, _CFGR, _ADCPRE, _DIV4, cfgr);
-        break;
-    case 6:
-        cfgr = FLD_SET_DRF(_RCC, _CFGR, _ADCPRE, _DIV6, cfgr);
-        break;
-    case 8:
-        cfgr = FLD_SET_DRF(_RCC, _CFGR, _ADCPRE, _DIV8, cfgr);
-        break;
-    default:
-        panic();
-    }
+    cfgr = FLD_SET_DRF_NUM(_RCC, _CFGR, _ADCPRE, adcPre, cfgr);
 
     REG_WR32(DRF_REG(_RCC, _CFGR), cfgr);
 }
