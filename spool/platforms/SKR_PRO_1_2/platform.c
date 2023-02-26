@@ -27,6 +27,8 @@ struct TimerConfig stepperExecutionTimerCfg = {
 };
 struct TimerDriver stepperExecutionTimer = { 0 };
 
+struct TimerDriver wallClockTimer;
+
 const static struct IOLine endstops[NR_AXIS] = {
     { .group = DRF_BASE(DRF_GPIOB), .pin = 10 }, /* X */
     { .group = DRF_BASE(DRF_GPIOE), .pin = 12 }, /* Y */
@@ -204,6 +206,7 @@ void platformInit(struct PlatformConfig *config)
     apb1enr = FLD_SET_DRF(_RCC, _APB1ENR, _USART3EN, _ENABLED, apb1enr);
     apb1enr = FLD_SET_DRF(_RCC, _APB1ENR, _TIM2EN, _ENABLED, apb1enr);
     apb1enr = FLD_SET_DRF(_RCC, _APB1ENR, _TIM3EN, _ENABLED, apb1enr);
+    apb1enr = FLD_SET_DRF(_RCC, _APB1ENR, _TIM5EN, _ENABLED, apb1enr);
     REG_WR32(DRF_REG(_RCC, _APB1ENR), apb1enr);
 
     uint32_t apb2enr = REG_RD32(DRF_REG(_RCC, _APB2ENR));
@@ -232,6 +235,13 @@ void platformInit(struct PlatformConfig *config)
         halGpioSetMode(endstops[i], DRF_DEF(_HAL_GPIO, _MODE, _MODE, _INPUT));
     }
 
+    halTimerConstruct(&wallClockTimer, DRF_BASE(DRF_TIM5));
+    halTimerStart(&wallClockTimer, &(struct TimerConfig){
+        .timerTargetFrequency = 10000000,
+        .clkDomainFrequency = halClockApb1TimerFreqGet(&halClockConfig),
+        .interruptEnable = true
+    });
+
     communicationInit();
     thermalInit();
 }
@@ -241,6 +251,24 @@ void platformPostInit(void)
     setupTimer();
     communicationPostInit();
     thermalPostInit();
+
+    // Start Wallclock
+    halIrqPrioritySet(IRQ_TIM5, configMAX_SYSCALL_INTERRUPT_PRIORITY);
+    halIrqEnable(IRQ_TIM5);
+    halTimerStartContinous(&wallClockTimer, 10000);
+}
+
+static uint64_t wallClockTimeUs = 0;
+IRQ_HANDLER_TIM5(void)
+{
+    wallClockTimeUs += 10000;
+    halTimerIrqClear(&wallClockTimer);
+    halIrqClear(IRQ_TIM5);
+}
+
+uint64_t platformGetTimeUs(void)
+{
+    return wallClockTimeUs + (10000 - halTimerGetCount(&wallClockTimer));
 }
 
 __attribute__((always_inline)) inline struct IOLine platformGetStatusLED(void)

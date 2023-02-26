@@ -77,9 +77,8 @@ cc_binary_with_platforms(
         "motion/*.c",
         "gcode/*.h",
         "core/*.h",
+        "core/*.c",
     ]) + [
-        "core/rtos_support.c",
-        "core/spool.c",
         "gcode/gcode_serial.c",
         "gcode/gcode_parser.c",
     ],
