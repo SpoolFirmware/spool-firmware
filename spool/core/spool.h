@@ -34,3 +34,6 @@ extern QueueHandle_t MotionPlannerTaskQueue;
 extern QueueHandle_t StepperExecutionQueue;
 
 #define PLATFORM_FEATURE_ENABLED(feature) platformFeature ## feature
+
+
+void spoolDelayUs(uint32_t us);

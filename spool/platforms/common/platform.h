@@ -62,6 +62,12 @@ void platformInit(struct PlatformConfig *config);
 void platformPostInit(void);
 struct IOLine platformGetStatusLED(void);
 
+// Timing
+/**
+ * @return Number of us since reset
+ */
+uint64_t platformGetTimeUs(void);
+
 // Steppers
 void platformEnableStepper(uint8_t stepperMask);
 void platformDisableStepper(uint8_t stepperMask);
