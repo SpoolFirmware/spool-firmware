@@ -115,7 +115,7 @@ static void populateBlock(const struct PlannerJob *prev, struct PlannerJob *new,
         new->viSq = viSq;
     } else if (new->len <= JUNCTION_SMOOTHING_DIST_THRES(maxStepper) &&
                cosTheta <= JUNCTION_SMOOTHING_THRES) {
-        const fix16_t cosThetaSq = fix16_abs(cosTheta);
+        const fix16_t cosThetaSq = fix16_mul(cosTheta, cosTheta);
         /* is this where we do rounded corners? */
         /* for now, we pretend cos is linear */
         const uint32_t viSq =
