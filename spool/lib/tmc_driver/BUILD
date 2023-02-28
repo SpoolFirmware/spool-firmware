@@ -6,6 +6,7 @@ cc_library(
     ],
     hdrs=["tmc_driver.h"],
     deps=[
+        "//lib/freertos:freertos",
         "//lib/common:lib",
     ],
     visibility=["//visibility:public"],

@@ -241,15 +241,15 @@ static void scheduleHomeZ(void)
         savedY = currentState.y;
         scheduleMoveTo(home_z_move, homeVelocity);
     }
-
-    while (s_scheduleZMeasure(motionGetHomingVelocity(STEPPER_C)) == 0) {
+    while (s_scheduleZMeasure(motionGetHomingVelocity(Z_AXIS)) == 0) {
         currentState.homedZ = true;
         currentState.z = 0;
 
         home_z_move.z = 5 * platformMotionStepsPerMMAxis[Z_AXIS];
         scheduleMoveTo(home_z_move, homeVelocity);
     }
-
+    
+    currentState.homedZ = true;
     currentState.z = 0;
     home_z_move.z = 5 * platformMotionStepsPerMMAxis[Z_AXIS];
     scheduleMoveTo(home_z_move, homeVelocity);

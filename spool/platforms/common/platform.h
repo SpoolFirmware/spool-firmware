@@ -51,7 +51,7 @@ extern const int32_t platformMotionHomingAcc[];
 /* Steps, TODO per stepper/per-axis steps, it doesn't make sense */
 extern const int32_t platformMotionStepsPerMM[];
 extern const int32_t platformMotionStepsPerMMAxis[];
-extern const int32_t platformMotionMinVel[];
+extern const int32_t platformMotionMinVelSteps[];
 /* ---------------- Functions to be implemented by platform ----------------- */
 /**
  * @brief Initialization Function, called before all

@@ -20,8 +20,7 @@ static int32_t sDeltaError[NR_STEPPER]; // "error"
 static uint32_t sIncrementRatio[NR_STEPPER]; // "m". This expect slope <= 1
 static uint32_t sStepsExecuted[NR_STEPPER]; // steps executed
 static uint32_t sStepSize; // "x" step size
-static uint32_t
-    sStepCounter; // Counter to keep track of the desired axis movement.
+static uint32_t sStepCounter; // Counter track the number of steps moved.
 
 static inline void sDiscardJob(void)
 {
@@ -50,7 +49,8 @@ static uint16_t sCalcInterval(struct StepperJob *pJob)
         stepRate = pJob->cruise_steps_s;
     }
 
-    if (stepRate < motionGetMinVelocity(STEPPER_A)) { // TODO: CONFIG: MIN_STEP_RATE
+    if (stepRate <
+        motionGetMinVelocity(STEPPER_A)) { // TODO: CONFIG: MIN_STEP_RATE
         stepRate = motionGetMinVelocity(STEPPER_A);
     }
 
@@ -65,16 +65,15 @@ static uint16_t sCalcInterval(struct StepperJob *pJob)
     return interval;
 }
 
-__attribute__((noinline))
-uint16_t executeStep(uint16_t ticksElapsed)
+__attribute__((noinline)) uint16_t executeStep(uint16_t ticksElapsed)
 {
     /* Check endstops first */
     if (job.type != StepperJobUndef && job.type != StepperJobRun) {
         for (uint8_t i = 0; i < NR_AXIS; ++i) {
-            if (platformGetEndstop(i)) {
-                if ((job.type == StepperJobHomeX && i == X_AXIS) ||
-                    (job.type == StepperJobHomeY && i == Y_AXIS) ||
-                    (job.type == StepperJobHomeZ && i == Z_AXIS)) {
+            if ((job.type == StepperJobHomeX && i == X_AXIS) ||
+                (job.type == StepperJobHomeY && i == Y_AXIS) ||
+                (job.type == StepperJobHomeZ && i == Z_AXIS)) {
+                if (platformGetEndstop(i)) {
                     sDiscardJob();
                     notifyHomeISR(sStepCounter);
                     return 0;
@@ -109,7 +108,7 @@ uint16_t executeStep(uint16_t ticksElapsed)
             if (finished)
                 sDiscardJob();
         }
-        
+
         // TODO: THIS IS KIND OF BAD, maybe generic
         if (stepperMask & BIT(STEPPER_C)) {
             sStepCounter++;

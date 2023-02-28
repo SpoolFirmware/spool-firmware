@@ -2,19 +2,17 @@ load("//toolchain:copy_file.bzl", "copy_cmd", "copy_bash")
 load("@rules_cc//cc:defs.bzl", "cc_binary")
 
 def _transition_impl(settings, attr):
-    _ignore = settings
-
     # Attaching the special prefix "//comand_line_option" to the name of a native
     # flag makes the flag available to transition on. The result of this transition
     # is to set --platforms
-
-    build_type = "opt"
-    if settings["//command_line_option:compilation_mode"] == "dbg":
+    if str(settings["//command_line_option:compilation_mode"]) == 'dbg':
         build_type = "dbg"
+    else:
+        build_type = "opt"
 
     return {
         "//command_line_option:platforms": attr.platforms,
-        "//command_line_option:compilation_mode": build_type
+        "//command_line_option:compilation_mode": build_type,
     }
 
 platforms_transition = transition(

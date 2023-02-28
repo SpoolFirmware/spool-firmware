@@ -67,7 +67,7 @@ const int32_t platformMotionStepsPerMMAxis[] = {
     PLATFORM_MOTION_STEPS_PER_MM_Z_AXIS,
     PLATFORM_MOTION_STEPS_PER_MM_E_AXIS,
 };
-const int32_t platformMotionMinVel[] = {
+const int32_t platformMotionMinVelSteps[] = {
     0.25 * PLATFORM_MOTION_STEPS_PER_MM_STEPPER_A,
     0.25 * PLATFORM_MOTION_STEPS_PER_MM_STEPPER_B,
     0.25 * PLATFORM_MOTION_STEPS_PER_MM_STEPPER_C,
@@ -83,6 +83,6 @@ STATIC_ASSERT(ARRAY_SIZE(platformMotionDefaultMaxVel) == NR_STEPPER);
 STATIC_ASSERT(ARRAY_SIZE(platformMotionDefaultAcc) == NR_STEPPER);
 STATIC_ASSERT(ARRAY_SIZE(platformMotionHomingVel) == NR_STEPPER);
 STATIC_ASSERT(ARRAY_SIZE(platformMotionHomingAcc) == NR_STEPPER);
-STATIC_ASSERT(ARRAY_SIZE(platformMotionMinVel) == NR_STEPPER);
+STATIC_ASSERT(ARRAY_SIZE(platformMotionMinVelSteps) == NR_STEPPER);
 STATIC_ASSERT(ARRAY_SIZE(platformMotionStepsPerMM) == NR_STEPPER);
 STATIC_ASSERT(ARRAY_SIZE(platformMotionStepsPerMMAxis) == NR_AXIS);
