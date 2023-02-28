@@ -1,3 +1,4 @@
+#include "lib/common/error.h"
 #include <stdint.h>
 #include "string.h"
 #include "dbgprintf.h"
@@ -644,13 +645,13 @@ static status_t parseCmdM(struct GcodeParser *s, struct GcodeCommand *cmd,
         return StatusOk;
     case 84:
         cmd->kind = GcodeM84;
-        return StatusOk;
+        return s_skipUntilNewline(s);
     case 101:
         cmd->kind = GcodeM101;
         return StatusOk;
     case 103:
         cmd->kind = GcodeM103;
-        return s_skipUntilNewline(s);
+        return StatusOk;
     case 104:
         cmd->kind = GcodeM104;
         next->f = parseTemperature;

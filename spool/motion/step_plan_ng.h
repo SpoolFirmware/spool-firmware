@@ -21,7 +21,7 @@ const static uint32_t VEL_CHANGE_THRESHOLD = 10;
 /* for distances less than DIST, and angles cos greater than octagon (from marlin)
  * we smooth out the velocity */
 #define JUNCTION_SMOOTHING_DIST_THRES(STEPPER) F16(1 * platformMotionStepsPerMM[STEPPER])
-#define JUNCTION_SMOOTHING_THRES      F16(-0.5f)
+#define JUNCTION_SMOOTHING_THRES      F16(-0.7f)
 
 struct PlannerBlock {
     uint32_t x;
