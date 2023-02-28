@@ -9,6 +9,7 @@ cc_library(
     deps=[
         "//lib/lvgl:lib",
         "//lib/freertos",
+        "//spool/lib/st7920:lib",
     ],
     visibility=["//visibility:public"],
 )
