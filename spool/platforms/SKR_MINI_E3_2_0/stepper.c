@@ -83,7 +83,7 @@ static void sTmcSend(const struct TMCDriver *pDriver, uint8_t *pData,
                      size_t len)
 {
     halUartWaitForIdle(&stepperUart);
-    halUartReset(&stepperUart, true, false);
+    halUartReset(&stepperUart, true, true);
     halUartSend(&stepperUart, pData, len);
 }
 

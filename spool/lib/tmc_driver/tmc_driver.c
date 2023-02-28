@@ -3,6 +3,8 @@
 #include "error.h"
 #include "dbgprintf.h"
 #include "tmc_2209.h"
+#include "FreeRTOS.h"
+#include "task.h"
 
 /* ------------------------- Private Defines -------------------------------- */
 #define DRF_TMC_ADDRESS_ADDR     6 : 0
@@ -17,7 +19,7 @@ static const uint8_t sop = 0x55;
 static uint8_t sCalculateCRC(const void *pData, size_t len);
 static void sTmcWriteRegister(struct TMCDriver *pDriver, uint8_t regAddr,
                               uint32_t regVal);
-static uint32_t sTmcReadRegister(struct TMCDriver *pDriver, uint8_t regAddr);
+static uint32_t sTmcReadRegister(struct TMCDriver *pDriver, uint8_t regAddr, uint8_t retryCnt);
 
 /* ----------------- Static Function Implementations ------------------------ */
 void sTmcWriteRegister(struct TMCDriver *pDriver, uint8_t regAddr,
@@ -40,10 +42,11 @@ void sTmcWriteRegister(struct TMCDriver *pDriver, uint8_t regAddr,
     pDriver->send(pDriver, txBuffer, sizeof(txBuffer));
 }
 
-uint32_t sTmcReadRegister(struct TMCDriver *pDriver, uint8_t regAddr)
+uint32_t sTmcReadRegister(struct TMCDriver *pDriver, uint8_t regAddr, uint8_t retryCnt)
 {
     uint8_t txBuffer[4];
     uint8_t rxBuffer[12];
+sTmcReadRegister_retry:
 
     if (pDriver == NULL)
         panic();
@@ -55,6 +58,16 @@ uint32_t sTmcReadRegister(struct TMCDriver *pDriver, uint8_t regAddr)
     txBuffer[3] = sCalculateCRC(txBuffer, sizeof(txBuffer) - 1);
     pDriver->send(pDriver, txBuffer, sizeof(txBuffer));
     pDriver->recv(pDriver, rxBuffer, sizeof(rxBuffer));
+    const uint8_t rxCRC = sCalculateCRC(&rxBuffer[sizeof(txBuffer)], sizeof(rxBuffer) - sizeof(txBuffer) - 1);
+
+    if (rxCRC != rxBuffer[sizeof(rxBuffer) - 1]) {
+        if (retryCnt == 0) {
+            panic();
+        }
+        vTaskDelay(pdMS_TO_TICKS(50));
+        retryCnt--;
+        goto sTmcReadRegister_retry;
+    }
     uint32_t val = 0;
     val |= ((uint32_t)rxBuffer[7]) << 24U;
     val |= ((uint32_t)rxBuffer[8]) << 16U;
@@ -105,12 +118,12 @@ void tmcDriverInitialize(struct TMCDriver *pDriver)
     if (pDriver == NULL)
         panic();
 
-    uint32_t gconf = sTmcReadRegister(pDriver, DRF_TMC_GCONF);
+    uint32_t gconf = sTmcReadRegister(pDriver, DRF_TMC_GCONF, 3);
     gconf = FLD_SET_DRF(_TMC, _GCONF, _PDN_DISABLE, _DISABLED, gconf);
     gconf = FLD_SET_DRF(_TMC, _GCONF, _MSTEP_REG_SELECT, _REG, gconf);
     sTmcWriteRegister(pDriver, DRF_TMC_GCONF, gconf);
 
-    uint32_t chopConf = sTmcReadRegister(pDriver, DRF_TMC_CHOPCONF);
+    uint32_t chopConf = sTmcReadRegister(pDriver, DRF_TMC_CHOPCONF, 3);
     chopConf = FLD_SET_DRF(_TMC, _CHOPCONF, _MRES, _16, chopConf);
     sTmcWriteRegister(pDriver, DRF_TMC_CHOPCONF, chopConf);
 

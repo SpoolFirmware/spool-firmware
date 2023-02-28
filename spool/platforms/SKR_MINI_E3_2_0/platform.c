@@ -89,6 +89,7 @@ uint64_t platformGetTimeUs(void)
 
 bool platformGetEndstop(uint8_t axis)
 {
+    configASSERT(axis < ARRAY_LENGTH(endStops));
     bool endStop = halGpioRead(endStops[axis]);
     if (axis == Z_AXIS)
         endStop = !endStop;

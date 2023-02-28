@@ -70,6 +70,5 @@ int32_t motionGetHomingAcceleration(uint8_t stepper)
 
 int32_t motionGetMinVelocity(uint8_t stepper)
 {
-    return (int32_t)platformMotionMinVel[stepper] *
-           platformMotionStepsPerMM[stepper];
+    return (int32_t)platformMotionMinVelSteps[stepper];
 }
