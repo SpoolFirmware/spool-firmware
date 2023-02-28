@@ -103,7 +103,7 @@ static void populateBlock(const struct PlannerJob *prev, struct PlannerJob *new,
     new->a = acc[maxStepper];
 
     uint32_t v = (uint32_t)((float)new->steppers[maxStepper].x / timeEst);
-    new->vSq = v *v;
+    new->vSq = v * v;
 
     /* cos(pi - theta) = -cos(theta) */
     fix16_t cosTheta = -vecDot(prev->unit_vec, new->unit_vec);
@@ -111,19 +111,21 @@ static void populateBlock(const struct PlannerJob *prev, struct PlannerJob *new,
     if (cosTheta <= JUNCTION_INHERIT_VEL_THRES) {
         /* essentially the same direction */
         /* TODO handle junction velocity like marlin */
-        uint32_t viSq = min(prev->vfSq, new->vSq);
+        const uint32_t viSq = min(prev->vfSq, new->vSq);
         new->viSq = viSq;
     } else if (new->len <= JUNCTION_SMOOTHING_DIST_THRES(maxStepper) &&
                cosTheta <= JUNCTION_SMOOTHING_THRES) {
+        const fix16_t cosThetaSq = fix16_mul(cosTheta, cosTheta);
         /* is this where we do rounded corners? */
         /* for now, we pretend cos is linear */
-        uint32_t viSq =
-            min((uint32_t)((float)prev->vfSq * abs(fix16_to_float(cosTheta))),
+        const uint32_t viSq =
+            min((uint32_t)((float)prev->vfSq * fix16_to_float(cosThetaSq)),
                 new->vSq);
         new->viSq = viSq;
     } else {
         /* is a minimum speed helpful here? why? */
-        new->viSq = motionGetMinVelocity(maxStepper);
+        const int32_t minVi = motionGetMinVelocity(maxStepper);
+        new->viSq = (minVi * minVi);
     }
 
     if (stop) {
