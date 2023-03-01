@@ -47,9 +47,11 @@ struct SPIConfig
     enum SPIClockPolarity clockPolarity;
     enum SPIClockPhase clockPhase;
     uint32_t baudrate;
+    uint32_t clkSpeed;
 };
 
-void halSpiInit(struct SPIDevice *pDevice, const struct SPIConfig *pConfig);
+void halSpiInit(struct SPIDevice *pDevice, const struct SPIConfig *pConfig, uint32_t base);
 void halSpiStart(struct SPIDevice *pDevice);
-void halSpiSend(struct SPIDevice *pDevice, uint32_t len, const void* data);
+void halSpiSend(struct SPIDevice *pDevice, const void* data, uint32_t len);
+void halSpiXchg(struct SPIDevice *pDevice, const void* pDataOut, void* pDataIn, uint32_t len);
 void halSpiWaitTxIdle(struct SPIDevice *pDevice);
