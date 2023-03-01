@@ -16,5 +16,6 @@ cc_library(
         "//lib/hal/stm32/peripheral/usart_v1:lib",
         "//lib/hal/stm32/peripheral/tim_v1:lib",
         "//lib/hal/stm32/peripheral/adc_v2:lib",
+        "//lib/hal/stm32/peripheral/spi_v1:lib",
     ],
 )
