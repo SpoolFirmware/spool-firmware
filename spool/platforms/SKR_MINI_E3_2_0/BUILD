@@ -39,6 +39,7 @@ cc_library(
         "platform.c",
         "thermal.c",
         "config.c",
+        "test.c",
         "config_private.h",
     ],
     copts = ["-Ispool"],

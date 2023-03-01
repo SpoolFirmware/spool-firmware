@@ -38,18 +38,19 @@ void platformInit(struct PlatformConfig *config)
 {
     halClockInit(&halClockConfig);
     halGpioInit(&gpioConfig);
-    REG_FLD_SET_DRF_NUM(_AFIO, _MAPR, _SWJ_CFG, 0x2);
-
-    // Initialize comm first, this gives us dbgPrintf
-    privCommInit();
-    privStepperInit();
-    privThermalInit();
+    REG_FLD_SET_DRF_NUM(_AFIO, _MAPR, _SWJ_CFG, 0x2); // Disable JTAG, leave only SWD
 
     // Configure ENDStops
     for (size_t i = 0; i < ARRAY_LENGTH(endStops); i++) {
         halGpioSetMode(endStops[i], DRF_DEF(_HAL_GPIO, _MODE, _MODE, _INPUT) |
                        DRF_DEF(_HAL_GPIO, _MODE, _TYPE, _FLOATING));
     }
+    
+    // Initialize comm first, this gives us dbgPrintf
+    privCommInit();
+    privStepperInit();
+    privThermalInit();
+    privTestInit();
 }
 
 void platformPostInit(void)
@@ -57,6 +58,7 @@ void platformPostInit(void)
     privCommPostInit();
     privStepperPostInit();
     privThermalPostInit();
+    privTestPostInit();
 }
 
 bool platformGetEndstop(uint8_t axis)

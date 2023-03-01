@@ -38,6 +38,11 @@ enum SPIClockPhase {
     SPIClockPhase_SecondEdge,
 };
 
+enum SPISlaveSelect {
+    SPISlaveSelectNotManaged = 0,
+    SPISlaveSelectManaged ,
+};
+
 struct SPIConfig 
 {
     enum SPIMode mode;
@@ -46,6 +51,7 @@ struct SPIConfig
     enum SPIDuplexMode duplexMode;
     enum SPIClockPolarity clockPolarity;
     enum SPIClockPhase clockPhase;
+    enum SPISlaveSelect slaveSelect;
     uint32_t baudrate;
     uint32_t clkSpeed;
 };
