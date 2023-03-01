@@ -230,6 +230,7 @@ static void scheduleHomeZ(void)
     /* TODO fix z inversion */
     int32_t savedX = 0, savedY = 0;
     struct PrinterMove home_z_move = { 0 };
+    home_z_move.e = currentState.e;
     home_z_move.x =
         platformFeatureZHomingPos.x_mm * platformMotionStepsPerMMAxis[X_AXIS];
     home_z_move.y =
