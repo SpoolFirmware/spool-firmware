@@ -156,6 +156,7 @@ void waitForSeq(uint32_t targetSeq)
     while (currSeq < targetSeq) {
         xTaskNotifyWait(0, 0, &currSeq, portMAX_DELAY);
     }
+    maxSeq = currSeq;
 }
 
 portTASK_FUNCTION(ThermalTask, args)

@@ -14,7 +14,7 @@ def _transition_impl(settings, attr):
 
     return {
         "//command_line_option:platforms": attr.platforms,
-        "//command_line_option:compilation_mode": "dbg"
+        "//command_line_option:compilation_mode": build_type
     }
 
 platforms_transition = transition(

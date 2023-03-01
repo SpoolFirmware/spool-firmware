@@ -3,13 +3,18 @@
 #include "compiler.h"
 #include "error.h"
 
-const bool platformFeatureBedLeveling = false;
+const bool platformFeatureBedLeveling = true;
 const enum KinematicKind platformFeatureKinematic = KinematicKindI3;
 
 const float platformFeatureZOffset = 0;
-const struct ZHomingPos platformFeatureZHomingPos = {
-    .x_mm = 0,
-    .y_mm = 0,
+const struct XYPositionMM platformFeatureZHomingPos = {
+    .x_mm = 60,
+    .y_mm = 40,
+};
+
+const struct XYPositionMM platformBedLevelingCorners[2] = {
+    {.x_mm = 60, .y_mm = 40},
+    {.x_mm = 160, .y_mm = 190},
 };
 
 const int32_t platformMotionLimits[] = {

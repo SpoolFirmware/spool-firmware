@@ -138,6 +138,17 @@ void privStepperPostInit(void)
     halUartStart(&stepperUart);
     halIrqPrioritySet(IRQ_UART4, configMAX_SYSCALL_INTERRUPT_PRIORITY);
     halIrqEnable(IRQ_UART4);
+
+    halTimerStartContinous(&stepperExecTimerDriver, 1);
+    for (size_t i = 0; i < ARRAY_LENGTH(tmcDrivers); i++) {
+        tmcDriverPreInit(&tmcDrivers[i]);
+    }
+
+    for (size_t i = 0; i < ARRAY_LENGTH(tmcDrivers); i++) {
+        tmcDriverInitialize(&tmcDrivers[i]);
+        // 17/32 ~1A, 9/32 ~.49A, ~1s
+        tmcDriverSetCurrent(&tmcDrivers[i], 16, 8, 4);
+    }
 }
 
 // Stepper UART IRQ
@@ -172,22 +183,8 @@ stepperTimerHandler_begin:
     halIrqClear(IRQ_TIM7);
 }
 
-static uint8_t savedStepperMask = 0;
 void platformEnableStepper(uint8_t stepperMask)
 {
-    if (savedStepperMask == 0 && stepperMask != 0) {
-        halTimerStartContinous(&stepperExecTimerDriver, 1);
-
-        for (size_t i = 0; i < ARRAY_LENGTH(tmcDrivers); i++) {
-            tmcDriverPreInit(&tmcDrivers[i]);
-        }
-
-        for (size_t i = 0; i < ARRAY_LENGTH(tmcDrivers); i++) {
-            tmcDriverInitialize(&tmcDrivers[i]);
-            // 17/32 ~1A, 9/32 ~.49A, ~1s
-            tmcDriverSetCurrent(&tmcDrivers[i], 16, 8, 4);
-        }
-    }
     for (size_t i = 0; i < ARRAY_LENGTH(steppers); i++) {
         if (stepperMask & BIT(i)) {
             if (steppers[i].invertEn) {
@@ -197,12 +194,10 @@ void platformEnableStepper(uint8_t stepperMask)
             }
         }
     }
-    savedStepperMask |= stepperMask;
 }
 
 void platformDisableStepper(uint8_t stepperMask)
 {
-    savedStepperMask &= ~(stepperMask);
     for (size_t i = 0; i < ARRAY_LENGTH(steppers); i++) {
         if (stepperMask & BIT(i)) {
             if (steppers[i].invertEn) {
@@ -211,9 +206,6 @@ void platformDisableStepper(uint8_t stepperMask)
                 halGpioClear(steppers[i].en);
             }
         }
-    }
-    if (savedStepperMask == 0) {
-        halTimerStop(&stepperExecTimerDriver);
     }
 }
 
