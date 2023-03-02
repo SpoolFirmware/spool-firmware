@@ -71,6 +71,8 @@ test_suite(
 cc_binary_with_platforms(
     name = "spool",
     srcs = glob([
+        "ui/*.c",
+        "ui/*.h",
         "thermal/*.h",
         "thermal/*.c",
         "motion/*.h",
@@ -101,7 +103,7 @@ cc_binary_with_platforms(
         "//lib/fxp:lib",
         "//lib/hal/common:lib",
         "//lib/syslib:lib",
-        "//spool/lib/ui:lib",
+        "//lib/lvgl:lib",
         "//spool/lib/sdspi:lib",
         "//spool/lib/thermistor:lib",
         "//spool/platforms:linker.ld",

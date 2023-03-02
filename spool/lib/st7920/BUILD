@@ -10,7 +10,6 @@ cc_library(
         "spi_sw.h",
         "st7920.h",
     ],
-    include_prefix = "drivers",
     deps = [
         "//lib/common:lib",
         "//lib/hal/common:lib",

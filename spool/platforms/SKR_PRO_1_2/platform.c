@@ -3,9 +3,9 @@
 #include "platform_private.h"
 #include "misc.h"
 #include "platforms/common/platform.h"
-#include "drivers/spi_sw.h"
-#include "drivers/st7920.h"
-#include "ui/st7920.h"
+#include "lib/st7920/spi_sw.h"
+#include "lib/st7920/st7920.h"
+#include "lib/ui/st7920/st7920.h"
 
 const struct HalClockConfig halClockConfig = {
     .hseFreqHz = 8000000,

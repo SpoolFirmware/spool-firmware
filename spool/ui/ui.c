@@ -7,9 +7,11 @@
 #include "manual/mcu.h"
 #include "hal/stm32/hal.h"
 #include "dbgprintf.h"
+#include "stdio.h"
 #include "platform/platform.h"
 #include "drf.h"
 #include "compiler.h"
+#include "thermal/thermal.h"
 
 #define MY_DISP_HOR_RES 128
 #define MY_DISP_VER_RES 64
@@ -33,8 +35,7 @@ static void my_flush_cb(lv_disp_drv_t *disp_drv, const lv_area_t *area,
                         lv_color_t *color_p);
 
 static lv_disp_draw_buf_t disp_buf;
-static lv_disp_drv_t disp_drv = {
-};
+static lv_disp_drv_t disp_drv = {};
 
 static lv_disp_t *disp;
 
@@ -68,8 +69,10 @@ static void my_flush_cb(lv_disp_drv_t *disp_drv, const lv_area_t *area,
     /*Truncate the area to the screen*/
     int32_t act_x1 = area->x1 < 0 ? 0 : area->x1;
     int32_t act_y1 = area->y1 < 0 ? 0 : area->y1;
-    int32_t act_x2 = area->x2 > MY_DISP_HOR_RES - 1 ? MY_DISP_HOR_RES - 1 : area->x2;
-    int32_t act_y2 = area->y2 > MY_DISP_VER_RES - 1 ? MY_DISP_VER_RES - 1 : area->y2;
+    int32_t act_x2 = area->x2 > MY_DISP_HOR_RES - 1 ? MY_DISP_HOR_RES - 1 :
+                                                      area->x2;
+    int32_t act_y2 = area->y2 > MY_DISP_VER_RES - 1 ? MY_DISP_VER_RES - 1 :
+                                                      area->y2;
 
     int32_t x, y;
 
@@ -77,7 +80,8 @@ static void my_flush_cb(lv_disp_drv_t *disp_drv, const lv_area_t *area,
     for (y = act_y1; y <= act_y2; y++) {
         for (x = act_x1; x <= act_x2; x++) {
             if (lv_color_to1(*color_p) != 0) {
-                lcd_fb[x / 8 + y * MY_DISP_HOR_RES / 8] &= ~(1 << (7 - (x % 8)));
+                lcd_fb[x / 8 + y * MY_DISP_HOR_RES / 8] &=
+                    ~(1 << (7 - (x % 8)));
             } else {
                 lcd_fb[x / 8 + y * MY_DISP_HOR_RES / 8] |= (1 << (7 - (x % 8)));
             }
@@ -136,18 +140,32 @@ portTASK_FUNCTION(uiTask, pvParameters)
     disp = lv_disp_drv_register(&disp_drv);
 
     lv_obj_t *label1 = lv_label_create(lv_scr_act());
-    if (!label1) {
+    lv_obj_t *label2 = lv_label_create(lv_scr_act());
+    if (!label1 || !label2) {
         panic();
     }
-    lv_obj_set_width(label1, 100);
-    lv_label_set_long_mode(label1, LV_LABEL_LONG_SCROLL_CIRCULAR);
-    lv_label_set_text(label1, "It is a circularly scrolling text. ");
-    lv_obj_set_style_anim_speed(label1, 10, LV_PART_MAIN);
-    lv_obj_align(label1, LV_ALIGN_CENTER, 0, 0);
+    lv_obj_set_width(label1, 120);
+    lv_obj_set_width(label2, 120);
+    // lv_label_set_long_mode(label1, LV_LABEL_LONG_SCROLL_CIRCULAR);
+    // lv_label_set_text(label1, "It is a circularly scrolling text. ");
+    // lv_obj_set_style_anim_speed(label1, 10, LV_PART_MAIN);
+    lv_obj_align(label1, LV_ALIGN_TOP_LEFT, 0, 10);
+    lv_obj_align(label2, LV_ALIGN_TOP_LEFT, 0, 20);
 
-    lv_example_line_1();
+    // lv_example_line_1();
 
+    static char line1Buf[16];
+    static char line2Buf[14];
+    static struct TemperatureReport rpt;
     for (;;) {
+        thermalGetTempReport(&rpt);
+        snprintf(line1Buf, sizeof(line1Buf), " E: %3dC/%3dC", rpt.extruders[0],
+                 rpt.extrudersTarget[0]);
+        snprintf(line2Buf, sizeof(line2Buf), " B:  %2dC/ %2dC", rpt.bed,
+                 rpt.bedTarget);
+        lv_label_set_text(label1, line1Buf);
+        lv_label_set_text(label2, line2Buf);
+
         xSemaphoreTake(uiSem, portMAX_DELAY);
         lv_timer_handler();
         xSemaphoreGive(uiSem);
@@ -159,8 +177,8 @@ void uiInit(void)
     if ((uiSem = xSemaphoreCreateMutex()) == NULL) {
         panic();
     }
-    if (xTaskCreate(uiTask, "ui", 512, NULL,
-                    tskIDLE_PRIORITY, &uiTaskHandle) != pdTRUE) {
+    if (xTaskCreate(uiTask, "ui", 512, NULL, tskIDLE_PRIORITY, &uiTaskHandle) !=
+        pdTRUE) {
         panic();
     }
 }

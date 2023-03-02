@@ -1,5 +1,5 @@
 #pragma once
-#include "drivers/st7920.h"
+#include "lib/st7920/st7920.h"
 
 /**
  * @brief called before ui init

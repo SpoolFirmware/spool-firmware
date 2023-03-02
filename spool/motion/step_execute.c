@@ -17,10 +17,10 @@ static uint32_t sIterationCompleted = 0;
 static uint32_t sAccelerationTime;
 static uint32_t sDecelerationTime;
 static int32_t sDeltaError[NR_STEPPER]; // "error"
-static uint32_t sIncrementRatio[NR_STEPPER]; // "m". This expect slope <= 1
+static int32_t sIncrementRatio[NR_STEPPER]; // "m". This expect slope <= 1
 static uint32_t sStepsExecuted[NR_STEPPER]; // steps executed
-static uint32_t sStepSize; // "x" step size
-static uint32_t sStepCounter; // Counter track the number of steps moved.
+static int32_t sStepSize; // "x" step size
+static int32_t sStepCounter; // Counter track the number of steps moved.
 
 static inline void sDiscardJob(void)
 {
@@ -29,19 +29,21 @@ static inline void sDiscardJob(void)
 
 static uint16_t sCalcInterval(struct StepperJob *pJob)
 {
-    int64_t stepRate;
+    int32_t stepRate;
 
     if (sIterationCompleted < pJob->accelerateUntil) { // Accelerating
-        stepRate = (((int64_t)sAccelerationTime * pJob->accel_steps_s2) /
-                    platformGetStepperTimerFreq()) +
-                   pJob->entry_steps_s;
+        stepRate =
+            (int32_t)(((uint32_t)sAccelerationTime * pJob->accel_steps_s2) /
+                      platformGetStepperTimerFreq()) +
+            pJob->entry_steps_s;
         if (stepRate > pJob->cruise_steps_s) {
             stepRate = pJob->cruise_steps_s;
         }
     } else if (sIterationCompleted > pJob->decelerateAfter) { // Decelertaing
-        stepRate = (int64_t)pJob->cruise_steps_s -
-                   (((int64_t)sDecelerationTime * pJob->accel_steps_s2) /
-                    platformGetStepperTimerFreq());
+        stepRate =
+            (int32_t)pJob->cruise_steps_s -
+            (int32_t)(((int64_t)sDecelerationTime * pJob->accel_steps_s2) /
+                      platformGetStepperTimerFreq());
         if (stepRate < pJob->exit_steps_s) { // Never go below exit velocity
             stepRate = pJob->exit_steps_s;
         }
@@ -49,10 +51,11 @@ static uint16_t sCalcInterval(struct StepperJob *pJob)
         stepRate = pJob->cruise_steps_s;
     }
 
-    if (stepRate <
-        motionGetMinVelocity(STEPPER_A)) { // TODO: CONFIG: MIN_STEP_RATE
+    // TODO: CONFIG:MIN_STEP_RATE
+    if (stepRate < motionGetMinVelocity(STEPPER_A)) {
         stepRate = motionGetMinVelocity(STEPPER_A);
     }
+    configASSERT(stepRate > 0);
 
     uint32_t interval = (platformGetStepperTimerFreq() / stepRate);
 
