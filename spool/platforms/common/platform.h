@@ -26,9 +26,15 @@ struct XYPositionMM {
     int32_t y_mm;
 };
 
+enum DisplayKind {
+    DisplayKindNone = 0,
+    DisplayKindSt7920,
+};
+
 struct PIDConifg {};
 
 /* ----------------- Variables to be implemented by platform ---------------- */
+extern const enum DisplayKind platformFeatureDisplay;
 extern const bool platformFeatureBedLeveling;
 extern const enum KinematicKind platformFeatureKinematic;
 

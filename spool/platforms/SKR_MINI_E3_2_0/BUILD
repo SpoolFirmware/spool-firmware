@@ -11,6 +11,7 @@ platform(
         ":platform",
         "//lib/hardware_manual:stm32f103",
         "//lib/freertos/portable:arm_cm3",
+        "//lib/lvgl/config:12864",
     ],
     parents = ["@bazel_embedded//platforms:cortex_m3"],
 )

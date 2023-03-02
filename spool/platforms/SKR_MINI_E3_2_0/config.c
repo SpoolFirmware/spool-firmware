@@ -3,6 +3,7 @@
 #include "compiler.h"
 #include "error.h"
 
+const enum DisplayKind platformFeatureDisplay = DisplayKindNone;
 const bool platformFeatureBedLeveling = true;
 const enum KinematicKind platformFeatureKinematic = KinematicKindI3;
 
