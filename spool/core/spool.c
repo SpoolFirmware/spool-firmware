@@ -15,6 +15,7 @@
 
 #include "motion/motion.h"
 #include "gcode/gcode_serial.h"
+#include "ui/ui.h"
 
 /* ----------- Global Task Input Queues --------------- */
 QueueHandle_t ThermalTaskQueue;
@@ -69,6 +70,7 @@ void main(void)
     gcodeSerialTaskInit();
     thermalTaskInit();
     motionInit();
+    uiInit();
 
     // Create the task that should handle prints
     configASSERT(xTaskCreate(DebugPrintTask, "dbgPrintf",

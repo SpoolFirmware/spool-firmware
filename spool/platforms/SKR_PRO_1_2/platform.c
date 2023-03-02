@@ -237,7 +237,7 @@ void platformInit(struct PlatformConfig *config)
 
     halTimerConstruct(&wallClockTimer, DRF_BASE(DRF_TIM5));
     halTimerStart(&wallClockTimer, &(struct TimerConfig){
-        .timerTargetFrequency = 10000000,
+        .timerTargetFrequency = 1000000,
         .clkDomainFrequency = halClockApb1TimerFreqGet(&halClockConfig),
         .interruptEnable = true
     });
@@ -253,12 +253,12 @@ void platformPostInit(void)
     thermalPostInit();
 
     // Start Wallclock
-    halIrqPrioritySet(IRQ_TIM5, configMAX_SYSCALL_INTERRUPT_PRIORITY);
+    halIrqPrioritySet(IRQ_TIM5, configKERNEL_INTERRUPT_PRIORITY);
     halIrqEnable(IRQ_TIM5);
     halTimerStartContinous(&wallClockTimer, 10000);
 }
 
-static uint64_t wallClockTimeUs = 0;
+volatile static uint64_t wallClockTimeUs = 0;
 IRQ_HANDLER_TIM5(void)
 {
     wallClockTimeUs += 10000;
@@ -268,7 +268,10 @@ IRQ_HANDLER_TIM5(void)
 
 uint64_t platformGetTimeUs(void)
 {
-    return wallClockTimeUs + (10000 - halTimerGetCount(&wallClockTimer));
+    taskENTER_CRITICAL();
+    uint64_t time = wallClockTimeUs + halTimerGetCount(&wallClockTimer);
+    taskEXIT_CRITICAL();
+    return time;
 }
 
 __attribute__((always_inline)) inline struct IOLine platformGetStatusLED(void)
