@@ -40,12 +40,7 @@ void platformInit(struct PlatformConfig *config)
 {
     halClockInit(&halClockConfig);
     halGpioInit(&gpioConfig);
-    REG_FLD_SET_DRF_NUM(_AFIO, _MAPR, _SWJ_CFG, 0x2);
-
-    // Initialize comm first, this gives us dbgPrintf
-    privCommInit();
-    privStepperInit();
-    privThermalInit();
+    REG_FLD_SET_DRF_NUM(_AFIO, _MAPR, _SWJ_CFG, 0x2); // Disable JTAG, leave only SWD
 
     // Configure ENDStops
     for (size_t i = 0; i < ARRAY_LENGTH(endStops); i++) {
@@ -60,6 +55,12 @@ void platformInit(struct PlatformConfig *config)
         .clkDomainFrequency = halClockApb1TimerFreqGet(&halClockConfig),
         .interruptEnable = true
     });
+    
+    // Initialize comm first, this gives us dbgPrintf
+    privCommInit();
+    privStepperInit();
+    privThermalInit();
+    privTestInit();
 }
 
 void platformPostInit(void)
@@ -67,6 +68,7 @@ void platformPostInit(void)
     privCommPostInit();
     privStepperPostInit();
     privThermalPostInit();
+    privTestPostInit();
 
     // Start Wallclock
     halIrqPrioritySet(IRQ_TIM5, configMAX_SYSCALL_INTERRUPT_PRIORITY);
@@ -85,6 +87,7 @@ IRQ_HANDLER_TIM5(void)
 uint64_t platformGetTimeUs(void)
 {
     return wallClockTimeUs + (10000 - halTimerGetCount(&wallClockTimer));
+    privTestPostInit();
 }
 
 bool platformGetEndstop(uint8_t axis)

@@ -31,9 +31,7 @@ enum DisplayKind {
     DisplayKindSt7920,
 };
 
-struct PIDConifg {
-
-};
+struct PIDConifg {};
 
 /* ----------------- Variables to be implemented by platform ---------------- */
 extern const enum DisplayKind platformFeatureDisplay;
@@ -58,15 +56,24 @@ extern const int32_t platformMotionHomingAcc[];
 extern const int32_t platformMotionStepsPerMM[];
 extern const int32_t platformMotionStepsPerMMAxis[];
 extern const int32_t platformMotionMinVelSteps[];
+
+extern const struct IOLine sdCSPin;
 /* ---------------- Functions to be implemented by platform ----------------- */
 /**
  * @brief Initialization Function, called before all
- * 
- * @param config 
+ *
+ * @param config
  */
 void platformInit(struct PlatformConfig *config);
 void platformPostInit(void);
 struct IOLine platformGetStatusLED(void);
+
+/**
+ * @brief Returns a pointer to the SPIDevice driver object
+ * 
+ * @return struct SPIDevice* 
+ */
+struct SPIDevice *platformGetSDSPI(void);
 
 // Timing
 /**
@@ -90,11 +97,12 @@ fix16_t platformReadTemp(int8_t idx);
 void platformSetHeater(int8_t idx, uint8_t pwm);
 
 // -1 is Hotend Fan
-#define PLATFORM_FAN_IDX_HOTEND     (-1)
+#define PLATFORM_FAN_IDX_HOTEND (-1)
 void platformSetFan(int8_t idx, uint8_t pwm);
 
 // Communication
-size_t platformRecvCommand(char *pBuffer, size_t bufferSize, TickType_t ticksToWait);
+size_t platformRecvCommand(char *pBuffer, size_t bufferSize,
+                           TickType_t ticksToWait);
 void platformSendResponse(const char *pBuffer, size_t len);
 
 // DEBUGGING

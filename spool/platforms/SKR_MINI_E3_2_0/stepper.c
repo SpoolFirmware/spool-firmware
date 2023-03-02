@@ -171,7 +171,7 @@ stepperTimerHandler_begin:
         uint32_t cntrReload = 2 * requestedTicks;
         if (cntrReload == 0)
             cntrReload = 1;
-        if ((lastCntrReload = REG_RD32(DRF_REG(_TIM7, _CNT))) > cntrReload) {
+        if ((lastCntrReload = REG_RD32(DRF_REG(_TIM7, _CNT))) >= cntrReload) {
             REG_WR32(DRF_REG(_TIM7, _CNT), 0);
             if ((++loopCntr) < 4) {
                 goto stepperTimerHandler_begin;

@@ -102,6 +102,7 @@ cc_binary_with_platforms(
         "//lib/hal/common:lib",
         "//lib/syslib:lib",
         "//spool/lib/ui:lib",
+        "//spool/lib/sdspi:lib",
         "//spool/lib/thermistor:lib",
         "//spool/platforms:linker.ld",
         "//spool/platforms:runtime",
