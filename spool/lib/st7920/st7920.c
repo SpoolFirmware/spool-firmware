@@ -2,19 +2,7 @@
 #include "misc.h"
 #include "platform/platform.h"
 #include "dbgprintf.h"
-#include "FreeRTOSConfig.h"
 #include "compiler.h"
-
-#define ST7920_EXEC_TIME_US  72
-#define ST7920_CLEAR_TIME_US 10000
-
-#define ST7920_DISPLAY_CLEAR                  0b1
-#define ST7920_RETURN_HOME                    0b10
-#define ST7920_DISPLAY_CONTROL_ON             0b1100
-#define ST7920_FUNCTION_SET_8BIT              0b110000
-#define ST7920_FUNCTION_SET_EXTENDED          0b110100
-#define ST7920_FUNCTION_SET_EXTENDED_GRAPHICS 0b110110
-#define ST7920_SET_GDRAM_ADDR                 0b10000000
 
 static inline void waitTimeoutUs(uint32_t us)
 {
@@ -34,6 +22,7 @@ static inline uint8_t st7920XToTile(uint8_t x)
 {
     return x >> 4;
 }
+
 static void st7920SendByteRaw(const struct St7920 *drv, uint8_t b)
 {
     uint8_t spiCmd[] = {
@@ -72,7 +61,7 @@ static void st7920SendByte(const struct St7920 *drv, enum St7920RS rs,
 //     }
 // }
 
-void st7920WriteTile(struct St7920 *drv, uint8_t x0, uint8_t x1, uint8_t y,
+void st7920WriteTile(const struct St7920 *drv, uint8_t x0, uint8_t x1, uint8_t y,
                      /* row addr */
                      const uint8_t *buf)
 {

@@ -3,6 +3,9 @@
 #include "platform_private.h"
 #include "misc.h"
 #include "platforms/common/platform.h"
+#include "drivers/spi_sw.h"
+#include "drivers/st7920.h"
+#include "ui/st7920.h"
 
 const struct HalClockConfig halClockConfig = {
     .hseFreqHz = 8000000,
@@ -17,6 +20,16 @@ const struct HalClockConfig halClockConfig = {
 };
 
 const static struct IOLine statusLED = { .group = DRF_BASE(DRF_GPIOA), .pin = 7 };
+
+const static struct IOLine dispSpiSwCs = { .group = DRF_BASE(DRF_GPIOD),
+                                           .pin = 10 };
+const static struct IOLine dispSpiSwMosi = { .group = DRF_BASE(DRF_GPIOD),
+                                             .pin = 11 };
+const static struct IOLine dispSpiSwSclk = { .group = DRF_BASE(DRF_GPIOG),
+                                             .pin = 2 };
+
+static struct SpiSw dispSpiSw;
+static struct St7920 st7920;
 
 const static uint32_t stepperFrequency = 100000;
 
@@ -235,6 +248,19 @@ void platformInit(struct PlatformConfig *config)
         halGpioSetMode(endstops[i], DRF_DEF(_HAL_GPIO, _MODE, _MODE, _INPUT));
     }
 
+    halGpioSetMode(dispSpiSwCs,
+                   DRF_DEF(_HAL_GPIO, _MODE, _MODE, _OUTPUT) |
+                       DRF_DEF(_HAL_GPIO, _MODE, _TYPE, _PUSHPULL) |
+                       DRF_DEF(_HAL_GPIO, _MODE, _SPEED, _VERY_HIGH));
+    halGpioSetMode(dispSpiSwMosi,
+                   DRF_DEF(_HAL_GPIO, _MODE, _MODE, _OUTPUT) |
+                       DRF_DEF(_HAL_GPIO, _MODE, _TYPE, _PUSHPULL) |
+                       DRF_DEF(_HAL_GPIO, _MODE, _SPEED, _VERY_HIGH));
+    halGpioSetMode(dispSpiSwSclk,
+                   DRF_DEF(_HAL_GPIO, _MODE, _MODE, _OUTPUT) |
+                       DRF_DEF(_HAL_GPIO, _MODE, _TYPE, _PUSHPULL) |
+                       DRF_DEF(_HAL_GPIO, _MODE, _SPEED, _VERY_HIGH));
+
     halTimerConstruct(&wallClockTimer, DRF_BASE(DRF_TIM5));
     halTimerStart(&wallClockTimer, &(struct TimerConfig){
         .timerTargetFrequency = 1000000,
@@ -244,6 +270,11 @@ void platformInit(struct PlatformConfig *config)
 
     communicationInit();
     thermalInit();
+
+    // Start Wallclock
+    halIrqPrioritySet(IRQ_TIM5, configKERNEL_INTERRUPT_PRIORITY);
+    halIrqEnable(IRQ_TIM5);
+    halTimerStartContinous(&wallClockTimer, 10000);
 }
 
 void platformPostInit(void)
@@ -252,10 +283,9 @@ void platformPostInit(void)
     communicationPostInit();
     thermalPostInit();
 
-    // Start Wallclock
-    halIrqPrioritySet(IRQ_TIM5, configKERNEL_INTERRUPT_PRIORITY);
-    halIrqEnable(IRQ_TIM5);
-    halTimerStartContinous(&wallClockTimer, 10000);
+    spiInit(&dispSpiSw, dispSpiSwSclk, dispSpiSwCs, dispSpiSwMosi);
+    st7920Init(&st7920, &dispSpiSw);
+    uiSt7920Init(&st7920);
 }
 
 volatile static uint64_t wallClockTimeUs = 0;

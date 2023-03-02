@@ -7,7 +7,7 @@
 // Allow platform to customize this to accomdate 
 // high performance platforms (200MHz+)
 #ifndef configTICK_RATE_HZ
-#define configTICK_RATE_HZ                      100
+#define configTICK_RATE_HZ                      1000
 #endif
 
 #define configMAX_PRIORITIES                    5

@@ -1,6 +1,5 @@
 #include "ui.h"
 #include "lvgl.h"
-#include "drivers/st7920.h"
 #include "FreeRTOS.h"
 #include "task.h"
 #include "semphr.h"
@@ -15,9 +14,19 @@
 #define MY_DISP_HOR_RES 128
 #define MY_DISP_VER_RES 64
 
+/**
+ * @brief default implementation, ui should not start if display does not exist
+ */
+__attribute__((weak)) void uiWriteTile(uint8_t x0, uint8_t x1, uint8_t y,
+                                       const uint8_t *buf)
+{
+    panic();
+}
+
 void vApplicationTickHook(void)
 {
-    lv_tick_inc(10);
+    STATIC_ASSERT(1000 / configTICK_RATE_HZ >= 1);
+    lv_tick_inc(1000 / configTICK_RATE_HZ);
 }
 
 static void my_flush_cb(lv_disp_drv_t *disp_drv, const lv_area_t *area,
@@ -29,26 +38,17 @@ static lv_disp_drv_t disp_drv = {
 
 static lv_disp_t *disp;
 
-static uint8_t lcd_fb[MY_DISP_HOR_RES * MY_DISP_VER_RES/ 8];
+static uint8_t lcd_fb[MY_DISP_HOR_RES * MY_DISP_VER_RES / 8];
 
 static lv_color_t buf_1[MY_DISP_HOR_RES * 10];
 /* optional buffer */
 static lv_color_t buf_2[MY_DISP_HOR_RES * 10];
 STATIC_ASSERT(ARRAY_SIZE(buf_1) == ARRAY_SIZE(buf_2));
 
-static struct St7920 st7920;
-
-static void setGpioOutput(struct IOLine aaaaa)
-{
-    halGpioSetMode(aaaaa, DRF_DEF(_HAL_GPIO, _MODE, _MODE, _OUTPUT) |
-                              DRF_DEF(_HAL_GPIO, _MODE, _TYPE, _PUSHPULL) |
-                              DRF_DEF(_HAL_GPIO, _MODE, _SPEED, _VERY_HIGH));
-}
-
-static void st7920_sync(int32_t x1, int32_t y1, int32_t x2, int32_t y2)
+static void display_sync(int32_t x1, int32_t y1, int32_t x2, int32_t y2)
 {
     for (int32_t y = y1; y <= y2; ++y) {
-        st7920WriteTile(&st7920, x1, x2, y, &lcd_fb[y * MY_DISP_HOR_RES / 8]);
+        uiWriteTile(x1, x2, y, &lcd_fb[y * MY_DISP_HOR_RES / 8]);
     }
 }
 
@@ -87,7 +87,7 @@ static void my_flush_cb(lv_disp_drv_t *disp_drv, const lv_area_t *area,
         color_p += area->x2 - act_x2; /*Next row*/
     }
 
-    st7920_sync(act_x1, act_y1, act_x2, act_y2);
+    display_sync(act_x1, act_y1, act_x2, act_y2);
     /* IMPORTANT!!!
      * Inform the graphics library that you are ready with the flushing*/
     lv_disp_flush_ready(disp_drv);
@@ -122,18 +122,6 @@ portTASK_FUNCTION(uiTask, pvParameters)
     lv_init();
     lv_disp_draw_buf_init(&disp_buf, buf_1, buf_2, ARRAY_SIZE(buf_1));
 
-    struct SpiSw spi = {
-        .cs = { .group = DRF_BASE(DRF_GPIOD), .pin = 10 },
-        .mosi = { .group = DRF_BASE(DRF_GPIOD), .pin = 11 },
-        .sclk = { .group = DRF_BASE(DRF_GPIOG), .pin = 2 },
-    };
-    setGpioOutput(spi.cs);
-    setGpioOutput(spi.mosi);
-    setGpioOutput(spi.sclk);
-    spiInit(&spi, spi.sclk, spi.cs, spi.mosi);
-
-    st7920Init(&st7920, &spi);
-
     lv_disp_drv_init(&disp_drv);
 
     disp_drv.hor_res = MY_DISP_HOR_RES;
@@ -163,7 +151,7 @@ portTASK_FUNCTION(uiTask, pvParameters)
         xSemaphoreTake(uiSem, portMAX_DELAY);
         lv_timer_handler();
         xSemaphoreGive(uiSem);
-        vTaskDelay(pdMS_TO_TICKS(5));
+        vTaskDelay(pdMS_TO_TICKS(500));
     }
 }
 void uiInit(void)

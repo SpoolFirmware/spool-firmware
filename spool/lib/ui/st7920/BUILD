@@ -1,17 +1,14 @@
 cc_library(
     name="lib",
     srcs=[
-        "ui.h",
-        "ui.c",
+        "st7920.h",
+        "st7920.c",
     ],
-    hdrs=["ui.h"],
+    hdrs=["st7920.h"],
     deps=[
         "//lib/lvgl:lib",
-        "//lib/freertos",
         "//spool/lib/st7920:lib",
-        "//spool/platforms:runtime",
     ],
-    include_prefix="ui",
-    alwayslink=True,
+    include_prefix = "ui",
     visibility=["//visibility:public"],
 )

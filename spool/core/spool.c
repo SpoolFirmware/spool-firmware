@@ -1,6 +1,7 @@
 //
 // Created by codetector on 1/14/23.
 //
+#include "spool.h"
 #include <stdint.h>
 #include "fix16.h"
 
@@ -54,8 +55,19 @@ void vApplicationMallocFailedHook(void)
 }
 
 void vApplicationDaemonTaskStartupHook(void) {
+    // Create Tasks & Setup Queues
+    gcodeSerialTaskInit();
+    thermalTaskInit();
+    motionInit();
     // Inform platform that execution is about to begin
     platformPostInit();
+
+    if (PLATFORM_FEATURE_ENABLED(Display)) {
+        uiInit();
+    }
+
+    // Disable Allocation at this point
+    vPortDisableHeapAllocation();
 }
 
 void main(void)
@@ -65,21 +77,12 @@ void main(void)
     platformInit(&platformConfig);
 
     platformDisableStepper(0xFF);
-
-    // Create Tasks & Setup Queues
-    gcodeSerialTaskInit();
-    thermalTaskInit();
-    motionInit();
-    uiInit();
+    dbgPrintf("initSpoolApp\n");
 
     // Create the task that should handle prints
     configASSERT(xTaskCreate(DebugPrintTask, "dbgPrintf",
                              configMINIMAL_STACK_SIZE, NULL,
                              configMAX_PRIORITIES - 1, &dbgPrintTaskHandle));
-
-    // Disable Allocation at this point
-    vPortDisableHeapAllocation();
-    dbgPrintf("initSpoolApp\n");
 
     vTaskStartScheduler();
 

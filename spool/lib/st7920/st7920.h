@@ -17,6 +17,7 @@ struct St7920 {
     enum St7920State state;
 };
 
+/* TODO perhaps do no depend on software SPI */
 void st7920Init(struct St7920 *drv, const struct SpiSw *spi);
 /* in pixels, not st7920 addresses */
 
@@ -29,5 +30,5 @@ void st7920Init(struct St7920 *drv, const struct SpiSw *spi);
  * @param y row
  * @param buf row buffer
  */
-void st7920WriteTile(struct St7920 *drv, uint8_t x0, uint8_t x1, uint8_t y,
+void st7920WriteTile(const struct St7920 *drv, uint8_t x0, uint8_t x1, uint8_t y,
                 const uint8_t *buf);
