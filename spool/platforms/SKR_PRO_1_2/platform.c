@@ -123,7 +123,7 @@ VectorB4_begin:
         uint32_t cntrReload = 2 * requestedTicks;
         if (cntrReload == 0)
             cntrReload = 1;
-        if ((lastCntrReload = halTimerGetCount(&stepperExecutionTimer)) > cntrReload) {
+        if ((lastCntrReload = halTimerGetCount(&stepperExecutionTimer)) >= cntrReload) {
             halTimerZeroCount(&stepperExecutionTimer);
             goto VectorB4_begin;
         }
@@ -284,4 +284,10 @@ const uint32_t platformGetStepperTimerFreq(void)
 __attribute__((always_inline)) inline bool platformGetEndstop(uint8_t axis)
 {
     return !halGpioRead(endstops[axis]);
+}
+
+const struct IOLine sdCSPin = {};
+struct SPIDevice *platformGetSDSPI(void)
+{
+    return NULL;
 }

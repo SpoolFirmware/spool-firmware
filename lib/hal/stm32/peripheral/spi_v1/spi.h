@@ -5,14 +5,15 @@
 #include "semphr.h"
 
 struct SPIDevice {
-    StaticSemaphore_t smphr;
-    SemaphoreHandle_t smphrHandle;
-    uint32_t base;
+    const uint32_t base;
+    struct {
+        StaticSemaphore_t smphr;
+        SemaphoreHandle_t smphrHandle;
 
-    const void* txBuffer;
-    void* rxBuffer;
-    uint32_t rxCnt, txCnt;
+        const void *txBuffer;
+        void *rxBuffer;
+        uint32_t rxCnt, txCnt;
+    } inner;
 };
-
 
 void halSpiLLServiceInterrupt(struct SPIDevice *pDev);

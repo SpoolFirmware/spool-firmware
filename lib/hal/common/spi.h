@@ -38,10 +38,6 @@ enum SPIClockPhase {
     SPIClockPhase_SecondEdge,
 };
 
-enum SPISlaveSelect {
-    SPISlaveSelectNotManaged = 0,
-    SPISlaveSelectManaged ,
-};
 
 struct SPIConfig 
 {
@@ -51,12 +47,11 @@ struct SPIConfig
     enum SPIDuplexMode duplexMode;
     enum SPIClockPolarity clockPolarity;
     enum SPIClockPhase clockPhase;
-    enum SPISlaveSelect slaveSelect;
     uint32_t baudrate;
     uint32_t clkSpeed;
 };
 
-void halSpiInit(struct SPIDevice *pDevice, const struct SPIConfig *pConfig, uint32_t base);
+void halSpiInit(struct SPIDevice *pDevice, const struct SPIConfig *pConfig);
 void halSpiStart(struct SPIDevice *pDevice);
 void halSpiSend(struct SPIDevice *pDevice, const void* data, uint32_t len);
 void halSpiXchg(struct SPIDevice *pDevice, const void* pDataOut, void* pDataIn, uint32_t len);

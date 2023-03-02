@@ -1,0 +1,13 @@
+cc_library(
+    name="lib",
+    srcs=glob([
+        "*.c", 
+        "*.h",
+    ]),
+    hdrs=[
+        "sd_spi.h",
+        "sd_spi_info.h",
+        "sd_spi_platform.h",
+    ],
+    visibility=["//visibility:public"],
+)

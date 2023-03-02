@@ -68,6 +68,7 @@ void platformPostInit(void)
     privCommPostInit();
     privStepperPostInit();
     privThermalPostInit();
+    privTestPostInit();
 
     // Start Wallclock
     halIrqPrioritySet(IRQ_TIM5, configMAX_SYSCALL_INTERRUPT_PRIORITY);
