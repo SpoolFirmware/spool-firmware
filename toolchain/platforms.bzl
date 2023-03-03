@@ -11,11 +11,11 @@ def _transition_impl(settings, attr):
         build_type = "opt"
 
     return {
-        "//command_line_option:platforms": attr.platforms,
+        "//command_line_option:platforms": attr.platform,
         "//command_line_option:compilation_mode": build_type,
     }
 
-platforms_transition = transition(
+platform_transition = transition(
     implementation = _transition_impl,
     inputs = ["//command_line_option:compilation_mode"],
     # We declare which flags the transition will be writing. The returned dict(s)
@@ -49,7 +49,7 @@ _with_platform = rule(
     # the configuration of this target, which the target's descendents will inherit.
     attrs = {
         "srcs": attr.label_list(
-            cfg = platforms_transition,
+            cfg = platform_transition,
             allow_files = True,
             mandatory = True,
         ),
@@ -60,16 +60,16 @@ _with_platform = rule(
             default = "@bazel_tools//tools/allowlists/function_transition_allowlist",
         ),
         "is_windows": attr.bool(mandatory = True),
-        "platforms": attr.string(default = ""),
+        "platform": attr.string(default = ""),
     },
     provides = [DefaultInfo],
 )
 
-def with_platform(name, srcs, platforms, **kwargs):
+def with_platform(name, srcs, platform, **kwargs):
     _with_platform(
         name = name,
         srcs = srcs,
-        platforms = platforms,
+        platform = platform,
         is_windows = select({
             "@bazel_tools//src/conditions:host_windows": True,
             "//conditions:default": False,
@@ -99,14 +99,14 @@ def cc_binary_with_platforms(name, platforms, visibility=None, **kwargs):
 
     for p, target in platforms.items():
         with_platform(
-            name = name + '_' + p,
+            name = p,
             srcs = [elf_name, bin_name],
             visibility = visibility,
-            platforms = target,
+            platform = target,
         )
 
     native.filegroup(
         name = name,
-        srcs = [name + '_' + p for p in platforms.keys()],
+        srcs = platforms.keys(),
         visibility = visibility,
     )

@@ -95,7 +95,6 @@ cc_binary_with_platforms(
         "skr_pro_1_2": "//spool/platforms/SKR_PRO_1_2:skr_pro_1_2",
         "skr_mini_e3_2_0": "//spool/platforms/SKR_MINI_E3_2_0:skr_mini_e3_2_0",
     },
-    stamp = 1,
     visibility = ["//visibility:public"],
     deps = [
         "//lib/dbg:lib",

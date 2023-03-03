@@ -10,7 +10,6 @@ platform(
     constraint_values = [
         ":platform",
         "//lib/hardware_manual:stm32f407",
-        "//lib/freertos/portable:arm_cm4f",
         "//lib/lvgl/config:12864",
     ],
     parents = ["@bazel_embedded//platforms:cortex_m4_fpu"],
