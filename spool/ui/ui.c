@@ -35,7 +35,7 @@ static void my_flush_cb(lv_disp_drv_t *disp_drv, const lv_area_t *area,
                         lv_color_t *color_p);
 
 static lv_disp_draw_buf_t disp_buf;
-static lv_disp_drv_t disp_drv = {};
+static lv_disp_drv_t disp_drv = {0};
 
 static lv_disp_t *disp;
 
@@ -97,27 +97,6 @@ static void my_flush_cb(lv_disp_drv_t *disp_drv, const lv_area_t *area,
     lv_disp_flush_ready(disp_drv);
 }
 
-void lv_example_line_1(void)
-{
-    /*Create an array for the points of the line*/
-    static lv_point_t line_points[] = {
-        { 5, 5 }, { 70, 70 }, { 120, 10 }, { 180, 60 }, { 240, 10 }
-    };
-
-    /*Create style*/
-    static lv_style_t style_line;
-    lv_style_init(&style_line);
-    lv_style_set_line_width(&style_line, 1);
-    lv_style_set_line_color(&style_line, lv_palette_main(LV_PALETTE_BLUE));
-
-    /*Create a line and apply the new style*/
-    lv_obj_t *line1;
-    line1 = lv_line_create(lv_scr_act());
-    lv_line_set_points(line1, line_points, 5); /*Set the points*/
-    lv_obj_add_style(line1, &style_line, 0);
-    lv_obj_center(line1);
-}
-
 static TaskHandle_t uiTaskHandle;
 static SemaphoreHandle_t uiSem;
 
@@ -141,30 +120,33 @@ portTASK_FUNCTION(uiTask, pvParameters)
 
     lv_obj_t *label1 = lv_label_create(lv_scr_act());
     lv_obj_t *label2 = lv_label_create(lv_scr_act());
-    if (!label1 || !label2) {
+    lv_obj_t *label3 = lv_label_create(lv_scr_act());
+
+    static char all[] =
+        " !\"#$%&\'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~";
+    if (!label1 || !label2 || !label3) {
         panic();
     }
     lv_obj_set_width(label1, 120);
     lv_obj_set_width(label2, 120);
-    // lv_label_set_long_mode(label1, LV_LABEL_LONG_SCROLL_CIRCULAR);
-    // lv_label_set_text(label1, "It is a circularly scrolling text. ");
-    // lv_obj_set_style_anim_speed(label1, 10, LV_PART_MAIN);
-    lv_obj_align(label1, LV_ALIGN_TOP_LEFT, 0, 10);
-    lv_obj_align(label2, LV_ALIGN_TOP_LEFT, 0, 20);
+    lv_obj_set_width(label3, 120);
 
-    // lv_example_line_1();
+    lv_obj_align(label1, LV_ALIGN_TOP_LEFT, 3, 3);
+    lv_obj_align(label2, LV_ALIGN_TOP_LEFT, 3, 3 + 7 + 3);
+    lv_obj_align(label3, LV_ALIGN_TOP_LEFT, 1, 3 + 7 + 3 + 7 + 3);
+    lv_label_set_text_static(label3, all);
 
-    static char line1Buf[16];
-    static char line2Buf[14];
+    static char line1Buf[18];
+    static char line2Buf[16];
     static struct TemperatureReport rpt;
     for (;;) {
         thermalGetTempReport(&rpt);
-        snprintf(line1Buf, sizeof(line1Buf), " E: %3dC/%3dC", rpt.extruders[0],
+        snprintf(line1Buf, sizeof(line1Buf), "E: %3d\x7F" "C/%3d\x7F" "C", rpt.extruders[0],
                  rpt.extrudersTarget[0]);
-        snprintf(line2Buf, sizeof(line2Buf), " B:  %2dC/ %2dC", rpt.bed,
+        snprintf(line2Buf, sizeof(line2Buf), "B:  %2d\x7F" "C/ %2d\x7F" "C", rpt.bed,
                  rpt.bedTarget);
-        lv_label_set_text(label1, line1Buf);
-        lv_label_set_text(label2, line2Buf);
+        lv_label_set_text_static(label1, line1Buf);
+        lv_label_set_text_static(label2, line2Buf);
 
         xSemaphoreTake(uiSem, portMAX_DELAY);
         lv_timer_handler();

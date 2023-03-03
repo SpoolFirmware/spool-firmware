@@ -3,6 +3,7 @@ cc_library(
     srcs=glob([
         "src/**/*.c",
         "src/**/*.h",
+        "fonts/*.c",
     ]) + [
         "lvgl.h",
     ],

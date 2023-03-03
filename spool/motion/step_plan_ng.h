@@ -58,7 +58,8 @@ struct PlannerJob {
             fix16_t unit_vec[X_AND_Y];
             struct PlannerBlock steppers[NR_STEPPER];
             uint8_t stepDirs;
-        };
+        }; /* StepperJobRun, StepperJobHomeX, StepperJobHomeY, StepperJobHomeZ
+            */
         struct {
             TaskHandle_t notify;
             uint32_t seq;
