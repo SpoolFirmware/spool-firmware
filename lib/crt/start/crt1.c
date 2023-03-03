@@ -1,5 +1,3 @@
-#pragma message "112"
-
 extern char _sdata;
 extern char _edata;
 extern char _sidata;
