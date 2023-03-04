@@ -61,19 +61,25 @@ static void st7920SendByte(const struct St7920 *drv, enum St7920RS rs,
 //     }
 // }
 
-void st7920WriteTile(const struct St7920 *drv, uint8_t x0, uint8_t x1, uint8_t y,
-                     /* row addr */
-                     const uint8_t *buf)
+void st7920WriteTile(const struct St7920 *drv, uint8_t x0, uint8_t x1,
+                     uint8_t y, const uint8_t *buf)
 {
     uint8_t tileStart = st7920XToTile(x0);
     uint8_t tileEnd = st7920XToTile(x1);
+    uint8_t bufTileStart = tileStart;
+    /* st7920 has lower half of the screen mapped to the 128-255 portion */
+    if (y >= 32) {
+        y -= 32;
+        tileStart += 8;
+        tileEnd += 8;
+    }
     st7920SendByte(drv, St7920InstructionWrite, 0x80 | y);
     st7920SendByte(drv, St7920InstructionWrite, 0x80 | tileStart);
     uint8_t dataWrite = 0xFA;
     spiSendCmd(&drv->spi, &dataWrite, 1);
-    for (int i = tileStart; i <= tileEnd; ++i) {
+    for (int i = tileStart; i <= tileEnd; ++i, ++bufTileStart) {
         /* each tile is two bytes*/
-        uint8_t byteIdx = i << 1;
+        uint8_t byteIdx = bufTileStart * 2;
         st7920SendByteRaw(drv, buf[byteIdx]);
         st7920SendByteRaw(drv, buf[byteIdx + 1]);
     }
