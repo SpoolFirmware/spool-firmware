@@ -53,7 +53,6 @@ static void thermalCallback(TimerHandle_t timerHandle)
 {
     fix16_t tempC_f = 0;
     fix16_t tempCBed_f = 0;
-    int targetCBed, targetCE;
 
     for (int i = 0; i < 6; i++) {
         const fix16_t reading = platformReadTemp(0);
@@ -67,16 +66,13 @@ static void thermalCallback(TimerHandle_t timerHandle)
         tempCBed_f = fix16_add(tempCBed_f, reading);
     }
     tempCBed_f = fix16_div(tempCBed_f, F16(6));
-    int tempCBed = fix16_to_int(tempCBed_f);
 
     int eControl, bControl;
 
     if (xSemaphoreTake(pidMutex, pdMS_TO_TICKS(50)) == pdTRUE) {
         eControl = fix16_to_int(pidUpdateLoop(&e0Pid, tempC_f));
-        targetCE = fix16_to_int(e0Pid.setPoint);
 
         bControl = fix16_to_int(pidUpdateLoop(&bedPid, tempCBed_f));
-        targetCBed = fix16_to_int(bedPid.setPoint);
         xSemaphoreGive(pidMutex);
     } else {
         platformSetHeater(0, 0);
