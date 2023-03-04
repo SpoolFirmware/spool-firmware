@@ -97,8 +97,8 @@ static void my_flush_cb(lv_disp_drv_t *disp_drv, const lv_area_t *area,
     lv_disp_flush_ready(disp_drv);
 }
 
-static TaskHandle_t uiTaskHandle;
-static SemaphoreHandle_t uiSem;
+static TaskHandle_t uiTaskHandle = NULL;
+SemaphoreHandle_t uiSem = NULL;
 
 portTASK_FUNCTION(uiTask, pvParameters)
 {
@@ -154,12 +154,13 @@ portTASK_FUNCTION(uiTask, pvParameters)
         vTaskDelay(pdMS_TO_TICKS(500));
     }
 }
+
 void uiInit(void)
 {
     if ((uiSem = xSemaphoreCreateMutex()) == NULL) {
         panic();
     }
-    if (xTaskCreate(uiTask, "ui", 512, NULL, tskIDLE_PRIORITY, &uiTaskHandle) !=
+    if (xTaskCreate(uiTask, "ui", 720, NULL, tskIDLE_PRIORITY, &uiTaskHandle) !=
         pdTRUE) {
         panic();
     }
