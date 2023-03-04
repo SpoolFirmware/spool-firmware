@@ -12,7 +12,7 @@
     for (uint8_t iter = 0; iter < NR_STEPPER; iter++)
 
 void motionInit(void);
-fix16_t vecUnit(const int32_t a[NR_AXIS], fix16_t out[X_AND_Y]);
+fix16_t vecUnit(const float a[NR_AXIS], fix16_t out[NR_AXIS]);
 
 int32_t motionGetMaxVelocity(uint8_t stepper);
 void motionSetMaxVelocity(uint8_t stepper, int32_t maxVel);

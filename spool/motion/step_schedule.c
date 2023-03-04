@@ -121,7 +121,7 @@ static void scheduleMoveTo(const struct PrinterMove state,
     BUG_ON(state.z > (platformMotionLimits[Z_AXIS] *
                       platformMotionStepsPerMMAxis[Z_AXIS]));
 
-    int32_t dzLeveling = 0, zLevelingTarget;
+    int32_t dzLeveling = 0, zLevelingTarget = 0;
 
     int32_t dx = currentState.homedX ? (state.x - currentState.x) : 0;
     int32_t dy = currentState.homedY ? (state.y - currentState.y) : 0;
@@ -144,13 +144,19 @@ static void scheduleMoveTo(const struct PrinterMove state,
 
     int32_t plan[NR_STEPPER];
     /* TODO fix fixed z inversion */
-    const int32_t dir[NR_AXIS] = { dx, dy, dz + dzLeveling, de };
-    fix16_t unitVec[X_AND_Y];
-    fix16_t len;
+    const int32_t movementSteps[NR_AXIS] = { dx, dy, dz + dzLeveling, de };
+    float movementMM[NR_AXIS];
+    for_each_axis(i) {
+        movementMM[i] = (float)movementSteps[i] / platformMotionStepsPerMMAxis[i];
+    }
 
-    planMove(dir, plan, unitVec, &len);
+    fix16_t unitVec[NR_AXIS];
+    fix16_t lenMM;
+    lenMM = vecUnit(movementMM, unitVec);
+
+    planMove(movementSteps, plan);
     plannerEnqueueMove(StepperJobRun, plan, unitVec, maxVel, moveAcceleration,
-                       len, !currentState.continuousMode);
+                       lenMM, !currentState.continuousMode);
 
     currentState.x = currentState.homedX ? state.x : currentState.x;
     currentState.y = currentState.homedY ? state.y : currentState.y;
@@ -171,12 +177,17 @@ static void scheduleHomeX(void)
         0,
     };
     int32_t plan[NR_STEPPER];
-    fix16_t unitVec[X_AND_Y];
-    fix16_t len;
+    fix16_t unitVec[NR_AXIS];
+    float movementMM[NR_AXIS];
+    for_each_axis(i) {
+        movementMM[i] = (float)home_x[i] / platformMotionStepsPerMMAxis[i];
+    }
 
-    planMove(home_x, plan, unitVec, &len);
+    fix16_t lenMM;
+    lenMM = vecUnit(movementMM, unitVec);
+    planMove(home_x, plan);
     s_scheduleHomeMove(StepperJobHomeX, plan, unitVec, homeVelocity,
-                       homeAcceleration, len);
+                       homeAcceleration, lenMM);
     currentState.x = 0;
     currentState.homedX = true;
 }
@@ -190,12 +201,18 @@ static void scheduleHomeY(void)
         0,
     };
     int32_t plan[NR_STEPPER];
-    fix16_t unitVec[X_AND_Y];
-    fix16_t len;
+    fix16_t unitVec[NR_AXIS];
+    float movementMM[NR_AXIS];
+    for_each_axis(i) {
+        movementMM[i] = (float)home_y[i] / platformMotionStepsPerMMAxis[i];
+    }
 
-    planMove(home_y, plan, unitVec, &len);
+    fix16_t lenMM;
+    lenMM = vecUnit(movementMM, unitVec);
+
+    planMove(home_y, plan);
     s_scheduleHomeMove(StepperJobHomeY, plan, unitVec, homeVelocity,
-                       homeAcceleration, len);
+                       homeAcceleration, lenMM);
     currentState.y = 0;
     currentState.homedY = true;
 }
@@ -214,12 +231,18 @@ static uint32_t s_scheduleZMeasure(uint32_t velSteps)
     rehomeZVelocity[Z_AXIS] = velSteps;
 
     int32_t plan[NR_STEPPER];
-    fix16_t unitVec[X_AND_Y];
-    fix16_t len;
+    fix16_t unitVec[NR_AXIS];
+    float movementMM[NR_AXIS];
+    for_each_axis(i) {
+        movementMM[i] = (float)home_z[i] / platformMotionStepsPerMMAxis[i];
+    }
 
-    planMove(home_z, plan, unitVec, &len);
+    fix16_t lenMM;
+    lenMM = vecUnit(movementMM, unitVec);
+
+    planMove(home_z, plan);
     return s_scheduleHomeMove(StepperJobHomeZ, plan, unitVec, rehomeZVelocity,
-                              homeAcceleration, len);
+                              homeAcceleration, lenMM);
 }
 
 static void scheduleHomeZ(void)
@@ -420,6 +443,7 @@ static void enqueueAvailableGcode()
     bool continuousMode = false;
 
     while (plannerAvailableSpace() > 0) {
+        resp.respKind = ResponseOK;
         continuousMode = uxQueueSpacesAvailable(MotionPlannerTaskQueue) <
                          CONTINUOUS_THRESHOLD;
         if (!commandAvailable) {

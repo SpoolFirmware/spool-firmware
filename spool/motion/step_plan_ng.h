@@ -54,8 +54,8 @@ struct PlannerJob {
             uint32_t viSq;
             uint32_t vSq;
             uint32_t vfSq;
-            fix16_t len;
-            fix16_t unit_vec[X_AND_Y];
+            fix16_t lenMM;
+            fix16_t unit_vec[NR_AXIS];
             struct PlannerBlock steppers[NR_STEPPER];
             uint8_t stepDirs;
         }; /* StepperJobRun, StepperJobHomeX, StepperJobHomeY, StepperJobHomeZ

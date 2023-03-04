@@ -61,10 +61,10 @@ void plannerDequeue(struct PlannerJob *out)
 
 static void calcReverse(struct PlannerJob *);
 
-static fix16_t vecDot(const fix16_t a[X_AND_Y], const fix16_t b[X_AND_Y])
+static fix16_t vecDot(const fix16_t a[NR_AXIS], const fix16_t b[NR_AXIS])
 {
     fix16_t res = 0;
-    for (uint8_t i = 0; i < X_AND_Y; ++i) {
+    for_each_axis(i) {
         res = fix16_add(res, fix16_mul(a[i], b[i]));
     }
     return res;
@@ -113,7 +113,7 @@ static void populateBlock(const struct PlannerJob *prev, struct PlannerJob *new,
         /* TODO handle junction velocity like marlin */
         const uint32_t viSq = min(prev->vfSq, new->vSq);
         new->viSq = viSq;
-    } else if (new->len <= JUNCTION_SMOOTHING_DIST_THRES(maxStepper) &&
+    } else if (new->lenMM <= F16(1.0) &&
                cosTheta <= JUNCTION_SMOOTHING_THRES) {
         const fix16_t cosThetaSq = fix16_mul(cosTheta, cosTheta);
         /* is this where we do rounded corners? */
@@ -263,14 +263,15 @@ static const struct PlannerJob *findPrevMovePlan(void)
 void plannerEnqueueMove(enum JobType k, const int32_t plan[NR_STEPPER],
                    const fix16_t unit_vec[X_AND_Y],
                    const uint32_t max_v[NR_STEPPER],
-                   const uint32_t acc[NR_STEPPER], fix16_t len, bool stop)
+                   const uint32_t acc[NR_STEPPER], fix16_t lenMM, bool stop)
 {
     const struct PlannerJob *prev = findPrevMovePlan();
     struct PlannerJob *tail = __plannerEnqueue(k);
 
-    for (uint8_t i = 0; i < X_AND_Y; ++i)
+    for_each_axis(i) {
         tail->unit_vec[i] = unit_vec[i];
-    tail->len = len;
+    }
+    tail->lenMM = lenMM;
     populateBlock(prev, tail, plan, max_v, acc, stop);
     reversePass();
 }

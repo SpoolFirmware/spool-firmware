@@ -23,21 +23,18 @@ void motionInit(void)
     plannerInit();
 }
 
-fix16_t vecUnit(const int32_t a[NR_AXIS], fix16_t out[X_AND_Y])
+fix16_t vecUnit(const float a[NR_AXIS], fix16_t out[NR_AXIS])
 {
     float accum = 0;
-    float af[NR_AXIS];
-    for (uint8_t i = 0; i < X_AND_Y; ++i) {
-        float x = (float)a[i];
-        accum += x * x;
-        af[i] = x;
+    for (uint8_t i = 0; i < NR_AXIS; ++i) {
+        accum += a[i] * a[i];
     }
-    float len = sqrtf(accum);
-    accum = 1.0f / len;
-    for (uint8_t i = 0; i < X_AND_Y; ++i) {
-        out[i] = fix16_from_float(af[i] * accum);
+    fix16_t len = fix16_from_float(sqrtf(accum));
+    const fix16_t lenInverse = fix16_div(F16(1.0), len);
+    for_each_axis(i) {
+        out[i] = fix16_mul(a[i], lenInverse);
     }
-    return fix16_from_float(len);
+    return len;
 }
 
 int32_t motionGetMaxVelocity(uint8_t stepper)
