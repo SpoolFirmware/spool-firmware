@@ -415,6 +415,8 @@ static void enqueueAvailableGcode()
 {
     static bool commandAvailable = false;
     static struct GcodeCommand cmd;
+    static struct GcodeResponse resp = {0};
+    resp.respKind = ResponseOK;
     bool continuousMode = false;
 
     while (plannerAvailableSpace() > 0) {
@@ -433,6 +435,7 @@ static void enqueueAvailableGcode()
         if (!steppersEnabled && cmd.kind != GcodeG28 &&
             cmd.kind != GcodeISRSync) {
             commandAvailable = false;
+            xQueueSend(ResponseQueue, &resp, portMAX_DELAY);
             return;
         }
 
@@ -519,6 +522,9 @@ static void enqueueAvailableGcode()
             break;
         }
         commandAvailable = false;
+        if (cmd.kind != GcodeISRSync) {
+            xQueueSend(ResponseQueue, &resp, portMAX_DELAY);
+        }
     }
 }
 

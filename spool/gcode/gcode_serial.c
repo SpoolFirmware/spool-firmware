@@ -10,10 +10,9 @@
 #include "gcode/gcode_serial.h"
 #include "gcode/gcode_parser.h"
 
-const static char OK[5] = "ok\r\n";
+const static char OK[5] = "ok\n";
 
-const static char BUSY[] = "busy:doing shit\r\n";
-STATIC_ASSERT(ARRAY_SIZE(BUSY) == 18);
+const static char BUSY[] = "busy: processing\n";
 
 static TaskHandle_t gcodeSerialTaskHandle;
 
@@ -52,7 +51,7 @@ static void sendTempReport(struct TemperatureReport *pReport)
 {
     char printBuffer[64];
 
-    int len = snprintf(printBuffer, 64, " T:%d /%d B:%d /%d @:%d B@:%d\r\n",
+    int len = snprintf(printBuffer, 64, " T:%d /%d B:%d /%d @:%d B@:%d\n",
              pReport->extruders[0], pReport->extrudersTarget[0], pReport->bed,
              pReport->bedTarget, pReport->extrudersTarget[0],
              pReport->bedTarget);
@@ -65,17 +64,20 @@ static void waitAndRespond(void)
 
     while (xQueueReceive(ResponseQueue, &resp,
                          pdMS_TO_TICKS(GCODE_SERIAL_TIMEOUT)) == pdFALSE) {
-        platformSendResponse(BUSY, sizeof(BUSY) - 1);
+        platformSendResponse(BUSY, strlen(BUSY));
         thermalGetTempReport(&resp.tempReport);
         sendTempReport(&resp.tempReport);
     }
     switch (resp.respKind) {
     case ResponseOK:
-        platformSendResponse(OK, sizeof(OK) - 1);
+        platformSendResponse(OK, strlen(OK));
         break;
     case ResponseTemp:
         platformSendResponse(OK, 2);
         sendTempReport(&resp.tempReport);
+        break;
+    default:
+        panic();
         break;
     }
 }
@@ -85,6 +87,7 @@ portTASK_FUNCTION(gcodeSerialTask, pvParameters)
     status_t err = initParser(&gcodeParser);
     uint32_t seqCounter = 0;
     struct GcodeCommand cmd;
+    struct GcodeCommand syncCmd = { .kind = GcodeISRSync };
 
     WARN_ON_ERR(err);
     for (;;) {
@@ -107,7 +110,7 @@ portTASK_FUNCTION(gcodeSerialTask, pvParameters)
             case GcodeM101:
             case GcodeM103:
                 xQueueSend(MotionPlannerTaskQueue, &cmd, portMAX_DELAY);
-                platformSendResponse(OK, sizeof(OK) - 1);
+                waitAndRespond();
                 break;
             /* pretend ok, wait for sync */
             case GcodeM107:
@@ -117,7 +120,6 @@ portTASK_FUNCTION(gcodeSerialTask, pvParameters)
             case GcodeM104: {
                 platformSendResponse(OK, sizeof(OK) - 1);
                 xQueueSend(ThermalTaskQueue, &cmd, portMAX_DELAY);
-                struct GcodeCommand syncCmd = { .kind = GcodeISRSync };
                 syncCmd.seq.seqNumber = seqCounter++;
                 xQueueSend(MotionPlannerTaskQueue, &syncCmd, portMAX_DELAY);
                 break;
