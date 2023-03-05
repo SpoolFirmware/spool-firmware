@@ -17,7 +17,7 @@ const static uint32_t VEL_CHANGE_THRESHOLD = 10;
 /* TODO MAKE CONFIGURABLE */
 #define SECONDS_IN_MIN 60
 
-#define JUNCTION_INHERIT_VEL_THRES F16(-0.99999f)
+#define JUNCTION_STOP_VEL_THRES F16(0.99999f)
 /* for distances less than DIST, and angles cos greater than octagon (from marlin)
  * we smooth out the velocity */
 #define JUNCTION_SMOOTHING_DIST_THRES(STEPPER) F16(1 * platformMotionStepsPerMM[STEPPER])
@@ -47,9 +47,11 @@ struct PlannerJob {
     enum JobType type;
     union {
         struct {
-            uint32_t x;
+            //! number of steps on the "longest" axis.
+            uint32_t x; 
             uint32_t accelerationX;
             uint32_t decelerationX;
+            //! acceleration in steps?
             uint32_t a;
             uint32_t viSq;
             uint32_t vSq;
@@ -95,6 +97,6 @@ void plannerDequeue(struct PlannerJob *out);
 void plannerEnqueue(enum JobType k);
 void plannerEnqueueNotify(enum JobType k, TaskHandle_t notify, uint32_t seq);
 void plannerEnqueueMove(enum JobType k, const int32_t plan[NR_STEPPER],
-                   const fix16_t unit_vec[X_AND_Y],
+                   const fix16_t unit_vec[NR_AXIS],
                    const uint32_t max_v[NR_STEPPER],
                    const uint32_t acc[NR_STEPPER], fix16_t len, bool stop);

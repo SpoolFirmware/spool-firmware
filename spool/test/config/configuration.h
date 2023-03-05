@@ -1,7 +1,5 @@
 #pragma once
 
-#define MOTION_AXIS 3
-
 enum Axis {
     X_AXIS = 0,
     Y_AXIS,

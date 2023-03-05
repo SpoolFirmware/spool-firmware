@@ -38,6 +38,14 @@ const int32_t platformMotionDefaultMaxVel[] = {
     5,
     25,
 };
+
+const int32_t platformMotionMaxAccAxis[] = {
+    500,
+    500,
+    100,
+    1000,
+};
+
 const int32_t platformMotionDefaultAcc[] = {
     500,
     500,
@@ -81,6 +89,7 @@ const enum Stepper platformFeatureExtruderStepper = STEPPER_D;
 STATIC_ASSERT(ARRAY_SIZE(platformMotionInvertStepper) == NR_AXIS);
 STATIC_ASSERT(ARRAY_SIZE(platformMotionLimits) == NR_AXIS);
 STATIC_ASSERT(ARRAY_SIZE(platformMotionDefaultMaxVel) == NR_STEPPER);
+STATIC_ASSERT(ARRAY_SIZE(platformMotionMaxAccAxis) == NR_AXIS);
 STATIC_ASSERT(ARRAY_SIZE(platformMotionDefaultAcc) == NR_STEPPER);
 STATIC_ASSERT(ARRAY_SIZE(platformMotionHomingVel) == NR_STEPPER);
 STATIC_ASSERT(ARRAY_SIZE(platformMotionHomingAcc) == NR_STEPPER);

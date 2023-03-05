@@ -26,7 +26,7 @@ void motionInit(void)
 fix16_t vecUnit(const float a[NR_AXIS], fix16_t out[NR_AXIS])
 {
     float accum = 0;
-    for (uint8_t i = 0; i < NR_AXIS; ++i) {
+    for_each_axis(i) {
         accum += a[i] * a[i];
     }
     fix16_t len = fix16_from_float(sqrtf(accum));

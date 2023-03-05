@@ -77,6 +77,7 @@ static void populateBlock(const struct PlannerJob *prev, struct PlannerJob *new,
 {
     float timeEst = 0;
     uint32_t maxStepper = 0;
+    uint32_t accStepper;
 
     for_each_stepper(i) {
         if (plan[i] >= 0)
@@ -93,39 +94,88 @@ static void populateBlock(const struct PlannerJob *prev, struct PlannerJob *new,
             maxStepper = i;
         }
     }
+    accStepper = maxStepper;
 
     if (timeEst == 0) {
         /* empty block */
         return;
     }
 
+    uint32_t v = (uint32_t)((float)new->steppers[maxStepper].x / timeEst);
+    new->vSq = v *v;
+
     /* TODO correct for acceleration */
     new->a = acc[maxStepper];
-
-    uint32_t v = (uint32_t)((float)new->steppers[maxStepper].x / timeEst);
-    new->vSq = v * v;
+    for_each_stepper(i) {
+        if (new->steppers->x && acc[i] < new->a) {
+            const uint32_t maxPossible =
+                (uint32_t)(((float)acc[i]) * new->x / new->steppers[i].x);
+            if (new->a > maxPossible) {
+                new->a = maxPossible;
+                accStepper = i;
+            }
+        }
+    }
 
     /* cos(pi - theta) = -cos(theta) */
     fix16_t cosTheta = -vecDot(prev->unit_vec, new->unit_vec);
 
-    if (cosTheta <= JUNCTION_INHERIT_VEL_THRES) {
-        /* essentially the same direction */
-        /* TODO handle junction velocity like marlin */
-        const uint32_t viSq = min(prev->vfSq, new->vSq);
-        new->viSq = viSq;
-    } else if (new->lenMM <= F16(1.0) &&
-               cosTheta <= JUNCTION_SMOOTHING_THRES) {
-        const fix16_t cosThetaSq = fix16_mul(cosTheta, cosTheta);
-        /* is this where we do rounded corners? */
-        /* for now, we pretend cos is linear */
-        const uint32_t viSq =
-            min((uint32_t)((float)prev->vfSq * fix16_to_float(cosThetaSq)),
-                new->vSq);
-        new->viSq = viSq;
-    } else {
-        /* is a minimum speed helpful here? why? */
+    if (new->type != StepperJobRun || prev == &empty) {
+        new->viSq = 0;
+        stop = true;
+    } else if (cosTheta > JUNCTION_STOP_VEL_THRES) {
+        // Opposite direction, almost stop
         const int32_t minVi = motionGetMinVelocity(maxStepper);
         new->viSq = (minVi * minVi);
+    } else {
+        fix16_t junctionUnitVec[NR_AXIS];
+        fix16_t mag = F16(0);
+        for_each_axis(i) {
+            junctionUnitVec[i] = new->unit_vec[i] - prev->unit_vec[i];
+            mag = fix16_add(mag, fix16_sq(junctionUnitVec[i]));
+        }
+        mag = fix16_sqrt(mag);
+        for_each_axis(i) {
+            junctionUnitVec[i] = fix16_div(junctionUnitVec[i], mag);
+        }
+
+        // Limit acceleration by axis??
+        for_each_axis(i) {
+            if (new->unit_vec[i]) {
+                if (fix16_mul_int32(fix16_abs(new->unit_vec[i]),
+                                    (int32_t) new->a) > acc[i]) {
+                    new->a = (uint32_t)fix16_mul_int32(
+                        fix16_div(F16(1.0), fix16_abs(new->unit_vec[i])), (int32_t)acc[i]);
+                    accStepper = i;
+                }
+            }
+        }
+
+        // avoid div by 0
+        if (cosTheta < F16(-0.999)) {
+            cosTheta = F16(-0.999);
+        }
+        const fix16_t sinThetaDiv2 =
+            fix16_sqrt(fix16_mul(F16(0.5), fix16_sub(F16(1.0), cosTheta)));
+
+        // viSq = (new->a * ((0.02f * sinThetaDiv2) / (1.0f - sinThetaDiv2));
+        uint32_t viSq = (uint32_t)fix16_mul_int32(
+            fix16_div(fix16_mul(F16(0.02f), sinThetaDiv2),
+                      fix16_sub(F16(1.0), sinThetaDiv2)),
+            new->a);
+        dbgPrintf("visq %u\n", viSq);
+        viSq *= platformMotionStepsPerMMAxis[accStepper];
+        if (new->lenMM < F16(1) && cosTheta < F16(-0.7071067812)) {
+            const fix16_t theta = fix16_acos(cosTheta);
+            const uint32_t limit_sqr =
+                fix16_mul_int32(fix16_div(new->lenMM, theta), new->a);
+            dbgPrintf("sj %u < %u\n", limit_sqr, viSq);
+            if (limit_sqr < viSq)
+                viSq = limit_sqr;
+        }
+        const uint32_t prevCurVSqMin = min(prev->vSq, new->vSq);
+        dbgPrintf("lt %u < %u\n", viSq, prevCurVSqMin);
+        new->viSq = min(viSq, prevCurVSqMin);
     }
 
     if (stop) {
@@ -261,9 +311,10 @@ static const struct PlannerJob *findPrevMovePlan(void)
 }
 
 void plannerEnqueueMove(enum JobType k, const int32_t plan[NR_STEPPER],
-                   const fix16_t unit_vec[X_AND_Y],
-                   const uint32_t max_v[NR_STEPPER],
-                   const uint32_t acc[NR_STEPPER], fix16_t lenMM, bool stop)
+                        const fix16_t unit_vec[NR_AXIS],
+                        const uint32_t max_v[NR_STEPPER],
+                        const uint32_t acc[NR_STEPPER], fix16_t lenMM,
+                        bool stop)
 {
     const struct PlannerJob *prev = findPrevMovePlan();
     struct PlannerJob *tail = __plannerEnqueue(k);

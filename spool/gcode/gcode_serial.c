@@ -52,9 +52,9 @@ static void sendTempReport(struct TemperatureReport *pReport)
     char printBuffer[64];
 
     int len = snprintf(printBuffer, 64, " T:%d /%d B:%d /%d @:%d B@:%d\n",
-             pReport->extruders[0], pReport->extrudersTarget[0], pReport->bed,
-             pReport->bedTarget, pReport->extrudersTarget[0],
-             pReport->bedTarget);
+                       pReport->extruders[0], pReport->extrudersTarget[0],
+                       pReport->bed, pReport->bedTarget,
+                       pReport->extrudersTarget[0], pReport->bedTarget);
     platformSendResponse(printBuffer, len);
 }
 
@@ -110,15 +110,13 @@ portTASK_FUNCTION(gcodeSerialTask, pvParameters)
             case GcodeM101:
             case GcodeM103:
                 xQueueSend(MotionPlannerTaskQueue, &cmd, portMAX_DELAY);
-                waitAndRespond();
                 break;
             /* pretend ok, wait for sync */
-            case GcodeM107:
+            case GcodeM104:
             case GcodeM106:
+            case GcodeM107:
             case GcodeM108:
-            case GcodeM140:
-            case GcodeM104: {
-                platformSendResponse(OK, sizeof(OK) - 1);
+            case GcodeM140: {
                 xQueueSend(ThermalTaskQueue, &cmd, portMAX_DELAY);
                 syncCmd.seq.seqNumber = seqCounter++;
                 xQueueSend(MotionPlannerTaskQueue, &syncCmd, portMAX_DELAY);
@@ -131,19 +129,21 @@ portTASK_FUNCTION(gcodeSerialTask, pvParameters)
                 struct GcodeCommand syncCmd = { .kind = GcodeISRSync };
                 syncCmd.seq.seqNumber = seqCounter++;
                 xQueueSend(MotionPlannerTaskQueue, &syncCmd, portMAX_DELAY);
-                waitAndRespond();
                 break;
             }
             case GcodeM105:
                 xQueueSend(ThermalTaskQueue, &cmd, portMAX_DELAY);
-                waitAndRespond();
                 break;
             case GcodeM_IDGAF:
-                platformSendResponse(OK, sizeof(OK) - 1);
                 break;
             default:
                 panic();
                 break;
+            }
+            if (gcodeIsBlocking(cmd.kind)) {
+                waitAndRespond();
+            } else {
+                platformSendResponse(OK, strlen(OK));
             }
             continue;
         }

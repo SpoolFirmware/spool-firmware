@@ -30,9 +30,14 @@ static struct PrinterState currentState;
 #define lvlX1                             \
     (platformBedLevelingCorners[0].x_mm * \
      PLATFORM_MOTION_STEPS_PER_MM_AXIS(X_AXIS))
-#define lvlX2 (platformBedLevelingCorners[1].x_mm * PLATFORM_MOTION_STEPS_PER_MM_AXIS(X_AXIS))
-#define lvlY1 (platformBedLevelingCorners[0].y_mm * PLATFORM_MOTION_STEPS_PER_MM_AXIS(Y_AXIS))
-#define lvlY2 (platformBedLevelingCorners[1].y_mm * PLATFORM_MOTION_STEPS_PER_MM(Y_AXIS))
+#define lvlX2                             \
+    (platformBedLevelingCorners[1].x_mm * \
+     PLATFORM_MOTION_STEPS_PER_MM_AXIS(X_AXIS))
+#define lvlY1                             \
+    (platformBedLevelingCorners[0].y_mm * \
+     PLATFORM_MOTION_STEPS_PER_MM_AXIS(Y_AXIS))
+#define lvlY2 \
+    (platformBedLevelingCorners[1].y_mm * PLATFORM_MOTION_STEPS_PER_MM(Y_AXIS))
 
 static struct {
     /*
@@ -73,7 +78,7 @@ static inline void s_bedLevelingReset(void)
 
 static uint32_t s_scheduleHomeMove(enum JobType k,
                                    const int32_t plan[NR_STEPPER],
-                                   const fix16_t unitVec[X_AND_Y],
+                                   const fix16_t unitVec[NR_AXIS],
                                    const uint32_t maxV[NR_STEPPER],
                                    const uint32_t acc[NR_STEPPER], fix16_t len);
 
@@ -147,7 +152,8 @@ static void scheduleMoveTo(const struct PrinterMove state,
     const int32_t movementSteps[NR_AXIS] = { dx, dy, dz + dzLeveling, de };
     float movementMM[NR_AXIS];
     for_each_axis(i) {
-        movementMM[i] = (float)movementSteps[i] / platformMotionStepsPerMMAxis[i];
+        movementMM[i] =
+            (float)movementSteps[i] / platformMotionStepsPerMMAxis[i];
     }
 
     fix16_t unitVec[NR_AXIS];
@@ -272,7 +278,7 @@ static void scheduleHomeZ(void)
         home_z_move.z = 5 * platformMotionStepsPerMMAxis[Z_AXIS];
         scheduleMoveTo(home_z_move, homeVelocity);
     }
-    
+
     currentState.homedZ = true;
     currentState.z = 0;
     home_z_move.z = 5 * platformMotionStepsPerMMAxis[Z_AXIS];
@@ -438,7 +444,7 @@ static void enqueueAvailableGcode()
 {
     static bool commandAvailable = false;
     static struct GcodeCommand cmd;
-    static struct GcodeResponse resp = {0};
+    static struct GcodeResponse resp = { 0 };
     resp.respKind = ResponseOK;
     bool continuousMode = false;
 
@@ -459,7 +465,9 @@ static void enqueueAvailableGcode()
         if (!steppersEnabled && cmd.kind != GcodeG28 &&
             cmd.kind != GcodeISRSync) {
             commandAvailable = false;
-            xQueueSend(ResponseQueue, &resp, portMAX_DELAY);
+            if (gcodeIsBlocking(cmd.kind)) {
+                xQueueSend(ResponseQueue, &resp, portMAX_DELAY);
+            }
             return;
         }
 
@@ -546,7 +554,7 @@ static void enqueueAvailableGcode()
             break;
         }
         commandAvailable = false;
-        if (cmd.kind != GcodeISRSync) {
+        if (gcodeIsBlocking(cmd.kind)) {
             xQueueSend(ResponseQueue, &resp, portMAX_DELAY);
         }
     }
@@ -608,7 +616,7 @@ static bool s_executePlannerJobs(void)
 }
 
 uint32_t s_scheduleHomeMove(enum JobType k, const int32_t plan[NR_STEPPER],
-                            const fix16_t unitVec[X_AND_Y],
+                            const fix16_t unitVec[NR_AXIS],
                             const uint32_t maxV[NR_STEPPER],
                             const uint32_t acc[NR_STEPPER], fix16_t len)
 {

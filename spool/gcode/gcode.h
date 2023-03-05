@@ -31,6 +31,20 @@ enum GcodeKind {
     GcodeISRSync, // ISR synchronization with non-ISR
 };
 
+static inline bool gcodeIsBlocking(enum GcodeKind kind)
+{
+    switch (kind) {
+    case GcodeG28:
+    case GcodeG29:
+    case GcodeM105:
+    case GcodeM109:
+    case GcodeM190:
+        return true;
+    default:
+        return false;
+    }
+}
+
 enum GcodeResponseKind {
     ResponseOK,
     ResponseTemp,
@@ -70,7 +84,5 @@ struct GcodeResponse {
         struct TemperatureReport tempReport;
     };
 };
-
-
 
 #endif // GCODE_H_
