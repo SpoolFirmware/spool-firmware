@@ -48,6 +48,7 @@ extern const struct XYPositionMM platformBedLevelingCorners[2];
 extern const int32_t platformMotionLimits[];
 extern const bool platformMotionInvertStepper[];
 extern const int32_t platformMotionDefaultMaxVel[];
+extern const int32_t platformMotionMaxAccAxis[];
 extern const int32_t platformMotionDefaultAcc[];
 extern const int32_t platformMotionHomingVel[];
 extern const int32_t platformMotionHomingAcc[];

@@ -9,9 +9,11 @@ cc_test(
     name = "motion_test",
     size = "small",
     srcs = [
-        "core/magic_config.h",
+        "gcode/gcode.h",
         "gcode/gcode_parser.c",
         "gcode/gcode_parser.h",
+        "motion/motion.c",
+        "motion/motion.h",
         "motion/step_plan_ng.c",
         "motion/step_plan_ng.h",
         "test/motion/motion_test.c",
@@ -20,6 +22,8 @@ cc_test(
         "-Wconversion",
         "-Warith-conversion",
         "-Ispool",
+        "-Ispool/test",
+        "-Ispool/test/config",
     ],
     deps = [
         "//lib/fxp:lib",
@@ -32,7 +36,6 @@ cc_test(
     name = "step_plan_ng_test",
     size = "small",
     srcs = [
-        "core/magic_config.h",
         "motion/step_plan_ng.c",
         "motion/step_plan_ng.h",
         "test/motion/step_plan_ng_test.c",
@@ -41,6 +44,8 @@ cc_test(
         "-Wconversion",
         "-Warith-conversion",
         "-Ispool",
+        "-Ispool/test",
+        "-Ispool/test/config",
     ],
     deps = [
         "//lib/fxp:lib",

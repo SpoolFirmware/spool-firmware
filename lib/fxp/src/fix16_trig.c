@@ -7,6 +7,8 @@
 #endif
 #include "fix16.h"
 
+#define FIXMATH_NO_CACHE
+
 #if defined(FIXMATH_SIN_LUT)
 #include "fix16_trig_sin_lut.h"
 #elif !defined(FIXMATH_NO_CACHE)

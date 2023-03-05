@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <math.h>
+#include "lib/fix16/fix16.h"
 
 struct Move {
     fix16_t x;
