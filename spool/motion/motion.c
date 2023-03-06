@@ -23,16 +23,17 @@ void motionInit(void)
     plannerInit();
 }
 
-fix16_t vecUnit(const float a[NR_AXIS], fix16_t out[NR_AXIS])
+fix16_t vecUnit(const fix16_t vec[NR_AXIS], fix16_t unit_vec[NR_AXIS])
 {
     float accum = 0;
     for_each_axis(i) {
-        accum += a[i] * a[i];
+        const float componentFloat = fix16_to_float(vec[i]);
+        accum += componentFloat * componentFloat;
     }
     fix16_t len = fix16_from_float(sqrtf(accum));
     const fix16_t lenInverse = fix16_div(F16(1.0), len);
     for_each_axis(i) {
-        out[i] = fix16_mul(a[i], lenInverse);
+        unit_vec[i] = fix16_mul(vec[i], lenInverse);
     }
     return len;
 }

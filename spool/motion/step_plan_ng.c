@@ -102,14 +102,13 @@ static void populateBlock(const struct PlannerJob *prev, struct PlannerJob *new,
     }
 
     uint32_t v = (uint32_t)((float)new->steppers[maxStepper].x / timeEst);
-    new->vSq = v *v;
+    new->vSq = v * v;
 
     /* TODO correct for acceleration */
     new->a = acc[maxStepper];
     for_each_stepper(i) {
         if (new->steppers->x && acc[i] < new->a) {
-            const uint32_t maxPossible =
-                (uint32_t)(((float)acc[i]) * new->x / new->steppers[i].x);
+            const uint32_t maxPossible = (acc[i] * new->x / new->steppers[i].x);
             if (new->a > maxPossible) {
                 new->a = maxPossible;
                 accStepper = i;
@@ -140,12 +139,13 @@ static void populateBlock(const struct PlannerJob *prev, struct PlannerJob *new,
         }
 
         // Limit acceleration by axis??
+        int32_t jacc = new->a;
         for_each_axis(i) {
             if (new->unit_vec[i]) {
-                if (fix16_mul_int32(fix16_abs(new->unit_vec[i]),
-                                    (int32_t) new->a) > acc[i]) {
-                    new->a = (uint32_t)fix16_mul_int32(
-                        fix16_div(F16(1.0), fix16_abs(new->unit_vec[i])), (int32_t)acc[i]);
+                if (fix16_mul_int32(fix16_abs(new->unit_vec[i]), jacc) > (int32_t)acc[i]) {
+                    jacc = fix16_mul_int32(
+                        fix16_div(F16(1.0), fix16_abs(new->unit_vec[i])),
+                        (int32_t)acc[i]);
                     accStepper = i;
                 }
             }
@@ -157,24 +157,25 @@ static void populateBlock(const struct PlannerJob *prev, struct PlannerJob *new,
         }
         const fix16_t sinThetaDiv2 =
             fix16_sqrt(fix16_mul(F16(0.5), fix16_sub(F16(1.0), cosTheta)));
+        const float oneMinusSinThetaDiv2f =
+            fix16_to_float(fix16_sub(F16(1.0), sinThetaDiv2));
 
-        // viSq = (new->a * ((0.02f * sinThetaDiv2) / (1.0f - sinThetaDiv2));
-        uint32_t viSq = (uint32_t)fix16_mul_int32(
-            fix16_div(fix16_mul(F16(0.02f), sinThetaDiv2),
-                      fix16_sub(F16(1.0), sinThetaDiv2)),
-            new->a);
-        dbgPrintf("visq %u\n", viSq);
+        // viSq = (new->a * ((0.05f * sinThetaDiv2) / (1.0f - sinThetaDiv2));
+        uint32_t viSq =
+            (uint32_t)(fix16_mul_int32(fix16_mul(F16(0.05f), sinThetaDiv2),
+                                       jacc) /
+                       oneMinusSinThetaDiv2f);
         viSq *= platformMotionStepsPerMMAxis[accStepper];
-        if (new->lenMM < F16(1) && cosTheta < F16(-0.7071067812)) {
+
+        // Special treatment to small segments < 1mm.
+        if (new->lenMM < F16(1) && cosTheta < JUNCTION_SMOOTHING_THRES) {
             const fix16_t theta = fix16_acos(cosTheta);
             const uint32_t limit_sqr =
-                fix16_mul_int32(fix16_div(new->lenMM, theta), new->a);
-            dbgPrintf("sj %u < %u\n", limit_sqr, viSq);
+                fix16_mul_int32(fix16_div(new->lenMM, theta), jacc) * platformMotionStepsPerMMAxis[accStepper];
             if (limit_sqr < viSq)
                 viSq = limit_sqr;
         }
         const uint32_t prevCurVSqMin = min(prev->vSq, new->vSq);
-        dbgPrintf("lt %u < %u\n", viSq, prevCurVSqMin);
         new->viSq = min(viSq, prevCurVSqMin);
     }
 
