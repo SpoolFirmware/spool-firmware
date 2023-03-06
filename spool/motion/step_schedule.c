@@ -148,12 +148,11 @@ static void scheduleMoveTo(const struct PrinterMove state,
     }
 
     int32_t plan[NR_STEPPER];
-    /* TODO fix fixed z inversion */
     const int32_t movementSteps[NR_AXIS] = { dx, dy, dz + dzLeveling, de };
-    float movementMM[NR_AXIS];
+    fix16_t movementMM[NR_AXIS];
     for_each_axis(i) {
         movementMM[i] =
-            (float)movementSteps[i] / platformMotionStepsPerMMAxis[i];
+            F16((float)movementSteps[i] / platformMotionStepsPerMMAxis[i]);
     }
 
     fix16_t unitVec[NR_AXIS];
@@ -184,9 +183,9 @@ static void scheduleHomeX(void)
     };
     int32_t plan[NR_STEPPER];
     fix16_t unitVec[NR_AXIS];
-    float movementMM[NR_AXIS];
+    fix16_t movementMM[NR_AXIS];
     for_each_axis(i) {
-        movementMM[i] = (float)home_x[i] / platformMotionStepsPerMMAxis[i];
+        movementMM[i] = F16((float)home_x[i] / platformMotionStepsPerMMAxis[i]);
     }
 
     fix16_t lenMM;
@@ -208,9 +207,9 @@ static void scheduleHomeY(void)
     };
     int32_t plan[NR_STEPPER];
     fix16_t unitVec[NR_AXIS];
-    float movementMM[NR_AXIS];
+    fix16_t movementMM[NR_AXIS];
     for_each_axis(i) {
-        movementMM[i] = (float)home_y[i] / platformMotionStepsPerMMAxis[i];
+        movementMM[i] = F16((float)home_y[i] / platformMotionStepsPerMMAxis[i]);
     }
 
     fix16_t lenMM;
@@ -238,9 +237,9 @@ static uint32_t s_scheduleZMeasure(uint32_t velSteps)
 
     int32_t plan[NR_STEPPER];
     fix16_t unitVec[NR_AXIS];
-    float movementMM[NR_AXIS];
+    fix16_t movementMM[NR_AXIS];
     for_each_axis(i) {
-        movementMM[i] = (float)home_z[i] / platformMotionStepsPerMMAxis[i];
+        movementMM[i] = F16((float)home_z[i] / platformMotionStepsPerMMAxis[i]);
     }
 
     fix16_t lenMM;
