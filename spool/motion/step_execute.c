@@ -98,7 +98,7 @@ __attribute__((noinline)) uint16_t executeStep(uint16_t ticksElapsed)
                 }
             }
         }
-        platformStepStepper(stepperMask);
+        platformStepStepper(stepperMask & 0b111);
 
         sIterationCompleted += 1;
         if (sIterationCompleted >= job.totalStepEvents) {

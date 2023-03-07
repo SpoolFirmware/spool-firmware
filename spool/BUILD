@@ -41,8 +41,9 @@ cc_test(
         "test/motion/step_plan_ng_test.c",
     ],
     copts = [
-        "-Wconversion",
-        "-Warith-conversion",
+        "-Werror=conversion",
+        "-Werror=arith-conversion",
+        "-Wpointer-sign",
         "-Ispool",
         "-Ispool/test",
         "-Ispool/test/config",

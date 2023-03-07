@@ -52,7 +52,8 @@ struct PlannerJob {
             uint32_t accelerationX;
             uint32_t decelerationX;
             //! acceleration in steps?
-            uint32_t a;
+            int32_t accMM;
+            int32_t accSteps;
             uint32_t viSq;
             uint32_t vSq;
             uint32_t vfSq;
@@ -99,4 +100,4 @@ void plannerEnqueueNotify(enum JobType k, TaskHandle_t notify, uint32_t seq);
 void plannerEnqueueMove(enum JobType k, const int32_t plan[NR_STEPPER],
                    const fix16_t unit_vec[NR_AXIS],
                    const uint32_t max_v[NR_STEPPER],
-                   const uint32_t acc[NR_STEPPER], fix16_t len, bool stop);
+                   const int32_t acc[NR_STEPPER], fix16_t len, bool stop);

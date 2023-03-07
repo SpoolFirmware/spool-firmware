@@ -80,13 +80,13 @@ static uint32_t s_scheduleHomeMove(enum JobType k,
                                    const int32_t plan[NR_STEPPER],
                                    const fix16_t unitVec[NR_AXIS],
                                    const uint32_t maxV[NR_STEPPER],
-                                   const uint32_t acc[NR_STEPPER], fix16_t len);
+                                   const int32_t acc[NR_STEPPER], fix16_t len);
 
 TaskHandle_t stepScheduleTaskHandle;
 
-static uint32_t moveAcceleration[NR_STEPPER];
+static int32_t moveAcceleration[NR_STEPPER];
 static uint32_t homeVelocity[NR_STEPPER];
-static uint32_t homeAcceleration[NR_STEPPER];
+static int32_t homeAcceleration[NR_STEPPER];
 
 static bool extrudersEnabled = true;
 static bool steppersEnabled = false;
@@ -106,11 +106,11 @@ void motionPlannerTaskInit(void)
         panic();
     }
     for_each_stepper(i)
-        moveAcceleration[i] = motionGetDefaultAcceleration(i);
+        moveAcceleration[i] = platformMotionDefaultAcc[i];
     for_each_stepper(i)
         homeVelocity[i] = motionGetHomingVelocity(i);
     for_each_stepper(i)
-        homeAcceleration[i] = motionGetHomingAcceleration(i);
+        homeAcceleration[i] = platformMotionHomingAcc[i];
 }
 
 static void scheduleMoveTo(const struct PrinterMove state,
@@ -583,7 +583,7 @@ static void sendStepperJob(const struct PlannerJob *j)
         job.entry_steps_s = (uint32_t)sqrtf((float)j->viSq);
         job.cruise_steps_s = (uint32_t)sqrtf((float)j->vSq);
         job.exit_steps_s = (uint32_t)sqrtf((float)j->vfSq);
-        job.accel_steps_s2 = j->a;
+        job.accel_steps_s2 = j->accSteps;
 
         job.stepDirs = j->stepDirs;
         break;
@@ -617,7 +617,7 @@ static bool s_executePlannerJobs(void)
 uint32_t s_scheduleHomeMove(enum JobType k, const int32_t plan[NR_STEPPER],
                             const fix16_t unitVec[NR_AXIS],
                             const uint32_t maxV[NR_STEPPER],
-                            const uint32_t acc[NR_STEPPER], fix16_t len)
+                            const int32_t acc[NR_STEPPER], fix16_t len)
 {
     uint32_t stepsMoved = 0;
     xTaskNotifyStateClear(NULL);
