@@ -107,7 +107,7 @@ static void populateBlock(const struct PlannerJob *prev, struct PlannerJob *new,
     /* TODO correct for acceleration */
     new->a = acc[maxStepper];
     for_each_stepper(i) {
-        if (new->steppers->x && acc[i] < new->a) {
+        if ((new->steppers[i].x > 0) && (acc[i] < new->a)) {
             const uint32_t maxPossible = (acc[i] * new->x / new->steppers[i].x);
             if (new->a > maxPossible) {
                 new->a = maxPossible;
@@ -123,7 +123,6 @@ static void populateBlock(const struct PlannerJob *prev, struct PlannerJob *new,
         new->viSq = 0;
         new->vfSq = 0;
         stop = true;
-        dbgPrintf("e\n");
     } else if (cosTheta > JUNCTION_STOP_VEL_THRES) {
         // Opposite direction, almost stop
         const int32_t minVi = motionGetMinVelocity(maxStepper);
@@ -183,7 +182,6 @@ static void populateBlock(const struct PlannerJob *prev, struct PlannerJob *new,
 
     if (stop) {
         calcReverse(new);
-        dbgPrintf("v2 = %u", new->vSq);
         return;
     }
 
@@ -200,9 +198,10 @@ static void populateBlock(const struct PlannerJob *prev, struct PlannerJob *new,
 /* curr needs to be a move */
 static void calcReverse(struct PlannerJob *curr)
 {
-    uint32_t accelerationX = (curr->vSq - curr->viSq) / (2 * curr->a);
-    uint32_t decelerationX = (curr->vSq - curr->vfSq) / (2 * curr->a);
-    uint32_t sum = accelerationX + decelerationX;
+    WARN_ON(curr->vSq == 0);
+    int32_t accelerationX = (curr->vSq - curr->viSq) / (2 * curr->a);
+    int32_t decelerationX = (curr->vSq - curr->vfSq) / (2 * curr->a);
+    int32_t sum = accelerationX + decelerationX;
 
     if (curr->x < sum) {
         int32_t direct = (int32_t)accelerationX - (int32_t)decelerationX;
