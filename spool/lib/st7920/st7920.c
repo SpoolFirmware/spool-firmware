@@ -29,7 +29,7 @@ static void st7920SendByteRaw(const struct St7920 *drv, uint8_t b)
         b & 0b11110000, /* upper 4 bits */
         b << 4, /* lower 4 bits */
     };
-    spiSendCmd(&drv->spi, spiCmd, ARRAY_SIZE(spiCmd));
+    swSpiSendCmd(&drv->spi, spiCmd, ARRAY_SIZE(spiCmd));
 }
 
 static void st7920SendByte(const struct St7920 *drv, enum St7920RS rs,
@@ -41,7 +41,7 @@ static void st7920SendByte(const struct St7920 *drv, enum St7920RS rs,
         b & 0b11110000, /* upper 4 bits */
         b << 4, /* lower 4 bits */
     };
-    spiSendCmd(&drv->spi, spiCmd, ARRAY_SIZE(spiCmd));
+    swSpiSendCmd(&drv->spi, spiCmd, ARRAY_SIZE(spiCmd));
 }
 
 // static void st7920DisplayClear(const struct St7920 *drv)
@@ -76,7 +76,7 @@ void st7920WriteTile(const struct St7920 *drv, uint8_t x0, uint8_t x1,
     st7920SendByte(drv, St7920InstructionWrite, 0x80 | y);
     st7920SendByte(drv, St7920InstructionWrite, 0x80 | tileStart);
     uint8_t dataWrite = 0xFA;
-    spiSendCmd(&drv->spi, &dataWrite, 1);
+    swSpiSendCmd(&drv->spi, &dataWrite, 1);
     for (int i = tileStart; i <= tileEnd; ++i, ++bufTileStart) {
         /* each tile is two bytes*/
         uint8_t byteIdx = bufTileStart * 2;

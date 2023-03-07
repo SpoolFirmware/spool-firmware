@@ -283,7 +283,7 @@ void platformPostInit(void)
     communicationPostInit();
     thermalPostInit();
 
-    spiInit(&dispSpiSw, dispSpiSwSclk, dispSpiSwCs, dispSpiSwMosi);
+    swSpiInit(&dispSpiSw, dispSpiSwSclk, dispSpiSwCs, dispSpiSwMosi);
     st7920Init(&st7920, &dispSpiSw);
     uiSt7920Init(&st7920);
 }
