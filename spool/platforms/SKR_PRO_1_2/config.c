@@ -7,7 +7,7 @@ const enum DisplayKind platformFeatureDisplay = DisplayKindSt7920;
 const bool platformFeatureBedLeveling = true;
 const enum KinematicKind platformFeatureKinematic = KinematicKindCoreXY;
 
-const float platformFeatureZOffset = 1.1;
+const float platformFeatureZOffset = 1.0;
 const struct XYPositionMM platformFeatureZHomingPos = {
     .x_mm = 30,
     .y_mm = 30,
@@ -40,16 +40,16 @@ const int32_t platformMotionDefaultMaxVel[] = {
 };
 
 const int32_t platformMotionMaxAccAxis[] = {
-    1000,
-    1000,
-    50,
+    1500,
+    1500,
+    300,
     1000,
 };
 
 const int32_t platformMotionDefaultAcc[] = {
-    1000,
-    1000,
-    50,
+    1500,
+    1500,
+    300,
     1000,
 };
 const int32_t platformMotionHomingVel[] = {
@@ -61,7 +61,7 @@ const int32_t platformMotionHomingVel[] = {
 const int32_t platformMotionHomingAcc[] = {
     800,
     800,
-    500,
+    300,
     0,
 };
 const int32_t platformMotionStepsPerMM[] = {
