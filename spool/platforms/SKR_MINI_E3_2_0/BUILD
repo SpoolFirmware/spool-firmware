@@ -47,6 +47,9 @@ cc_library(
         ":config",
         "//spool/platforms/common:lib",
         "//spool/lib/thermistor:lib",
+        "//spool/lib/st7920:lib",
+        "//spool/lib/ui/st7920:lib",
+        
         "//lib/dbg:lib",
         "//lib/crt/stm32:stm32f1xx",
         "//lib/hal/stm32/stm32f103:lib",

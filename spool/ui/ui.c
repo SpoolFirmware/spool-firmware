@@ -160,7 +160,7 @@ void uiInit(void)
     if ((uiSem = xSemaphoreCreateMutex()) == NULL) {
         panic();
     }
-    if (xTaskCreate(uiTask, "ui", 720, NULL, tskIDLE_PRIORITY, &uiTaskHandle) !=
+    if (xTaskCreate(uiTask, "ui", 650, NULL, tskIDLE_PRIORITY, &uiTaskHandle) !=
         pdTRUE) {
         panic();
     }

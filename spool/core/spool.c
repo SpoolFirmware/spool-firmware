@@ -135,13 +135,14 @@ void vApplicationDaemonTaskStartupHook(void) {
     if (PLATFORM_FEATURE_ENABLED(Display)) {
         uiInit();
     }
+    
     if (platformGetSDSPI()) {
         int8_t status;
         status = sd_spi_init();
         dbgPrintf("sd_spi_init = %d\n", status);
         if (status == SD_ERR_OK) {
-            sd_spi_read(0, buffer, 512, 0);
-            hexdump(buffer, 512);
+            // sd_spi_read(0, buffer, 512, 0);
+            // hexdump(buffer, 512);
         }
     }
 

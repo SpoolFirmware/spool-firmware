@@ -11,7 +11,7 @@ static status_t peekCurrChar(struct Tokenizer *s, char *out)
         return StatusOk;
     }
     char c;
-    ASSERT_OR_RETURN(receiveChar(&c));
+    RETURN_IF_ERROR(receiveChar(&c));
     s->currChar = c;
     s->hasCurrChar = true;
     *out = c;
@@ -40,7 +40,7 @@ static status_t nextChar(struct Tokenizer *s, char *out)
 
     s->hasCurrChar = false;
     s->currChar = '\0';
-    ASSERT_OR_RETURN(receiveChar(&c));
+    RETURN_IF_ERROR(receiveChar(&c));
     s->currChar = c;
     s->hasCurrChar = true;
     *out = c;
@@ -94,9 +94,9 @@ static status_t skipWhitespaces(struct Tokenizer *s)
 {
     char c;
 
-    ASSERT_OR_RETURN(peekCurrChar(s, &c));
+    RETURN_IF_ERROR(peekCurrChar(s, &c));
     while (isWhitespace(c)) {
-        ASSERT_OR_RETURN(nextChar(s, &c));
+        RETURN_IF_ERROR(nextChar(s, &c));
     }
 
     return StatusOk;
@@ -109,9 +109,9 @@ static status_t skipUntilNewline(struct Tokenizer *s)
 {
     char c;
 
-    ASSERT_OR_RETURN(peekCurrChar(s, &c));
+    RETURN_IF_ERROR(peekCurrChar(s, &c));
     while (!isNewline(c)) {
-        ASSERT_OR_RETURN(nextChar(s, &c));
+        RETURN_IF_ERROR(nextChar(s, &c));
     }
 
     return StatusOk;
@@ -227,10 +227,10 @@ static tok_fun_t tokenize, dec, letter, comment, newline;
 static status_t dec(struct Tokenizer *s, struct Token *t,
                     struct TokenizerState *next)
 {
-    ASSERT_OR_RETURN(takeUntilSeparator(s));
+    RETURN_IF_ERROR(takeUntilSeparator(s));
     int32_t res;
     bool isInt32;
-    ASSERT_OR_RETURN(fix16OrInt32FromStr(s->scratchBuf, &res, &isInt32));
+    RETURN_IF_ERROR(fix16OrInt32FromStr(s->scratchBuf, &res, &isInt32));
 
     memset(s->scratchBuf, 0, sizeof(s->scratchBuf));
 
@@ -248,7 +248,7 @@ static status_t letter(struct Tokenizer *s, struct Token *t,
                        struct TokenizerState *next)
 {
     char c;
-    ASSERT_OR_RETURN(peekCurrChar(s, &c));
+    RETURN_IF_ERROR(peekCurrChar(s, &c));
 
     switch (lowerCase(c)) {
     case 'e':
@@ -288,7 +288,7 @@ static status_t letter(struct Tokenizer *s, struct Token *t,
         dbgPrintf("Unknown token %c\n", lowerCase(c));
         return StatusInvalidGcodeToken;
     }
-    ASSERT_OR_RETURN(eatCurrChar(s));
+    RETURN_IF_ERROR(eatCurrChar(s));
     return StatusOk;
 }
 
@@ -296,14 +296,14 @@ static status_t newline(struct Tokenizer *s, struct Token *t,
                         struct TokenizerState *next)
 {
     t->kind = TokenNewline;
-    ASSERT_OR_RETURN(eatCurrChar(s));
+    RETURN_IF_ERROR(eatCurrChar(s));
     return StatusOk;
 }
 
 static status_t comment(struct Tokenizer *s, struct Token *t,
                         struct TokenizerState *next)
 {
-    ASSERT_OR_RETURN(skipUntilNewline(s));
+    RETURN_IF_ERROR(skipUntilNewline(s));
     next->f = tokenize;
     return StatusAgain;
 }
@@ -313,8 +313,8 @@ static status_t tokenize(struct Tokenizer *s, struct Token *t,
 {
     char c;
 
-    ASSERT_OR_RETURN(skipWhitespaces(s));
-    ASSERT_OR_RETURN(peekCurrChar(s, &c));
+    RETURN_IF_ERROR(skipWhitespaces(s));
+    RETURN_IF_ERROR(peekCurrChar(s, &c));
 
     if (isFix16Start(c)) {
         next->f = dec;
@@ -397,12 +397,12 @@ static status_t assertAndEatNumber(struct GcodeParser *s, struct Token *out)
 {
     struct Token curr;
 
-    ASSERT_OR_RETURN(peekToken(s, &curr));
+    RETURN_IF_ERROR(peekToken(s, &curr));
     if (!(curr.kind == TokenFix16 || curr.kind == TokenInt32)) {
         PR_WARN("ate token %d instead of number\n", curr.kind);
         return StatusInvalidGcodeCommand;
     }
-    ASSERT_OR_RETURN(eatToken(s));
+    RETURN_IF_ERROR(eatToken(s));
     if (out) {
         *out = curr;
     }
@@ -467,7 +467,7 @@ static status_t parseFan(struct GcodeParser *s, struct GcodeCommand *cmd,
     if (err == StatusGcodeEof) {
         return StatusOk;
     }
-    ASSERT_OR_RETURN(err);
+    RETURN_IF_ERROR(err);
 
     fix16_t *target;
 
@@ -479,9 +479,9 @@ static status_t parseFan(struct GcodeParser *s, struct GcodeCommand *cmd,
         return StatusOk;
     }
 
-    ASSERT_OR_RETURN(eatToken(s));
-    ASSERT_OR_RETURN(assertAndEatNumber(s, &t));
-    ASSERT_OR_RETURN(assertGetFix16(&t, target));
+    RETURN_IF_ERROR(eatToken(s));
+    RETURN_IF_ERROR(assertAndEatNumber(s, &t));
+    RETURN_IF_ERROR(assertGetFix16(&t, target));
 
     next->f = parseFan;
     return StatusAgain;
@@ -498,7 +498,7 @@ static status_t parseTemperature(struct GcodeParser *s,
     if (err == StatusGcodeEof) {
         return StatusOk;
     }
-    ASSERT_OR_RETURN(err);
+    RETURN_IF_ERROR(err);
 
     fix16_t *target;
 
@@ -516,10 +516,10 @@ static status_t parseTemperature(struct GcodeParser *s,
         return StatusOk;
     }
 
-    ASSERT_OR_RETURN(eatToken(s));
+    RETURN_IF_ERROR(eatToken(s));
     if (target) {
-        ASSERT_OR_RETURN(assertAndEatNumber(s, &t));
-        ASSERT_OR_RETURN(assertGetFix16(&t, target));
+        RETURN_IF_ERROR(assertAndEatNumber(s, &t));
+        RETURN_IF_ERROR(assertGetFix16(&t, target));
     } else {
         peekToken(s, &t);
         eatToken(s);
@@ -545,7 +545,7 @@ static status_t parseXYZEF(struct GcodeParser *s, struct GcodeCommand *cmd,
     if (err == StatusGcodeEof) {
         return StatusOk;
     }
-    ASSERT_OR_RETURN(err);
+    RETURN_IF_ERROR(err);
     switch (t.kind) {
     case TokenX:
         target = &cmd->xyzef.x;
@@ -568,15 +568,15 @@ static status_t parseXYZEF(struct GcodeParser *s, struct GcodeCommand *cmd,
         cmd->xyzef.fSet = true;
         break;
     case TokenNewline:
-        ASSERT_OR_RETURN(eatToken(s));
+        RETURN_IF_ERROR(eatToken(s));
         return StatusOk;
     default:
         return StatusOk;
     }
 
-    ASSERT_OR_RETURN(eatToken(s));
-    ASSERT_OR_RETURN(assertAndEatNumber(s, &t));
-    ASSERT_OR_RETURN(assertGetFix16(&t, target));
+    RETURN_IF_ERROR(eatToken(s));
+    RETURN_IF_ERROR(assertAndEatNumber(s, &t));
+    RETURN_IF_ERROR(assertGetFix16(&t, target));
     next->f = parseXYZEF;
     return StatusAgain;
 }
@@ -586,7 +586,7 @@ static status_t parseCmdG(struct GcodeParser *s, struct GcodeCommand *cmd,
 {
     struct Token t;
 
-    ASSERT_OR_RETURN(assertAndEatNumber(s, &t));
+    RETURN_IF_ERROR(assertAndEatNumber(s, &t));
     if (t.kind != TokenInt32) {
         PR_WARN("G called with fix16 %d\n", t.fix16);
         return StatusInvalidGcodeCommand;
@@ -630,7 +630,7 @@ static status_t parseCmdM(struct GcodeParser *s, struct GcodeCommand *cmd,
 {
     struct Token t;
 
-    ASSERT_OR_RETURN(assertAndEatNumber(s, &t));
+    RETURN_IF_ERROR(assertAndEatNumber(s, &t));
     if (t.kind != TokenInt32) {
         PR_WARN("G called with fix16 %d\n", t.fix16);
         return StatusInvalidGcodeCommand;
@@ -687,7 +687,7 @@ static status_t parseCmdM(struct GcodeParser *s, struct GcodeCommand *cmd,
     case 111:
     case 115:
         do {
-            ASSERT_OR_RETURN(peekToken(s, &t));
+            RETURN_IF_ERROR(peekToken(s, &t));
             eatToken(s);
         } while (t.kind != TokenNewline);
         cmd->kind = GcodeM_IDGAF;
@@ -703,24 +703,24 @@ static status_t _parseGcode(struct GcodeParser *s, struct GcodeCommand *cmd,
                             struct ParserState *next)
 {
     struct Token t;
-    ASSERT_OR_RETURN(peekToken(s, &t));
+    RETURN_IF_ERROR(peekToken(s, &t));
 
     switch (t.kind) {
     case TokenN:
-        ASSERT_OR_RETURN(eatToken(s));
-        ASSERT_OR_RETURN(assertAndEatNumber(s, &t));
+        RETURN_IF_ERROR(eatToken(s));
+        RETURN_IF_ERROR(assertAndEatNumber(s, &t));
         next->f = _parseGcode;
         return StatusAgain;
     case TokenG:
-        ASSERT_OR_RETURN(eatToken(s));
+        RETURN_IF_ERROR(eatToken(s));
         next->f = parseCmdG;
         return StatusAgain;
     case TokenM:
-        ASSERT_OR_RETURN(eatToken(s));
+        RETURN_IF_ERROR(eatToken(s));
         next->f = parseCmdM;
         return StatusAgain;
     case TokenNewline:
-        ASSERT_OR_RETURN(eatToken(s));
+        RETURN_IF_ERROR(eatToken(s));
         next->f = _parseGcode;
         return StatusAgain;
     default:

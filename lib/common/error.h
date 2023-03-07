@@ -33,7 +33,7 @@ typedef enum {
     } else {                                \
     }
 
-#define _ASSERT_OR_STATEMENT(expr, stmt) \
+#define _STATEMENT_IF_ERROR(expr, stmt) \
     do {                                 \
         status_t _err = (expr);          \
         if (_err != StatusOk)            \
@@ -46,15 +46,15 @@ void __warn(const char *file, int line, const char *err);
 
 void __warn_on_err(const char *file, int line, status_t err);
 
-#define ASSERT_OR_GOTO(expr, l) _ASSERT_OR_STATEMENT(expr, goto l)
+#define GOTO_IF_ERROR(expr, l) _STATEMENT_IF_ERROR(expr, goto l)
 
 #define ASSIGN_OR_GOTO(x, expr, l) _ASSIGN_OR_STATEMENT(x, expr, goto l)
 
 #define DEFINE_OR_GOTO(x, expr, l) _DEFINE_OR_STATEMENT(x, expr, goto l)
 
-#define ASSERT_OR_RETURN(expr) _ASSERT_OR_STATEMENT(expr, return _err)
+#define RETURN_IF_ERROR(expr) _STATEMENT_IF_ERROR(expr, return _err)
 
-#define ASSERT_OR_PANIC(expr) _ASSERT_OR_STATEMENT(expr, panic())
+#define PANIC_IF_ERROR(expr) _STATEMENT_IF_ERROR(expr, panic())
 
 #define ASSIGN_OR_RETURN(x, expr) _ASSIGN_OR_STATEMENT(x, expr, return x)
 
@@ -90,13 +90,11 @@ void __warn_on_err(const char *file, int line, status_t err);
 
 #define __ASSERT_GE0(x) x >= 0
 
-#define ASSERT_EXPR(name, expr, assertion) \
+#define WARN_IF_ERROR(expr, assertion) \
     ({                                     \
-        typeof(expr) name = expr;          \
-        WARN_ON(!(assertion(name)));       \
-        name;                              \
+        typeof(expr) __assert_val = expr;          \
+        WARN_ON(!(assertion(__assert_val)));       \
+        __assert_val;                              \
     })
-
-#define ASSERT_GE0(x) ASSERT_EXPR(__assert_val, x, __ASSERT_GE0)
 
 #define STATIC_ASSERT(x) _Static_assert(x, #x)
