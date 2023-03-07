@@ -15,7 +15,7 @@ void motionInit(void)
         panic();
     }
     for_each_stepper(i) {
-        motionMaxVelSteps[i] = (int32_t)platformMotionDefaultMaxVel[i] *
+        motionMaxVelSteps[i] = (int32_t)platformMotionDefaultMaxVel[i] / 2 *
                           platformMotionStepsPerMM[i];
     }
     platformDisableStepper(0xFF);

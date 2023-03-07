@@ -121,7 +121,9 @@ static void populateBlock(const struct PlannerJob *prev, struct PlannerJob *new,
 
     if (new->type != StepperJobRun || prev == &empty) {
         new->viSq = 0;
+        new->vfSq = 0;
         stop = true;
+        dbgPrintf("e\n");
     } else if (cosTheta > JUNCTION_STOP_VEL_THRES) {
         // Opposite direction, almost stop
         const int32_t minVi = motionGetMinVelocity(maxStepper);
@@ -181,6 +183,7 @@ static void populateBlock(const struct PlannerJob *prev, struct PlannerJob *new,
 
     if (stop) {
         calcReverse(new);
+        dbgPrintf("v2 = %u", new->vSq);
         return;
     }
 

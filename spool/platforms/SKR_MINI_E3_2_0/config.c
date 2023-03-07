@@ -15,7 +15,7 @@ const struct XYPositionMM platformFeatureZHomingPos = {
 
 const struct XYPositionMM platformBedLevelingCorners[2] = {
     {.x_mm = 60, .y_mm = 40},
-    {.x_mm = 160, .y_mm = 190},
+    {.x_mm = 220, .y_mm = 190},
 };
 
 const int32_t platformMotionLimits[] = {

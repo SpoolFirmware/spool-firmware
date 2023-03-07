@@ -33,9 +33,9 @@ const bool platformMotionInvertStepper[] = {
 };
 
 const int32_t platformMotionDefaultMaxVel[] = {
-    120,
-    120,
-    5,
+    200,
+    200,
+    10,
     35,
 };
 
@@ -55,7 +55,7 @@ const int32_t platformMotionDefaultAcc[] = {
 const int32_t platformMotionHomingVel[] = {
     50,
     50,
-    5,
+    8,
     0,
 };
 const int32_t platformMotionHomingAcc[] = {
