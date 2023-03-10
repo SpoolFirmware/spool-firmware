@@ -53,6 +53,8 @@ extern const int32_t platformMotionDefaultAcc[];
 extern const int32_t platformMotionHomingVel[];
 extern const int32_t platformMotionHomingAcc[];
 
+extern const fix16_t platformJunctionDeviation; 
+
 /* Steps, TODO per stepper/per-axis steps, it doesn't make sense */
 extern const int32_t platformMotionStepsPerMM[];
 extern const int32_t platformMotionStepsPerMMAxis[];

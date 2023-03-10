@@ -83,6 +83,7 @@ static void populateBlock(const struct PlannerJob *prev, struct PlannerJob *new,
             new->stepDirs |= BIT(i);
         new->steppers[i].x = (uint32_t)abs(plan[i]);
     }
+
     for_each_stepper(i) {
         struct PlannerBlock *s = &new->steppers[i];
         if (max_v[i] != 0) {
@@ -100,13 +101,14 @@ static void populateBlock(const struct PlannerJob *prev, struct PlannerJob *new,
     }
 
     uint32_t v = (uint32_t)((float)new->steppers[maxStepper].x / timeEst);
-    new->vSq = v * v;
+    new->vSq = v *v;
 
     /* TODO correct for acceleration */
     new->accMM = accMM[maxStepper];
     for_each_stepper(i) {
         if ((new->steppers[i].x > 0) && (accMM[i] < new->accMM)) {
-            const int32_t maxPossible = (accMM[i] * new->x / new->steppers[i].x);
+            const int32_t maxPossible =
+                (accMM[i] * new->x / new->steppers[i].x);
             if (new->accMM > maxPossible) {
                 new->accMM = maxPossible;
             }
@@ -140,7 +142,8 @@ static void populateBlock(const struct PlannerJob *prev, struct PlannerJob *new,
         int32_t jaccMMs2 = new->accMM;
         for_each_axis(i) {
             if (new->unit_vec[i]) {
-                if (fix16_mul_int32(fix16_abs(new->unit_vec[i]), jaccMMs2) > (int32_t)accMM[i]) {
+                if (fix16_mul_int32(fix16_abs(new->unit_vec[i]), jaccMMs2) >
+                    (int32_t)accMM[i]) {
                     jaccMMs2 = fix16_mul_int32(
                         fix16_div(F16(1.0), fix16_abs(new->unit_vec[i])),
                         (int32_t)accMM[i]);
@@ -159,17 +162,20 @@ static void populateBlock(const struct PlannerJob *prev, struct PlannerJob *new,
 
         // viSq = (new->a * ((0.05f * sinThetaDiv2) / (1.0f - sinThetaDiv2));
         uint32_t viSq =
-            (uint32_t)(fix16_mul_int32(fix16_mul(F16(0.05f), sinThetaDiv2),
+            (uint32_t)(fix16_mul_int32(fix16_mul(platformJunctionDeviation, sinThetaDiv2),
                                        jaccMMs2) /
                        oneMinusSinThetaDiv2f);
-        viSq *= platformMotionStepsPerMMAxis[maxStepper] * platformMotionStepsPerMMAxis[maxStepper];
+        viSq *= platformMotionStepsPerMMAxis[maxStepper] *
+                platformMotionStepsPerMMAxis[maxStepper];
 
         // Special treatment to small segments < 1mm.
         if (new->lenMM < F16(1) && cosTheta < JUNCTION_SMOOTHING_THRES) {
             const fix16_t theta = fix16_acos(cosTheta);
             const uint32_t limit_sqr =
-                fix16_mul_int32(fix16_div(new->lenMM, theta), jaccMMs2) * platformMotionStepsPerMMAxis[maxStepper] * platformMotionStepsPerMMAxis[maxStepper];
-            if (limit_sqr < viSq) {
+                fix16_mul_int32(fix16_div(new->lenMM, theta), jaccMMs2) *
+                platformMotionStepsPerMMAxis[maxStepper] *
+                platformMotionStepsPerMMAxis[maxStepper];
+            if (limit_sqr < viSq)
                 viSq = limit_sqr;
             }
         }
@@ -177,7 +183,7 @@ static void populateBlock(const struct PlannerJob *prev, struct PlannerJob *new,
         new->viSq = min(viSq, prevCurVSqMin);
     }
 
-    new->accSteps = new->accMM * platformMotionStepsPerMM[maxStepper];
+    new->accSteps = new->accMM *platformMotionStepsPerMM[maxStepper];
 
     if (stop) {
         calcReverse(new);
@@ -215,9 +221,9 @@ static void calcReverse(struct PlannerJob *curr)
             curr->decelerationX = curr->x - curr->accelerationX;
             curr->vSq = curr->accelerationX * 2 * curr->accSteps + curr->viSq;
             /* here, due to integer math, vfSq may dip slightly below 0*/
-            curr->vfSq =
-                (uint32_t)max(0, -(int32_t)(curr->decelerationX * 2 * curr->accSteps) +
-                                     (int32_t)curr->vSq);
+            curr->vfSq = (uint32_t)max(
+                0, -(int32_t)(curr->decelerationX * 2 * curr->accSteps) +
+                       (int32_t)curr->vSq);
         }
     } else {
         curr->accelerationX = accelerationX;
@@ -315,8 +321,7 @@ static const struct PlannerJob *findPrevMovePlan(void)
 void plannerEnqueueMove(enum JobType k, const int32_t plan[NR_STEPPER],
                         const fix16_t unit_vec[NR_AXIS],
                         const uint32_t max_v[NR_STEPPER],
-                        const int32_t acc[NR_STEPPER], fix16_t lenMM,
-                        bool stop)
+                        const int32_t acc[NR_STEPPER], fix16_t lenMM, bool stop)
 {
     const struct PlannerJob *prev = findPrevMovePlan();
     struct PlannerJob *tail = __plannerEnqueue(k);

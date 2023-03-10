@@ -7,6 +7,7 @@ const enum DisplayKind platformFeatureDisplay = DisplayKindSt7920;
 const bool platformFeatureBedLeveling = true;
 const enum KinematicKind platformFeatureKinematic = KinematicKindI3;
 
+const fix16_t platformJunctionDeviation = F16(0.04);
 const float platformFeatureZOffset = 0;
 const struct XYPositionMM platformFeatureZHomingPos = {
     .x_mm = 60,

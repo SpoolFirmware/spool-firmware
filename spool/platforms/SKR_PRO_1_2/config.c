@@ -7,6 +7,7 @@ const enum DisplayKind platformFeatureDisplay = DisplayKindSt7920;
 const bool platformFeatureBedLeveling = true;
 const enum KinematicKind platformFeatureKinematic = KinematicKindCoreXY;
 
+const fix16_t platformJunctionDeviation = F16(0.015);
 const float platformFeatureZOffset = 1.0;
 const struct XYPositionMM platformFeatureZHomingPos = {
     .x_mm = 30,
@@ -15,7 +16,7 @@ const struct XYPositionMM platformFeatureZHomingPos = {
 
 const struct XYPositionMM platformBedLevelingCorners[2] = {
     {.x_mm = 5, .y_mm = 10},
-    {.x_mm = 120, .y_mm = 150},
+    {.x_mm = 135, .y_mm = 160},
 };
 
 const int32_t platformMotionLimits[] = {
