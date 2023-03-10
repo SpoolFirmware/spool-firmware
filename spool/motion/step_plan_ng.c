@@ -175,7 +175,7 @@ static void populateBlock(const struct PlannerJob *prev, struct PlannerJob *new,
                 fix16_mul_int32(fix16_div(new->lenMM, theta), jaccMMs2) *
                 platformMotionStepsPerMMAxis[maxStepper] *
                 platformMotionStepsPerMMAxis[maxStepper];
-            if (limit_sqr < viSq)
+            if (limit_sqr < viSq) {
                 viSq = limit_sqr;
             }
         }
