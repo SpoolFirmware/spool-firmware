@@ -7,7 +7,7 @@ local_repository(
     name = "rules_rust",
     path = "rules_rust",
 )
-load("@rules_rust//rust:repositories.bzl", "rules_rust_dependencies")
+load("@rules_rust//rust:repositories.bzl", "rules_rust_dependencies", "rust_analyzer_toolchain_repository")
 rules_rust_dependencies()
 
 load("//toolchain:rust_setup.bzl", "register_rust_toolchains")
@@ -19,7 +19,17 @@ rust_target_triples = [
     "thumbv7em-none-eabihf",
     "thumbv6m-none-eabi",
 ]
-register_rust_toolchains(host_triples, rust_target_triples, "1.68.0")
+rust_version = "1.68.0"
+register_rust_toolchains(host_triples, rust_target_triples, rust_version)
+register_toolchains(rust_analyzer_toolchain_repository(
+    name = "rust_analyzer_toolchain",
+    # This should match the currently registered toolchain.
+    version = rust_version,
+))
+
+load("@rules_rust//tools/rust_analyzer:deps.bzl", "rust_analyzer_dependencies")
+rust_analyzer_dependencies()
+
 
 
 http_archive(
