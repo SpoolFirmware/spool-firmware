@@ -12,7 +12,7 @@ rules_rust_dependencies()
 
 load("//toolchain:rust_setup.bzl", "register_rust_toolchains")
 
-host_triples = ["x86_64-unknown-linux-gnu"]
+host_triples = ["x86_64-unknown-linux-gnu", "aarch64-apple-darwin"]
 rust_target_triples = [
     "thumbv7m-none-eabi",
     "thumbv7em-none-eabi",
