@@ -19,6 +19,7 @@
 #include "ui/ui.h"
 
 #include "lib/sdspi/sd_spi.h"
+#include "lib/planner/planner.h"
 
 /* ----------- Global Task Input Queues --------------- */
 QueueHandle_t ThermalTaskQueue;
@@ -158,6 +159,7 @@ void main(void)
 
     platformDisableStepper(0xFF);
     dbgPrintf("initSpoolApp\n");
+    dbgPrintf("rustland: %d\n", plannerGetOne());
 
     // Create the task that should handle prints
     configASSERT(xTaskCreate(DebugPrintTask, "dbgPrintf",

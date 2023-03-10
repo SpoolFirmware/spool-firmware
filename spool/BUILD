@@ -94,6 +94,7 @@ cc_binary_with_platforms(
     linkopts = [
         "-T $(execpath //spool/platforms:linker.ld)",
         "-lm",
+        "-z noexecstack",
     ],
     platforms = {
         # targets are called :spool_$platform, e.g. spool_stm32f401_mini
@@ -109,6 +110,7 @@ cc_binary_with_platforms(
         "//lib/hal/common:lib",
         "//lib/syslib:lib",
         "//lib/lvgl:lib",
+        "//spool/lib/planner:lib",
         "//spool/lib/sdspi:lib",
         "//spool/lib/thermistor:lib",
         "//spool/platforms:linker.ld",

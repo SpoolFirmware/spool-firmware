@@ -2,6 +2,26 @@ workspace(name = "spool_firmware")
 
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 
+# RUST
+local_repository(
+    name = "rules_rust",
+    path = "rules_rust",
+)
+load("@rules_rust//rust:repositories.bzl", "rules_rust_dependencies")
+rules_rust_dependencies()
+
+load("//toolchain:rust_setup.bzl", "register_rust_toolchains")
+
+host_triples = ["x86_64-unknown-linux-gnu"]
+rust_target_triples = [
+    "thumbv7m-none-eabi",
+    "thumbv7em-none-eabi",
+    "thumbv7em-none-eabihf",
+    "thumbv6m-none-eabi",
+]
+register_rust_toolchains(host_triples, rust_target_triples, "1.68.0")
+
+
 http_archive(
     name = "bazel_skylib",
     urls = [

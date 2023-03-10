@@ -169,8 +169,9 @@ static void populateBlock(const struct PlannerJob *prev, struct PlannerJob *new,
             const fix16_t theta = fix16_acos(cosTheta);
             const uint32_t limit_sqr =
                 fix16_mul_int32(fix16_div(new->lenMM, theta), jaccMMs2) * platformMotionStepsPerMMAxis[maxStepper] * platformMotionStepsPerMMAxis[maxStepper];
-            if (limit_sqr < viSq)
+            if (limit_sqr < viSq) {
                 viSq = limit_sqr;
+            }
         }
         const uint32_t prevCurVSqMin = min(prev->vSq, new->vSq);
         new->viSq = min(viSq, prevCurVSqMin);
