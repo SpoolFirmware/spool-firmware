@@ -7,6 +7,7 @@ rust_static_library(
         "lib.rs",
     ],
     edition="2021",
+    visibility=["//visibility:public"],
 )
 
 cc_library(

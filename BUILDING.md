@@ -24,3 +24,10 @@ Follow the setup guide here:
 https://github.com/SpoolFirmware/bazel-compile-commands-extractor#editor-setup--for-autocomplete-based-on-compile_commandsjson
 
 ### bad docs somewhere is better than good docs nowhere
+
+
+Planner Rust thingi
+
+```
+bazel run @rules_rust//tools/rust_analyzer:gen_rust_project -- //spool/lib/planner:planner
+```
