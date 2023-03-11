@@ -6,6 +6,9 @@ rust_static_library(
     srcs=[
         "lib.rs",
     ],
+    deps = [
+        "@planner_crate_index//:fixed",
+    ],
     edition="2021",
     visibility=["//visibility:public"],
 )

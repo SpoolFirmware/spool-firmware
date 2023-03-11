@@ -7,8 +7,9 @@ local_repository(
     name = "rules_rust",
     path = "rules_rust",
 )
-load("@rules_rust//rust:repositories.bzl", "rules_rust_dependencies", "rust_analyzer_toolchain_repository")
+load("@rules_rust//rust:repositories.bzl", "rules_rust_dependencies", "rust_analyzer_toolchain_repository", "rust_register_toolchains")
 rules_rust_dependencies()
+rust_register_toolchains()
 
 load("//toolchain:rust_setup.bzl", "register_rust_toolchains")
 
@@ -30,6 +31,28 @@ register_toolchains(rust_analyzer_toolchain_repository(
 load("@rules_rust//tools/rust_analyzer:deps.bzl", "rust_analyzer_dependencies")
 rust_analyzer_dependencies()
 
+load("@rules_rust//crate_universe:repositories.bzl", "crate_universe_dependencies")
+crate_universe_dependencies(bootstrap = True)
+
+load("@rules_rust//crate_universe:defs.bzl", "crate", "crates_repository")
+crates_repository(
+    name = "planner_crate_index",
+    cargo_lockfile = "//spool/lib/planner:Cargo.lock",
+    lockfile = "//spool/lib/planner:Cargo.Bazel.lock",
+    # `generator` is not necessary in official releases.
+    # See load satement for `cargo_bazel_bootstrap`.
+    generator = "@cargo_bazel_bootstrap//:cargo-bazel",
+    packages = {
+        "fixed": crate.spec(
+            version = "1.23",
+        ),
+    },
+    rust_version=rust_version,
+    supported_platform_triples=rust_target_triples,
+)
+
+load("@planner_crate_index//:defs.bzl", "crate_repositories")
+crate_repositories()
 
 http_archive(
     name = "bazel_skylib",

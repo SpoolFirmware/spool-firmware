@@ -5,7 +5,6 @@ use core::{panic::PanicInfo, ptr::null};
 extern "C" {
     fn __panic(file: *const u8, line: i32, msg: *const u8) -> !;
     fn dbgPutc(c: u8);
-
 }
 
 pub struct Console;
