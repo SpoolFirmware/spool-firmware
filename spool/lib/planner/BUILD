@@ -5,9 +5,11 @@ rust_static_library(
     crate_name="planner",
     srcs=[
         "lib.rs",
+        "platform.rs",
     ],
     deps = [
         "@planner_crate_index//:fixed",
+        "@planner_crate_index//:fixed-sqrt",
     ],
     edition="2021",
     visibility=["//visibility:public"],

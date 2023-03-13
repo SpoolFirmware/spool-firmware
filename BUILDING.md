@@ -28,6 +28,11 @@ https://github.com/SpoolFirmware/bazel-compile-commands-extractor#editor-setup--
 
 Planner Rust thingi
 
-```
+```sh
 bazel run @rules_rust//tools/rust_analyzer:gen_rust_project -- //spool/lib/planner:planner
+```
+
+Update deps
+```sh
+CARGO_BAZEL_REPIN=1 bazel sync --only=planner_crate_index
 ```

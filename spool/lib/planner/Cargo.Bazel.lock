@@ -1,6 +1,36 @@
 {
-  "checksum": "c2a87ed7a89c5bc60c7002f612a8507ded85a14c882e8399060e4e5372b7c5eb",
+  "checksum": "653879babc7c7f3cbfa2d7abc9939ffa309d515b4f1aa860bddb3a879b475a29",
   "crates": {
+    "autocfg 1.1.0": {
+      "name": "autocfg",
+      "version": "1.1.0",
+      "repository": {
+        "Http": {
+          "url": "https://crates.io/api/v1/crates/autocfg/1.1.0/download",
+          "sha256": "d468802bab17cbc0cc575e9b053f41e72aa36bfa6b7f55e3529ffa43161b97fa"
+        }
+      },
+      "targets": [
+        {
+          "Library": {
+            "crate_name": "autocfg",
+            "crate_root": "src/lib.rs",
+            "srcs": [
+              "**/*.rs"
+            ]
+          }
+        }
+      ],
+      "library_target_name": "autocfg",
+      "common_attrs": {
+        "compile_data_glob": [
+          "**"
+        ],
+        "edition": "2015",
+        "version": "1.1.0"
+      },
+      "license": "Apache-2.0 OR MIT"
+    },
     "az 1.2.1": {
       "name": "az",
       "version": "1.2.1",
@@ -162,6 +192,10 @@
             {
               "id": "fixed 1.23.0",
               "target": "fixed"
+            },
+            {
+              "id": "fixed-sqrt 0.2.5",
+              "target": "fixed_sqrt"
             }
           ],
           "selects": {}
@@ -241,6 +275,53 @@
       },
       "license": "MIT/Apache-2.0"
     },
+    "fixed-sqrt 0.2.5": {
+      "name": "fixed-sqrt",
+      "version": "0.2.5",
+      "repository": {
+        "Http": {
+          "url": "https://crates.io/api/v1/crates/fixed-sqrt/0.2.5/download",
+          "sha256": "af725dbdc8dd186b6914026b51e43d99b332e8e816d3b495b84bf8304ac17b73"
+        }
+      },
+      "targets": [
+        {
+          "Library": {
+            "crate_name": "fixed_sqrt",
+            "crate_root": "src/lib.rs",
+            "srcs": [
+              "**/*.rs"
+            ]
+          }
+        }
+      ],
+      "library_target_name": "fixed_sqrt",
+      "common_attrs": {
+        "compile_data_glob": [
+          "**"
+        ],
+        "deps": {
+          "common": [
+            {
+              "id": "fixed 1.23.0",
+              "target": "fixed"
+            },
+            {
+              "id": "integer-sqrt 0.1.5",
+              "target": "integer_sqrt"
+            },
+            {
+              "id": "typenum 1.16.0",
+              "target": "typenum"
+            }
+          ],
+          "selects": {}
+        },
+        "edition": "2018",
+        "version": "0.2.5"
+      },
+      "license": "Apache-2.0"
+    },
     "half 2.2.1": {
       "name": "half",
       "version": "2.2.1",
@@ -279,6 +360,107 @@
         },
         "edition": "2021",
         "version": "2.2.1"
+      },
+      "license": "MIT OR Apache-2.0"
+    },
+    "integer-sqrt 0.1.5": {
+      "name": "integer-sqrt",
+      "version": "0.1.5",
+      "repository": {
+        "Http": {
+          "url": "https://crates.io/api/v1/crates/integer-sqrt/0.1.5/download",
+          "sha256": "276ec31bcb4a9ee45f58bec6f9ec700ae4cf4f4f8f2fa7e06cb406bd5ffdd770"
+        }
+      },
+      "targets": [
+        {
+          "Library": {
+            "crate_name": "integer_sqrt",
+            "crate_root": "src/lib.rs",
+            "srcs": [
+              "**/*.rs"
+            ]
+          }
+        }
+      ],
+      "library_target_name": "integer_sqrt",
+      "common_attrs": {
+        "compile_data_glob": [
+          "**"
+        ],
+        "deps": {
+          "common": [
+            {
+              "id": "num-traits 0.2.15",
+              "target": "num_traits"
+            }
+          ],
+          "selects": {}
+        },
+        "edition": "2015",
+        "version": "0.1.5"
+      },
+      "license": "Apache-2.0/MIT"
+    },
+    "num-traits 0.2.15": {
+      "name": "num-traits",
+      "version": "0.2.15",
+      "repository": {
+        "Http": {
+          "url": "https://crates.io/api/v1/crates/num-traits/0.2.15/download",
+          "sha256": "578ede34cf02f8924ab9447f50c28075b4d3e5b269972345e7e0372b38c6cdcd"
+        }
+      },
+      "targets": [
+        {
+          "Library": {
+            "crate_name": "num_traits",
+            "crate_root": "src/lib.rs",
+            "srcs": [
+              "**/*.rs"
+            ]
+          }
+        },
+        {
+          "BuildScript": {
+            "crate_name": "build_script_build",
+            "crate_root": "build.rs",
+            "srcs": [
+              "**/*.rs"
+            ]
+          }
+        }
+      ],
+      "library_target_name": "num_traits",
+      "common_attrs": {
+        "compile_data_glob": [
+          "**"
+        ],
+        "deps": {
+          "common": [
+            {
+              "id": "num-traits 0.2.15",
+              "target": "build_script_build"
+            }
+          ],
+          "selects": {}
+        },
+        "edition": "2015",
+        "version": "0.2.15"
+      },
+      "build_script_attrs": {
+        "data_glob": [
+          "**"
+        ],
+        "deps": {
+          "common": [
+            {
+              "id": "autocfg 1.1.0",
+              "target": "autocfg"
+            }
+          ],
+          "selects": {}
+        }
       },
       "license": "MIT OR Apache-2.0"
     },

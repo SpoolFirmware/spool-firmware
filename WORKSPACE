@@ -46,6 +46,9 @@ crates_repository(
         "fixed": crate.spec(
             version = "1.23",
         ),
+        "fixed-sqrt": crate.spec(
+            version = "0.2.5",
+        ),
     },
     rust_version=rust_version,
     supported_platform_triples=rust_target_triples,
