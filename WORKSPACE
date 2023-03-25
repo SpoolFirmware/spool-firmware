@@ -3,9 +3,14 @@ workspace(name = "spool_firmware")
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 
 # RUST
-local_repository(
+# local_repository(
+#     name = "rules_rust",
+#     path = "rules_rust",
+# )
+http_archive(
     name = "rules_rust",
-    path = "rules_rust",
+    sha256 = "b4e622a36904b5dd2d2211e40008fc473421c8b51c9efca746ab2ecf11dca08e",
+    urls = ["https://github.com/bazelbuild/rules_rust/releases/download/0.19.1/rules_rust-v0.19.1.tar.gz"],
 )
 load("@rules_rust//rust:repositories.bzl", "rules_rust_dependencies", "rust_analyzer_toolchain_repository", "rust_register_toolchains")
 rules_rust_dependencies()
@@ -32,7 +37,7 @@ load("@rules_rust//tools/rust_analyzer:deps.bzl", "rust_analyzer_dependencies")
 rust_analyzer_dependencies()
 
 load("@rules_rust//crate_universe:repositories.bzl", "crate_universe_dependencies")
-crate_universe_dependencies(bootstrap = True)
+crate_universe_dependencies(bootstrap=True, rust_version=rust_version)
 
 load("@rules_rust//crate_universe:defs.bzl", "crate", "crates_repository")
 crates_repository(
