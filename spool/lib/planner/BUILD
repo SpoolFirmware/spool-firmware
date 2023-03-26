@@ -6,6 +6,7 @@ rust_static_library(
     srcs=[
         "lib.rs",
         "platform.rs",
+        "planner.rs",
     ],
     deps = [
         "@planner_crate_index//:fixed",
