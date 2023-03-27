@@ -1,34 +1,53 @@
 #![no_std]
 
-use planner::Planner;
-
+#[cfg(not(test))]
+#[cfg(not(feature = "std"))]
 #[macro_use]
 pub mod platform;
 
-mod planner;
+pub mod planner;
+mod stack_vec;
+
+use core::{ffi::c_void, mem::MaybeUninit};
+
+use planner::{Planner, PlannerJob};
 
 pub const MAX_STEPPERS: usize = 4;
 pub const MAX_AXIS: usize = 4;
 
-#[no_mangle]
-extern "C" fn plannerGetOne() -> u32 {
-    println!("hello");
-    panic!();
+extern "C" {
+    fn portMallocAligned(size: usize, alignment: usize) -> *mut c_void;
+}
+
+unsafe fn allocateStatic<T>() -> Option<&'static mut MaybeUninit<T>> {
+    let ptr = portMallocAligned(core::mem::size_of::<T>(), core::mem::align_of::<T>());
 }
 
 #[no_mangle]
-extern "C" fn plannerGetPlannerSize() -> u32 {
-    core::mem::size_of::<Planner>() as u32
-}
-
-extern "C" fn plannerGetPlannerAlignment() -> u32 {
-    core::mem::align_of::<Planner>() as u32
-}
-
-#[no_mangle]
-extern "C" fn plannerInit(planner_ptr: *mut Planner) {
-    let planner = unsafe {
-        planner_ptr.as_mut().unwrap()
+#[allow(non_snake_case)]
+extern "C" fn plannerInit(num_axis: u32, num_stepper: u32) -> *mut Planner {
+    let plannerQueueBacking = unsafe {
+        let plannerQueueBacking = allocateStatic::<[PlannerJob; 8]>().unwrap();
+        *plannerQueueBacking = core::mem::zeroed();
+        plannerQueueBacking.assume_init_mut()
     };
-    planner.init();
+    let planner = unsafe {
+        let planner = allocateStatic::<Planner>().unwrap();
+        *planner = MaybeUninit::new(Planner::new(num_axis, num_stepper, plannerQueueBacking));
+        planner.assume_init_mut()
+    };
+    planner as *mut Planner
+}
+
+#[cfg(test)]
+#[macro_use]
+extern crate std;
+
+#[cfg(test)]
+mod test {
+
+    #[test]
+    fn test_yomama() {
+        println!("hello world!!!\n\n");
+    }
 }
