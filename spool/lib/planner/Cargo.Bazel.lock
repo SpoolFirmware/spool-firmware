@@ -1,6 +1,36 @@
 {
-  "checksum": "707d0c500fe258eba28e2d9f267218fabd90a798f34e9448ad6f711843830679",
+  "checksum": "a3761a1003f83d83a853d395d34ea626df5df5b50b6f74270168166ef26db6c4",
   "crates": {
+    "arraydeque 0.5.1": {
+      "name": "arraydeque",
+      "version": "0.5.1",
+      "repository": {
+        "Http": {
+          "url": "https://crates.io/api/v1/crates/arraydeque/0.5.1/download",
+          "sha256": "7d902e3d592a523def97af8f317b08ce16b7ab854c1985a0c671e6f15cebc236"
+        }
+      },
+      "targets": [
+        {
+          "Library": {
+            "crate_name": "arraydeque",
+            "crate_root": "src/lib.rs",
+            "srcs": [
+              "**/*.rs"
+            ]
+          }
+        }
+      ],
+      "library_target_name": "arraydeque",
+      "common_attrs": {
+        "compile_data_glob": [
+          "**"
+        ],
+        "edition": "2021",
+        "version": "0.5.1"
+      },
+      "license": "MIT/Apache-2.0"
+    },
     "arrayvec 0.5.2": {
       "name": "arrayvec",
       "version": "0.5.2",
@@ -255,6 +285,10 @@
         ],
         "deps": {
           "common": [
+            {
+              "id": "arraydeque 0.5.1",
+              "target": "arraydeque"
+            },
             {
               "id": "fixed 1.23.0",
               "target": "fixed"

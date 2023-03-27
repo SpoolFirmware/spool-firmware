@@ -20,6 +20,7 @@ rust_library(
     deps = [
         "@planner_crate_index//:fixed",
         "@planner_crate_index//:fixed-sqrt",
+        "@planner_crate_index//:arraydeque",
     ],
     crate_features=["std"],
     edition="2021",
@@ -35,6 +36,7 @@ rust_library(
     deps = [
         "@planner_crate_index//:fixed",
         "@planner_crate_index//:fixed-sqrt",
+        "@planner_crate_index//:arraydeque",
     ],
     edition="2021",
     visibility=["//visibility:public"],

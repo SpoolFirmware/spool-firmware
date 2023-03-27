@@ -56,7 +56,11 @@ crates_repository(
         ),
         "gcode": crate.spec(
             version = "0.6.1",
-        )
+        ),
+        "arraydeque": crate.spec(
+            version = "0.5",
+            default_features = False,
+        ),
     },
     rust_version=rust_version,
     supported_platform_triples=rust_target_triples,
