@@ -61,6 +61,9 @@ crates_repository(
             version = "0.5",
             default_features = False,
         ),
+        "log": crate.spec(
+            version = "0.4.17",
+        ),
     },
     rust_version=rust_version,
     supported_platform_triples=rust_target_triples,

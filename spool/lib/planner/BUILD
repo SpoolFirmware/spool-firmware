@@ -5,9 +5,8 @@ filegroup(
     srcs=[
         "lib.rs",
         "platform.rs",
-        "planner.rs",
-        "stack_vec/mod.rs",
-        "stack_vec/tests.rs",
+        "planner/mod.rs",
+        "planner/fixed_vector.rs",
     ]
 )
 
@@ -18,6 +17,7 @@ rust_library(
         ":planner_srcs"
     ],
     deps = [
+        "@planner_crate_index//:log",
         "@planner_crate_index//:fixed",
         "@planner_crate_index//:fixed-sqrt",
         "@planner_crate_index//:arraydeque",
@@ -34,6 +34,7 @@ rust_library(
         ":planner_srcs"
     ],
     deps = [
+        "@planner_crate_index//:log",
         "@planner_crate_index//:fixed",
         "@planner_crate_index//:fixed-sqrt",
         "@planner_crate_index//:arraydeque",
@@ -50,6 +51,9 @@ rust_binary(
     ],
     deps = [
         ":planner_std",
+        "@planner_crate_index//:log",
+        "@planner_crate_index//:fixed",
+        "@planner_crate_index//:fixed-sqrt",
         "@planner_crate_index//:gcode",
     ],
     visibility=["//visibility:public"],

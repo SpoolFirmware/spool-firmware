@@ -6,7 +6,6 @@
 pub mod platform;
 
 pub mod planner;
-mod stack_vec;
 
 use core::{ffi::c_void, mem::MaybeUninit};
 
