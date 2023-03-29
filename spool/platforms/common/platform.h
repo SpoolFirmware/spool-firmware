@@ -83,6 +83,7 @@ struct SPIDevice *platformGetSDSPI(void);
  * @return Number of us since reset
  */
 uint64_t platformGetTimeUs(void);
+uint64_t platformGetTimeUsIrqsafe(void);
 
 // Steppers
 void platformEnableStepper(uint8_t stepperMask);

@@ -46,6 +46,7 @@ cc_library(
         "//spool/platforms/common:lib",
         "//spool/lib/thermistor:lib",
         "//spool/lib/st7920:lib",
+        "//spool/lib/encoder:lib",
         "//spool/lib/ui/st7920:lib",
 
         "//lib/syslib:lib",

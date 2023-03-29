@@ -1,4 +1,5 @@
 #include "FreeRTOS.h"
+#include "manual/mcu.h"
 #include "configuration.h"
 #include "platform_private.h"
 #include "misc.h"
@@ -6,6 +7,9 @@
 #include "lib/st7920/spi_sw.h"
 #include "lib/st7920/st7920.h"
 #include "lib/ui/st7920/st7920.h"
+#include "lib/encoder/encoder.h"
+#include "hal/stm32/hal.h"
+#include "dbgprintf.h"
 
 const struct HalClockConfig halClockConfig = {
     .hseFreqHz = 8000000,
@@ -19,6 +23,8 @@ const struct HalClockConfig halClockConfig = {
     .ahbPrescaler = 1,
 };
 
+/* ======= Display =======*/
+
 const static struct IOLine statusLED = { .group = DRF_BASE(DRF_GPIOA), .pin = 7 };
 
 const static struct IOLine dispSpiSwCs = { .group = DRF_BASE(DRF_GPIOD),
@@ -30,6 +36,29 @@ const static struct IOLine dispSpiSwSclk = { .group = DRF_BASE(DRF_GPIOG),
 
 static struct SpiSw dispSpiSw;
 static struct St7920 st7920;
+
+/* ======= Encoder =======*/
+
+const static struct IOLine encoderKey = { .group = DRF_BASE(DRF_GPIOA),
+                                             .pin = 8 };
+const static struct IOLine encoderA = { .group = DRF_BASE(DRF_GPIOG),
+                                             .pin = 10 };
+const static struct IOLine encoderB = { .group = DRF_BASE(DRF_GPIOF),
+                                             .pin = 11 };
+
+static struct Encoder encoder;
+static struct ExtiDriver encoderKeyExti;
+static struct ExtiDriver encoderAExti;
+
+static void encoderKeyExtiIrq(struct ExtiDriver *drv){
+	encoderButtonCallback(&encoder, platformGetTimeUsIrqsafe());
+}
+
+static void encoderAExtiIrq(struct ExtiDriver *drv){
+	encoder1Callback(&encoder, platformGetTimeUsIrqsafe());
+}
+
+/* ======= Steppers =======*/
 
 const static uint32_t stepperFrequency = 100000;
 
@@ -224,6 +253,8 @@ void platformInit(struct PlatformConfig *config)
 
     uint32_t apb2enr = REG_RD32(DRF_REG(_RCC, _APB2ENR));
     apb2enr = FLD_SET_DRF(_RCC, _APB2ENR, _USART1EN, _ENABLED, apb2enr);
+	/* IMPORTANT, enable syscfg for exti */
+    apb2enr = FLD_SET_DRF(_RCC, _APB2ENR, _SYSCFGEN, _ENABLED, apb2enr);
     REG_WR32(DRF_REG(_RCC, _APB2ENR), apb2enr);
 
     halGpioSetMode(statusLED, DRF_DEF(_HAL_GPIO, _MODE, _MODE, _OUTPUT) |
@@ -248,6 +279,7 @@ void platformInit(struct PlatformConfig *config)
         halGpioSetMode(endstops[i], DRF_DEF(_HAL_GPIO, _MODE, _MODE, _INPUT));
     }
 
+    /* ======= Display ======= */
     halGpioSetMode(dispSpiSwCs,
                    DRF_DEF(_HAL_GPIO, _MODE, _MODE, _OUTPUT) |
                        DRF_DEF(_HAL_GPIO, _MODE, _TYPE, _PUSHPULL) |
@@ -267,6 +299,35 @@ void platformInit(struct PlatformConfig *config)
         .clkDomainFrequency = halClockApb1TimerFreqGet(&halClockConfig),
         .interruptEnable = true
     });
+
+    /* ======= Encoder ======= */
+
+    halGpioSetMode(encoderKey,
+                   DRF_DEF(_HAL_GPIO, _MODE, _MODE, _INPUT) |
+					   DRF_DEF(_HAL_GPIO, _MODE, _PUPD, _PULL_UP));
+	halGpioSetMode(encoderA, DRF_DEF(_HAL_GPIO, _MODE, _MODE, _INPUT) |
+								 DRF_DEF(_HAL_GPIO, _MODE, _PUPD, _PULL_UP));
+	halGpioSetMode(encoderB, DRF_DEF(_HAL_GPIO, _MODE, _MODE, _INPUT) |
+								 DRF_DEF(_HAL_GPIO, _MODE, _PUPD, _PULL_UP));
+
+    encoderInit(&encoder, encoderKey, encoderA, encoderB);
+	struct ExtiConfig encoderKeyConfig = {
+		.groupNum = halExtiGroupNumFromGpio(encoderKey),
+		.handler = encoderKeyExtiIrq,
+	};
+	struct ExtiConfig encoderAConfig = {
+		.groupNum = halExtiGroupNumFromGpio(encoderA),
+		.handler = encoderAExtiIrq,
+	};
+	halExtiInit(&encoderKeyExti, &encoderKeyConfig);
+	halExtiInit(&encoderAExti, &encoderAConfig);
+	PANIC_IF_ERROR(halExtiEnable(&encoderKeyExti));
+	PANIC_IF_ERROR(halExtiEnable(&encoderAExti));
+
+	halIrqPrioritySet(IRQ_EXTI9_5, configKERNEL_INTERRUPT_PRIORITY);
+	halIrqPrioritySet(IRQ_EXTI15_10, configKERNEL_INTERRUPT_PRIORITY);
+	halIrqEnable(IRQ_EXTI9_5);
+	halIrqEnable(IRQ_EXTI15_10);
 
     communicationInit();
     thermalInit();
@@ -301,6 +362,12 @@ uint64_t platformGetTimeUs(void)
     taskENTER_CRITICAL();
     uint64_t time = wallClockTimeUs + halTimerGetCount(&wallClockTimer);
     taskEXIT_CRITICAL();
+    return time;
+}
+
+uint64_t platformGetTimeUsIrqsafe(void)
+{
+    uint64_t time = wallClockTimeUs + halTimerGetCount(&wallClockTimer);
     return time;
 }
 

@@ -20,3 +20,8 @@ refresh_compile_commands(
     # As are additional targets (+) and subtractions (-), like in bazel query https://docs.bazel.build/versions/main/query.html#expressions
     # And if you're working on a header-only library, specify a test or binary target that compiles it.
 )
+
+alias(
+    name = "lsp",
+    actual = "//:refresh_compile_commands",
+)

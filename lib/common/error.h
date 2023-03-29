@@ -15,6 +15,7 @@ typedef enum {
     StatusGcodeParserLogicError,
     StatusAgain,
     StatusGcodeBadNumber,
+	StatusExtiGroupConflict,
 } status_t;
 
 #define STATUS_OK(x)  ((x) == StatusOk)

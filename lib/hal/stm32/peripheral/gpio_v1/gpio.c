@@ -68,50 +68,12 @@ inline void halGpioClear(struct IOLine line)
     REG_WR32(line.group + DRF_GPIO_BSRR, DRF_IDX_DEF(_GPIO, _BSRR, _BR, line.pin, _RESET));
 }
 
-static uint8_t gpioGroupToIdx(uint32_t group)
-{
-    /* stolen from chibios
-     * Port index is obtained assuming that GPIO ports are placed at regular
-     * 0x400 intervals in memory space. So far this is true for all
-     * devices.
-     */
-    return (((uint32_t)group - (uint32_t)DRF_BASE(DRF_GPIOA)) >> 10u) & 0xFu;
-}
-
 void halGpioEnableInterrupt(struct IOLine line, enum GpioExtiMode mode)
 {
-    uint32_t padMask = BIT(line.pin);
-    uint8_t groupNum = gpioGroupToIdx(line.group);
-    uint32_t rtsr = REG_RD32(DRF_REG(_EXTI, _RTSR));
-    uint32_t ftsr = REG_RD32(DRF_REG(_EXTI, _FTSR));
-    /* check if channel already in use */
-    BUG_ON((rtsr & padMask) && (ftsr & padMask));
-
-    uint32_t crReg = DRF_REG(_SYSCFG, _EXTICR1) + line.pin / 4 * 0x4;
-    uint32_t crShift = line.pin % 4 * 4;
-    uint32_t crMask = ~(DRF_MASK(_SYSCFG, _EXTICR1, _EXTI0) << crShift);
-    REG_WR32(crReg, (REG_RD32(crReg) & crMask) | groupNum << crShift);
-
-    if (mode == GpioExtiModeRisingEdge) {
-        REG_WR32(DRF_REG(_EXTI, _RTSR), rtsr | padMask));
-    } else {
-        REG_WR32(DRF_REG(_EXTI, _RTSR), rtsr & ~padMask));
-    }
-    if (mode == GpioExtiModeFallingEdge) {
-        REG_WR32(DRF_REG(_EXTI, _FTSR), ftsr | padMask));
-    } else {
-        REG_WR32(DRF_REG(_EXTI, _FTSR), ftsr & ~padMask));
-    }
-
-    REG_WR32()
+    UNIMPLEMENTED("gpio v1 enable interrupt");
 }
 
 void halGpioDisableInterrupt(struct IOLine line, enum GpioExtiMode mode)
 {
-    uint32_t padMask = BIT(line.pin);
-    uint8_t groupNum = gpioGroupToIdx(line.group);
-    uint32_t rtsr = REG_RD32(DRF_REG(_EXTI, _RTSR));
-    uint32_t ftsr = REG_RD32(DRF_REG(_EXTI, _FTSR));
-
-
+    UNIMPLEMENTED("gpio v2 enable interrupt");
 }

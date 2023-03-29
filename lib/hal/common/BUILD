@@ -5,6 +5,7 @@ cc_library(
     include_prefix = "hal",
     alwayslink=True,
     deps = [
+        "//lib/common:lib",
         "//lib/freertos:freertos",
     ],
     visibility = ["//visibility:public"],

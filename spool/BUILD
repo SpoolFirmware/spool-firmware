@@ -113,6 +113,7 @@ cc_binary_with_platforms(
         "//spool/lib/planner:lib",
         "//spool/lib/sdspi:lib",
         "//spool/lib/thermistor:lib",
+        "//spool/lib/encoder:lib",
         "//spool/platforms:linker.ld",
         "//spool/platforms:runtime",
     ],
