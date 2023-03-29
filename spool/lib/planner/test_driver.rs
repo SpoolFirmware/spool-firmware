@@ -12,7 +12,7 @@ fn main() {
         acc: [1000u32; 4],
         stop: false,
     };
-    planner.enqueueMove(&new_move);
+    planner.enqueue_move(&new_move);
 
     println!("Hello {:#?}", planner);
 }

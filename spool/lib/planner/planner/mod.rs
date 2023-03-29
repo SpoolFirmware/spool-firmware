@@ -1,9 +1,8 @@
 pub mod fixed_vector;
 
 use fixed::{
-    types::{I16F16, I20F12}, traits::ToFixed,
+    types::{I16F16, I20F12, U20F12}, traits::ToFixed,
 };
-use fixed::traits::FromFixed;
 use crate::{MAX_AXIS, MAX_STEPPERS};
 use arraydeque::{ArrayDeque, Saturating};
 
@@ -35,7 +34,7 @@ pub enum JobType {
 
 #[derive(Debug)]
 pub struct Move {
-    pub delta_x: u32,
+    pub delta_x_mm: u32,
     pub delta_x_steps: u32,
     pub acceleration_steps: u32,
     pub deceleration_steps: u32,
@@ -87,19 +86,48 @@ impl Planner {
         }
     }
 
-    fn populateBlock(&self, new_move: &PlannerMove, prev_move: Option<&Move>) {
+    fn populate_block(&self, new_move: &PlannerMove, prev_move: Option<&Move>) {
+        let delta_x = {
+            let mut delta_x = [I20F12::ZERO; MAX_AXIS];
+            for i in 0..new_move.delta_x.len() {
+                delta_x[i] = new_move.delta_x[i].to_fixed();
+            }
+            delta_x
+        };
+
         let mut time_est = I20F12::ZERO;
-        let mut delta_x = [I20F12::ZERO; MAX_AXIS];
-        for i in 0..new_move.delta_x.len() {
-            delta_x[i] = new_move.delta_x[i].to_fixed();
-        }
+        let mut max_axis_mm = U20F12::ZERO;
+        let mut max_axis = 0;
         for (i, x) in delta_x.iter().enumerate() {
             time_est = core::cmp::max(time_est, *x/I20F12::from_num(new_move.max_v[i]));
+
+            if x.unsigned_abs() > max_axis_mm {
+                max_axis_mm = x.unsigned_abs();
+                max_axis = i;
+            }
         }
+
+        if time_est == I20F12::ZERO {
+            return
+        }
+
+        let acc_mm = {
+            let mut acc_mm: U20F12 = new_move.acc[max_axis].to_fixed();
+            delta_x.iter()
+                   .zip(new_move.acc.iter())
+                   .fold(acc_mm, |y, (x, acc)| {
+                       if *x == I20F12::ZERO || acc.to_fixed::<U20F12>() <= y {
+                           y
+                       } else {
+                           core::cmp::min(y, acc.to_fixed::<U20F12>() * max_axis_mm / x.unsigned_abs())
+                       }
+                   });
+        };
+
         // println!("TimeEst: {}s", time_est);
     }
 
-    pub fn enqueueMove(&mut self, new_move: &PlannerMove) -> Result<(), ()> {
+    pub fn enqueue_move(&mut self, new_move: &PlannerMove) -> Result<(), ()> {
         let prev_move = self.job_queue.back().map_or(None, |m| {
             if let PlannerJob::StepperJobRun(run) = m {
                 Some(run)
@@ -107,7 +135,7 @@ impl Planner {
                 None
             }
         });
-        self.populateBlock(new_move, prev_move);
+        self.populate_block(new_move, prev_move);
         Ok(())
     }
 }
