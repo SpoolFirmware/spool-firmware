@@ -5,6 +5,8 @@
 #include "step_schedule.h"
 #include "step_plan_ng.h"
 #include "step_execute.h"
+#include "lib/planner/planner.h"
+
 
 static int32_t motionMaxVelSteps[NR_STEPPER];
 
@@ -20,7 +22,7 @@ void motionInit(void)
     }
     platformDisableStepper(0xFF);
     motionPlannerTaskInit();
-    plannerInit();
+    plannerInit(NULL, 0, 0);
 }
 
 fix16_t vecUnit(const fix16_t vec[NR_AXIS], fix16_t unit_vec[NR_AXIS])

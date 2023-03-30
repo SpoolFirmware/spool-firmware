@@ -29,7 +29,7 @@ https://github.com/SpoolFirmware/bazel-compile-commands-extractor#editor-setup--
 Planner Rust thingi
 
 ```sh
-bazel run @rules_rust//tools/rust_analyzer:gen_rust_project -- //spool/lib/planner:planner
+bazel run @rules_rust//tools/rust_analyzer:gen_rust_project -- //spool/lib/planner:all
 ```
 
 Update deps

@@ -21,10 +21,10 @@ const static struct PlannerJob empty = {
     .type = StepperJobRun,
 };
 
-void plannerInit()
-{
-    stepperPlanBuf.head = MOTION_LOOKAHEAD - 1;
-}
+// void plannerInit()
+// {
+//     stepperPlanBuf.head = MOTION_LOOKAHEAD - 1;
+// }
 
 uint32_t plannerSize(void)
 {

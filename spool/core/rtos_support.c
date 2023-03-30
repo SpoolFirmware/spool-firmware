@@ -40,3 +40,11 @@ void vApplicationGetTimerTaskMemory(StaticTask_t **ppxTimerTaskTCBBuffer,
     *ppxTimerTaskStackBuffer = TimerTaskStack;
     *pulTimerTaskStackSize = ARRAY_LENGTH(TimerTaskStack);
 }
+
+void *portMallocAligned(size_t size, size_t align) {
+    if (align <= portBYTE_ALIGNMENT) {
+        return pvPortMalloc(size);
+    } else {
+        panic();
+    }
+}

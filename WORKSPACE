@@ -54,6 +54,16 @@ crates_repository(
         "fixed-sqrt": crate.spec(
             version = "0.2.5",
         ),
+        "gcode": crate.spec(
+            version = "0.6.1",
+        ),
+        "arraydeque": crate.spec(
+            version = "0.5",
+            default_features = False,
+        ),
+        "log": crate.spec(
+            version = "0.4.17",
+        ),
     },
     rust_version=rust_version,
     supported_platform_triples=rust_target_triples,
