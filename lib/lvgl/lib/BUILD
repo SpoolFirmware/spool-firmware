@@ -1,8 +1,17 @@
 cc_library(
     name="base",
     srcs=glob([
-        "src/**/*.c",
+        "src/*.h",
         "src/**/*.h",
+        "src/core/**/*.c",
+        "src/extra/*.c",
+        "src/extra/layouts/**/*.c",
+        "src/draw/*.c",
+        "src/draw/sw/*.c",
+        "src/widgets/*.c",
+        "src/misc/*.c",
+        "src/font/*.c",
+        "src/hal/*.c",
         "fonts/*.c",
     ]) + [
         "lvgl.h",

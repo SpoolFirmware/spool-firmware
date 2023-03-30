@@ -95,6 +95,7 @@ cc_binary_with_platforms(
         "-T $(execpath //spool/platforms:linker.ld)",
         "-lm",
         "-z noexecstack",
+        "-Wl,--allow-multiple-definition", # SUS option but LOL 
     ],
     platforms = {
         # targets are called :spool_$platform, e.g. spool_stm32f401_mini
