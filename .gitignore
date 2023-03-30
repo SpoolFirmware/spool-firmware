@@ -10,3 +10,5 @@ bazel-spool-firmware
 bazel-testlogs
 
 .cache/
+
+rust-project.json
