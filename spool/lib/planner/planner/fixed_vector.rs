@@ -5,6 +5,14 @@ use fixed_sqrt::FixedSqrt;
 pub struct FixedVector<T: Fixed + FixedSqrt + PartialEq, const N: usize>([T; N]);
 
 impl <T: Fixed + FixedSqrt, const N: usize> FixedVector<T, N> {
+    pub fn new(s: [T; N]) -> Self {
+        FixedVector(s)
+    }
+
+    pub fn inner(self) -> [T; N] {
+        self.0
+    }
+
     pub fn mag(&self) -> T {
         let squared_sum = self.0.iter()
             .fold(T::default(), |elem, acc| (*acc * *acc) + elem);
@@ -15,6 +23,20 @@ impl <T: Fixed + FixedSqrt, const N: usize> FixedVector<T, N> {
         let mag = self.mag();
         let mut new_vec = self.clone();
         new_vec.0.iter_mut().for_each(|f| { *f /= mag; });
+        new_vec
+    }
+
+    pub fn dot(&self, other: &Self) -> T {
+        self.0.iter()
+              .zip(other.0.iter())
+              .fold(T::ZERO, |acc, (a, b)| acc + *a * *b)
+    }
+
+    pub fn sub(&self, other: &Self) -> Self {
+        let mut new_vec = self.clone();
+        new_vec.0.iter_mut()
+                 .zip(other.0.iter())
+                 .for_each(|(s, o)| *s -= *o);
         new_vec
     }
 }

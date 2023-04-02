@@ -67,6 +67,13 @@ crates_repository(
         "log": crate.spec(
             version = "0.4",
         ),
+        "cordic": crate.spec(
+            version = "0.1",
+        ),
+	"lazy_static": crate.spec(
+	    version = "1.4",
+	    features = ["spin_no_std"],
+	),
     },
     rust_version=rust_version,
     supported_platform_triples=rust_target_triples + host_triples,

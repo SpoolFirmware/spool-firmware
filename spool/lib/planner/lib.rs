@@ -30,7 +30,7 @@ extern "C" {
     fn portMallocAligned(size: usize, alignment: usize) -> *mut c_void;
 }
 
-unsafe fn allocateStatic<T>() -> Option<&'static mut MaybeUninit<T>> {
+unsafe fn alloc_static<T>() -> Option<&'static mut MaybeUninit<T>> {
     let ptr = portMallocAligned(core::mem::size_of::<T>(), core::mem::align_of::<T>());
     (ptr as *mut MaybeUninit<T>).as_mut::<'static>()
 }
@@ -41,7 +41,7 @@ unsafe fn allocateStatic<T>() -> Option<&'static mut MaybeUninit<T>> {
 #[allow(non_snake_case)]
 extern "C" fn plannerInit(num_axis: u32, num_stepper: u32) -> *mut Planner {
     let planner = unsafe {
-        let planner = allocateStatic::<Planner>().unwrap();
+        let planner = alloc_static::<Planner>().unwrap();
         *planner = MaybeUninit::new(Planner::new(num_axis, num_stepper));
         planner.assume_init_mut()
     };
