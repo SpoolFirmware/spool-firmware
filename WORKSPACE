@@ -62,7 +62,7 @@ crates_repository(
             default_features = False,
         ),
         "log": crate.spec(
-            version = "0.4.17",
+            version = "0.4",
         ),
     },
     rust_version=rust_version,

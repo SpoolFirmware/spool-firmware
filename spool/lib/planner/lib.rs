@@ -5,6 +5,18 @@
 #[macro_use]
 pub mod platform;
 
+#[cfg(test)]
+#[cfg(feature = "std")]
+pub mod platform_std;
+
+#[cfg(not(test))]
+#[cfg(not(feature = "std"))]
+use crate::platform::logger_init;
+
+#[cfg(test)]
+#[cfg(feature = "std")]
+use crate::platform_std::logger_init;
+
 pub mod planner;
 
 use core::{ffi::c_void, mem::MaybeUninit};
@@ -23,6 +35,8 @@ unsafe fn allocateStatic<T>() -> Option<&'static mut MaybeUninit<T>> {
     (ptr as *mut MaybeUninit<T>).as_mut::<'static>()
 }
 
+#[cfg(not(test))]
+#[cfg(not(feature = "std"))]
 #[no_mangle]
 #[allow(non_snake_case)]
 extern "C" fn plannerInit(num_axis: u32, num_stepper: u32) -> *mut Planner {
@@ -31,6 +45,7 @@ extern "C" fn plannerInit(num_axis: u32, num_stepper: u32) -> *mut Planner {
         *planner = MaybeUninit::new(Planner::new(num_axis, num_stepper));
         planner.assume_init_mut()
     };
+    logger_init();
     planner as *mut Planner
 }
 

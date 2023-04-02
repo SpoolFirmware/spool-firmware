@@ -1,5 +1,5 @@
 {
-  "checksum": "081b1b8d87ccdedd782228cdc2ece0045fe462574078cf06974e9e769cf0c485",
+  "checksum": "37d92397a70c617c8c6184fc2ae1054fb83abc8ef912ef5cfdf2593e0e2a648d",
   "crates": {
     "arraydeque 0.5.1": {
       "name": "arraydeque",

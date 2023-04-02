@@ -1,7 +1,34 @@
+use log::{info, trace, warn, debug};
+use std::io::{Write};
+
+use log::{Log, Record, Metadata};
 use fixed::types::I16F16;
 use planner::planner::{Planner, PlannerMove, JobType};
 
-fn main() {    
+struct YomamaLogger;
+
+impl log::Log for YomamaLogger {
+    fn enabled(&self, _metadata: &Metadata) -> bool {
+        true
+    }
+
+    fn log(&self, record: &Record) {
+        if self.enabled(record.metadata()) {
+            println!("[{:?}][{}]: {}", &record.level(), record.target(), record.args());
+        }
+    }
+
+    fn flush(&self) {
+        std::io::stdout().flush().unwrap();
+    }
+}
+
+static YOMAMA: YomamaLogger = YomamaLogger;
+
+fn main() {
+    log::set_logger(&YOMAMA);
+    log::set_max_level(log::LevelFilter::Trace);
+
     let mut planner = Planner::new(4, 4);
 
     let new_move = PlannerMove {
@@ -14,5 +41,5 @@ fn main() {
     };
     planner.enqueue_move(&new_move);
 
-    println!("Hello {:#?}", planner);
+    debug!("Hello {:#?}", planner);
 }
