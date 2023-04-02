@@ -365,6 +365,12 @@ uint64_t platformGetTimeUs(void)
     return time;
 }
 
+void safeShutdown(void)
+{
+    platformSetHeater(-1, 0);
+    platformSetHeater(0, 0);
+}
+
 uint64_t platformGetTimeUsIrqsafe(void)
 {
     uint64_t time = wallClockTimeUs + halTimerGetCount(&wallClockTimer);

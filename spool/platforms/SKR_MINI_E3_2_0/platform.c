@@ -135,3 +135,9 @@ bool platformGetEndstop(uint8_t axis)
         return endStop;
     return true;
 }
+
+void safeShutdown(void)
+{
+    platformSetHeater(-1, 0);
+    platformSetHeater(0, 0);
+}
