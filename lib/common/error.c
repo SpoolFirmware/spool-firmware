@@ -4,9 +4,12 @@
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-but-set-variable"
 
+extern void safeShutdown(void);
+
 _Noreturn void __panic(const char *file, int line, const char* err) 
 {
     __asm volatile("cpsid i");
+    safeShutdown();
     dbgPrintf("PANIC");
     if (file && err)
         dbgPrintf(" at %s:%d\n", err, file, line);

@@ -304,6 +304,12 @@ uint64_t platformGetTimeUs(void)
     return time;
 }
 
+void safeShutdown(void)
+{
+    platformSetHeater(-1, 0);
+    platformSetHeater(0, 0);
+}
+
 __attribute__((always_inline)) inline struct IOLine platformGetStatusLED(void)
 {
     return statusLED;
