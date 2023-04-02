@@ -1,6 +1,6 @@
 use core::{panic::PanicInfo, ptr::null};
 
-// use log::{Log, Record, Metadata};
+use log::{Log, Record, Metadata};
 
 extern "C" {
     fn __panic(file: *const u8, line: i32, msg: *const u8) -> !;
@@ -54,12 +54,13 @@ impl log::Log for SpoolLogger {
 }
 
 pub fn logger_init() {
-    log::set_logger(&LOGGER);
+    log::set_logger(&LOGGER).unwrap();
     log::set_max_level(log::LevelFilter::Trace);
 }
 
 #[panic_handler]
-pub fn panic(_info: &PanicInfo) -> ! {
+pub fn panic(info: &PanicInfo) -> ! {
+    println!("UwU: {}", info);
     unsafe {
         __panic(null(), 0, null());
     }
