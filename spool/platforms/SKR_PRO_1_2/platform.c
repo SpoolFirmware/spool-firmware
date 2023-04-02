@@ -25,7 +25,7 @@ const struct HalClockConfig halClockConfig = {
 
 /* ======= Display =======*/
 
-const static struct IOLine statusLED = { .group = DRF_BASE(DRF_GPIOA), .pin = 7 };
+const static struct IOLine statusLED = { .group = DRF_BASE(DRF_GPIOD), .pin = 5 };
 
 const static struct IOLine dispSpiSwCs = { .group = DRF_BASE(DRF_GPIOD),
                                            .pin = 10 };

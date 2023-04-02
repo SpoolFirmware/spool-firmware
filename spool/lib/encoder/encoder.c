@@ -1,31 +1,53 @@
 #include "encoder.h"
 #include "dbgprintf.h"
+#include "error.h"
 #include "FreeRTOS.h"
+#include "platform/platform.h"
 
 void encoderInit(struct Encoder *drv, struct IOLine btn, struct IOLine en1,
                  struct IOLine en2)
 {
-    halGpioEnableInterrupt(en1, GpioExtiModeRisingEdge);
-    halGpioEnableInterrupt(btn, GpioExtiModeRisingEdge);
 	drv->btn = btn;
 	drv->en1 = en1;
 	drv->en2 = en2;
 	drv->state.position = 0;
 	drv->state.presses = 0;
+    drv->state.prevState = 0;
+    halGpioEnableInterrupt(en1, GpioExtiModeFallingEdge | GpioExtiModeRisingEdge);
+    halGpioEnableInterrupt(btn, GpioExtiModeFallingEdge);
 }
 
 void encoder1Callback(struct Encoder *drv, uint64_t timeUs)
 {
+    uint8_t en1 = halGpioRead(drv->en1);
+    uint8_t en2 = halGpioRead(drv->en2);
     if (timeUs < drv->state.lastEncoderUs + ENCODER_ENCODER_THROTTLE) {
-	return;
+	    goto encoder1Callback_exit;
     }
-    drv->state.lastEncoderUs = timeUs;
-    if (halGpioRead(drv->en2)) {
-	drv->state.position++;
-    } else {
-	drv->state.position--;
+    uint32_t s = drv->state.prevState & 0x3;
+    if (en1) s |= 4;
+    if (en2) s |= 8;
+
+    switch (s) {
+        // case 0: case 5: case 10: case 15:
+        //     break;
+        // case 1: case 7: case 8: case 14:
+        //     drv->state.position += 1; break;
+        // case 2: case 4: case 11: case 13:
+        //     drv->state.position -= 1; break;
+        case 3: case 12:
+            drv->state.position += 1; break;
+        case 6: case 9:
+            drv->state.position -= 1; break;
+        default:
+            break;
+            // panic();
     }
+    drv->state.prevState = s >> 2;
     dbgPrintf("value %d\n", drv->state.position);
+
+encoder1Callback_exit:
+    drv->state.lastEncoderUs = timeUs;
 }
 
 void encoderButtonCallback(struct Encoder *drv, uint64_t timeUs)

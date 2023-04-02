@@ -22,7 +22,8 @@ void motionInit(void)
     }
     platformDisableStepper(0xFF);
     motionPlannerTaskInit();
-    plannerInit(NULL, 0, 0);
+    // TODO enable when RS side is done
+    // plannerInit(NULL, 0, 0);
 }
 
 fix16_t vecUnit(const fix16_t vec[NR_AXIS], fix16_t unit_vec[NR_AXIS])

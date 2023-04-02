@@ -2,13 +2,14 @@
 #include "hal/gpio.h"
 
 #define ENCODER_BUTTON_THROTTLE 1000
-#define ENCODER_ENCODER_THROTTLE 2000
+#define ENCODER_ENCODER_THROTTLE 200
 
 struct EncoderState {
 	uint64_t lastButtonUs;
 	uint64_t lastEncoderUs;
     int32_t position;
     uint32_t presses;
+    uint32_t prevState;
 };
 
 /* please don't access state*/
