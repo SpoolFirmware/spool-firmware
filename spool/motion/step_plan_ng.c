@@ -21,10 +21,10 @@ const static struct PlannerJob empty = {
     .type = StepperJobRun,
 };
 
-// void plannerInit()
-// {
-//     stepperPlanBuf.head = MOTION_LOOKAHEAD - 1;
-// }
+void plannerInit_legacy()
+{
+    stepperPlanBuf.head = MOTION_LOOKAHEAD - 1;
+}
 
 uint32_t plannerSize(void)
 {
@@ -179,7 +179,7 @@ static void populateBlock(const struct PlannerJob *prev, struct PlannerJob *new,
                 viSq = limit_sqr;
             }
         }
-        const uint32_t prevCurVSqMin = min(prev->vSq, new->vSq);
+        const uint32_t prevCurVSqMin = min(prev->vfSq, new->vSq);
         new->viSq = min(viSq, prevCurVSqMin);
     }
 

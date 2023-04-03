@@ -23,6 +23,7 @@ void motionInit(void)
     platformDisableStepper(0xFF);
     motionPlannerTaskInit();
     // TODO enable when RS side is done
+    plannerInit_legacy();
     // plannerInit(NULL, 0, 0);
 }
 

@@ -29,12 +29,6 @@ void encoder1Callback(struct Encoder *drv, uint64_t timeUs)
     if (en2) s |= 8;
 
     switch (s) {
-        // case 0: case 5: case 10: case 15:
-        //     break;
-        // case 1: case 7: case 8: case 14:
-        //     drv->state.position += 1; break;
-        // case 2: case 4: case 11: case 13:
-        //     drv->state.position -= 1; break;
         case 3: case 12:
             drv->state.position += 1; break;
         case 6: case 9:

@@ -88,7 +88,7 @@ static inline bool plannerJobIsMove(const struct PlannerJob *j)
     }
 }
 
-// void plannerInit(void);
+void plannerInit_legacy(void);
 
 uint32_t plannerAvailableSpace(void);
 uint32_t plannerCapacity(void);
