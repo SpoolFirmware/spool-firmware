@@ -55,6 +55,7 @@ rust_binary(
         "@planner_crate_index//:fixed",
         "@planner_crate_index//:fixed-sqrt",
         "@planner_crate_index//:gcode",
+        "@planner_crate_index//:clap",
     ],
     visibility=["//visibility:public"],
 )

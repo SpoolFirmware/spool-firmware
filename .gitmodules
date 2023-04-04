@@ -1,3 +1,6 @@
 [submodule "bazel-embedded"]
 	path = bazel-embedded
 	url = git@github.com:SpoolFirmware/bazel-embedded.git
+[submodule "rules_rust"]
+	path = rules_rust
+	url = git@github.com:SpoolFirmware/rules_rust.git
