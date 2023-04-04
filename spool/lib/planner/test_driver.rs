@@ -104,6 +104,7 @@ impl MachineState {
                         motor_steps: *(Box::<[i32; 4]>::try_from(xyze_steps).unwrap()),
                         delta_x: xyze.map(|x| x.to_fixed()),
                         max_v: [200, 200, 5, 40],
+                        min_v: [0.1.to_fixed(), 0.1.to_fixed(), 0.1.to_fixed(), 0.1.to_fixed()],
                         acc: [1500, 1500, 500, 1000],
                         stop: false,
                     });
@@ -117,8 +118,24 @@ impl MachineState {
                 91 => {
                     self.abs = false;
                 }
+                92 => {
+                    if let Some(e) = gcode.value_for('E') {
+                        self.e = e;
+                    }
+                    if let Some(x) = gcode.value_for('X') {
+                        self.x = x;
+                    }
+                    if let Some(y) = gcode.value_for('Y') {
+                        self.y = y;
+                    }
+                    if let Some(z) = gcode.value_for('Z') {
+                        self.z = z;
+                    }
+                }
+                // NOPS
+                29 => {},
                 _ => {
-                    debug!("Unsupported G: {}", gcode);
+                    panic!("Unsupported G: {}", gcode);
                 }
             },
             Mnemonic::Miscellaneous => match gcode.major_number() {
@@ -167,7 +184,7 @@ fn main() {
         if let Some(planner_move) = machine_state.process_gcode(&gcode) {
             trace!("Move: {:#?}", &planner_move);
             if let Err(_) = planner.enqueue_move(&planner_move) {
-                error!("failed to enqueue");
+                panic!("failed to enqueue");
             }
         }
         info!("New State: {}", &machine_state);

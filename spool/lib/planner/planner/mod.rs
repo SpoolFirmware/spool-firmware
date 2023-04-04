@@ -206,9 +206,7 @@ impl Planner {
             let mut max_axis_len_mm = U20F12::ZERO;
             let mut max_axis = 0;
             for (i, x) in delta_x.iter().enumerate() {
-                let x_time_est = *x / I20F12::from_num(new_move.max_v[i]);
-
-                assert!(!x_time_est.is_negative());
+                let x_time_est = x.abs() / I20F12::from_num(new_move.max_v[i]);
 
                 time_est = core::cmp::max(time_est, x_time_est.to_fixed::<U20F12>());
                 if x.unsigned_abs() > max_axis_len_mm {
@@ -328,12 +326,13 @@ impl Planner {
         });
         let job = self.insert_move_job(new_move, prev_move)?;
 
-        if let Some(job) = job {
-            self.job_queue
-                .push_back(job)
-                .map_err(|_| PlannerError::CapacityError)
-        } else {
-            Ok(())
-        }
+        // if let Some(job) = job {
+        //     self.job_queue
+        //         .push_back(job)
+        //         .map_err(|_| PlannerError::CapacityError)
+        // } else {
+        //     Ok(())
+        // }
+        Ok(())
     }
 }
