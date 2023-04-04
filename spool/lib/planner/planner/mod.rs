@@ -1,13 +1,30 @@
 pub mod fixed_vector;
 
-use fixed_sqrt::FixedSqrt;
-use fixed::{
-    types::{I16F16, I20F12, U20F12}, traits::ToFixed,
-};
+use core::{fmt::Display, result::Result};
+
 use crate::{MAX_AXIS, MAX_STEPPERS};
 use arraydeque::{ArrayDeque, Saturating};
+use fixed::{
+    traits::ToFixed,
+    types::{I16F16, I20F12, U20F12},
+};
+use fixed_sqrt::FixedSqrt;
+use log::warn;
 
 use fixed_vector::FixedVector;
+
+#[derive(Debug)]
+pub enum PlannerError {
+    ArithmeticError,
+    InvariantError,
+    CapacityError,
+}
+
+impl Display for PlannerError {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        write!(f, "{:?}", self)
+    }
+}
 
 #[derive(Debug)]
 pub struct Planner {
@@ -36,15 +53,16 @@ pub enum JobType {
 #[derive(Debug)]
 pub struct Move {
     pub delta_x_steps: [i32; MAX_STEPPERS],
-    pub acceleration_steps: u32,
-    pub deceleration_steps: u32,
+    pub max_axis: usize,
+    pub accelerate_mm: U20F12,
+    pub decelerate_mm: U20F12,
 
     /// length of the move in mm
     pub len_mm: U20F12,
 
     pub unit_vec: FixedVector<I20F12, MAX_AXIS>,
 
-    /// Acceleration Speed (mm/s^2)
+    /// Acceleration (mm/s^2)
     pub acceleration_mms2: U20F12,
     /// (Entry Speed)^2 in (mm/s)^2
     pub entry_speed_mm_sq: U20F12,
@@ -55,8 +73,76 @@ pub struct Move {
 }
 
 impl Move {
-    fn reverse_pass_kernel(&mut self) {
+    fn check_invariant(&self) {
+        assert!(self.accelerate_mm + self.decelerate_mm <= self.len_mm);
+        assert!(self.speed_mm_sq >= self.entry_speed_mm_sq);
+        assert!(self.speed_mm_sq >= self.exit_speed_mm_sq);
+        assert!(self.unit_vec.mag().abs_diff(1.to_fixed::<U20F12>()) < 0.001.to_fixed::<U20F12>());
+    }
 
+    fn reverse_pass_kernel(&mut self) -> Result<(), PlannerError> {
+        self.check_invariant();
+
+        use PlannerError::*;
+
+        if self.speed_mm_sq == U20F12::ZERO {
+            warn!("reverse_pass_kernel: speed_mm_sq is zero");
+        }
+        // TODO convincing explanation here
+        //
+        //
+        //
+        // (self.speed_mm_sq - self.entry_speed_mm_sq) / (2 * self.acceleration_mms2)
+        let accelerate_mm = self
+            .speed_mm_sq
+            .checked_sub(self.entry_speed_mm_sq)
+            .ok_or(ArithmeticError)?
+            / (2.to_fixed::<U20F12>() * self.acceleration_mms2);
+
+        // (self.speed_mm_sq - self.exit_speed_mm_sq) / (2 * self.acceleration_mms2)
+        let decelerate_mm = (self.speed_mm_sq.checked_sub(self.exit_speed_mm_sq))
+            .ok_or(ArithmeticError)?
+            / (2.to_fixed::<U20F12>() * self.acceleration_mms2);
+
+        let speed_change_mm = accelerate_mm + decelerate_mm;
+        if self.len_mm < speed_change_mm {
+            // try going directly from entry to exit speed
+            let direct_mm = accelerate_mm.abs_diff(decelerate_mm);
+
+            if self.len_mm < direct_mm {
+                // since exit speed <= cruising speed, and due to the forward pass,
+                // this move is able to reach cruising speed,
+                // the move cannot slow down enough
+                //
+                // compute new initial speed to ensure we can slow down
+                let new_entry_speed_mm_sq =
+                    self.len_mm * 2.to_fixed::<U20F12>() * self.acceleration_mms2
+                        + self.exit_speed_mm_sq;
+                assert!(new_entry_speed_mm_sq <= self.entry_speed_mm_sq);
+                self.accelerate_mm = 0.to_fixed();
+                self.decelerate_mm = self.len_mm;
+                self.entry_speed_mm_sq = new_entry_speed_mm_sq;
+                self.speed_mm_sq = new_entry_speed_mm_sq;
+            } else {
+                self.accelerate_mm = (direct_mm + self.len_mm) / 2.to_fixed::<U20F12>();
+                self.decelerate_mm = self.len_mm - self.accelerate_mm;
+
+                self.speed_mm_sq =
+                    self.accelerate_mm * 2.to_fixed::<U20F12>() * self.acceleration_mms2
+                        + self.entry_speed_mm_sq;
+                self.exit_speed_mm_sq = self
+                    .speed_mm_sq
+                    .checked_sub(
+                        self.decelerate_mm * 2.to_fixed::<U20F12>() * self.acceleration_mms2,
+                    )
+                    .unwrap_or(U20F12::ZERO);
+            }
+        } else {
+            self.accelerate_mm = accelerate_mm;
+            self.decelerate_mm = decelerate_mm;
+        }
+
+        Ok(())
     }
 }
 
@@ -85,7 +171,6 @@ pub struct PlannerMove {
 }
 
 impl Planner {
-
     pub fn new(num_axis: u32, num_stepper: u32) -> Self {
         Planner {
             num_axis: num_axis as u8,
@@ -95,11 +180,15 @@ impl Planner {
         }
     }
 
-    fn populate_block(&self, new_move: &PlannerMove, prev_move: Option<&Move>) {
+    fn insert_move_job(
+        &self,
+        new_move: &PlannerMove,
+        prev_move: Option<&Move>,
+    ) -> Result<Option<PlannerJob>, PlannerError> {
         // using lazy_static (uses spin) or once_cell (uses critical_section) to
         // read a constant seems brain dead, so here it is, for now, a constant
         let junction_stop_vel_thres: I20F12 = I20F12::from_num(0.99999);
-        let platform_junction_deviation: I20F12 = I20F12::from_num(0.015);
+        let platform_junction_deviation: U20F12 = U20F12::from_num(0.015);
         let junction_smoothing_thres: I20F12 = I20F12::from_num(-0.707);
 
         // move in fixed point mm
@@ -111,81 +200,125 @@ impl Planner {
             delta_x
         };
 
-        let delta_x_vec = FixedVector::new(delta_x.clone());
-        let len_mm = delta_x_vec.mag();
-        let delta_x = delta_x_vec.inner();
-
         // time taken by the slowest axis, longest axis move magnitude, index
-        let (time_est, max_axis_mm, max_axis) = {
+        let (time_est, max_axis_len_mm, max_axis) = {
             let mut time_est = U20F12::ZERO;
-            let mut max_axis_mm = U20F12::ZERO;
+            let mut max_axis_len_mm = U20F12::ZERO;
             let mut max_axis = 0;
             for (i, x) in delta_x.iter().enumerate() {
-                let x_time_est = *x/I20F12::from_num(new_move.max_v[i]);
+                let x_time_est = *x / I20F12::from_num(new_move.max_v[i]);
 
                 assert!(!x_time_est.is_negative());
 
-                time_est = core::cmp::max(time_est, x_time_est);
-                if x.unsigned_abs() > max_axis_mm {
-                    max_axis_mm = x.unsigned_abs();
+                time_est = core::cmp::max(time_est, x_time_est.to_fixed::<U20F12>());
+                if x.unsigned_abs() > max_axis_len_mm {
+                    max_axis_len_mm = x.unsigned_abs();
                     max_axis = i;
                 }
             }
-            (time_est, max_axis_mm, max_axis)
+            (time_est, max_axis_len_mm, max_axis)
         };
 
         // empty block
         if time_est == U20F12::ZERO {
-            return
+            return Ok(None)
         }
 
-        let speed_mm_sq = max_axis_mm / time_est;
+        let speed_mm_sq = max_axis_len_mm / time_est;
+
+        let delta_x_vec = FixedVector::new(delta_x.clone());
+        let len_mm = delta_x_vec.mag();
+        let unit_vec = delta_x_vec.unit();
+        // let delta_x = delta_x_vec.inner();
 
         // acceleration of the block, capped by moving axes
-        let acc_mm = {
-            let mut acc_mm: U20F12 = new_move.acc[max_axis].to_fixed();
-            delta_x.iter()
-                   .zip(new_move.acc.iter())
-                   .fold(acc_mm, |y, (x, acc)| {
-                       if *x == I20F12::ZERO || acc.to_fixed::<U20F12>() <= y {
-                           y
-                       } else {
-                           core::cmp::min(y, acc.to_fixed::<U20F12>() * max_axis_mm / x.unsigned_abs())
-                       }
-                   });
+        let acceleration_mms2 = {
+            let mut acceleration_mms2: U20F12 = new_move.acc[max_axis].to_fixed();
+            // this deviates from the c impl, and opts to not exceed acceleration based on the direction
+            delta_x
+                .iter()
+                .zip(new_move.acc.iter())
+                .zip(unit_vec.iter())
+                .fold(acceleration_mms2, |y, ((x, acceleration_x), unit_vec_x)| {
+                    let acceleration_x = acceleration_x.to_fixed::<U20F12>();
+                    if *x == I20F12::ZERO || acceleration_x >= y * unit_vec_x.unsigned_abs() {
+                        y
+                    } else {
+                        core::cmp::min(y, acceleration_x / unit_vec_x.unsigned_abs())
+                    }
+                })
         };
 
-        let unit_vec = FixedVector::new(delta_x).unit();
         let entry_speed_mm_sq: U20F12 = prev_move.map_or(U20F12::ZERO, |prev_move: &Move| {
             let cos_theta = -unit_vec.dot(&prev_move.unit_vec);
 
-            if cos_new_prev > junction_stop_vel_thres {
+            if cos_theta > junction_stop_vel_thres {
+                // FIXME this may be an okay min_speed, but not ideal
+                // min_speed here should respect the min speed of each axis
                 let min_speed: U20F12 = new_move.min_v[max_axis].to_fixed();
                 min_speed * min_speed
             } else {
-                let junction_dev: FixedVector<_, MAX_AXIS> = unit_vec.sub(&prev_move.unit_vec).unit();
+                let junction_dev: FixedVector<_, MAX_AXIS> =
+                    unit_vec.sub(&prev_move.unit_vec).unit();
 
                 // skipped over a jacc_mm calculation here, convinced myself that it was dead code
 
                 // avoid div by 0 for oneMinusSinThetaDiv2f
-                let cos_theta = if cos_theta < -0.999.to_fixed::<I20F12>() { -0.999.to_fixed::<I20F12>() } else { cos_theta };
+                let cos_theta = if cos_theta < -0.999.to_fixed::<I20F12>() {
+                    -0.999.to_fixed::<I20F12>()
+                } else {
+                    cos_theta
+                };
 
-                let sin_theta_div_2 = (0.5.to_fixed::<I20F12>() * (1.to_fixed::<I20F12>() - cos_theta)).sqrt();
-                let one_minus_sin_theta_div_2 = 1.to_fixed::<I20F12>() - sin_theta_div_2;
-                let entry_speed_mm_sq = platform_junction_deviation * sin_theta_div_2 * acc_mm / one_minus_sin_theta_div_2;
+                // number is positive because -1 < cos_theta < 1
+                let sin_theta_div_2: U20F12 = (0.5.to_fixed::<I20F12>()
+                    * (1.to_fixed::<I20F12>() - cos_theta))
+                    .sqrt().to_fixed::<U20F12>();
+                let one_minus_sin_theta_div_2: U20F12 = 1.to_fixed::<U20F12>() - sin_theta_div_2;
+                let entry_speed_mm_sq: U20F12 = platform_junction_deviation * sin_theta_div_2 * acceleration_mms2
+                    / one_minus_sin_theta_div_2;
 
                 // skipped over small segment handling code
-                core::cmp::min(speed_mm_sq, core::cmp::min(entry_speed_mm_sq, prev_move.exit_speed_mm_sq))
+                core::cmp::min(
+                    speed_mm_sq,
+                    core::cmp::min(entry_speed_mm_sq, prev_move.exit_speed_mm_sq),
+                )
             }
         });
 
+        let accelerate_mm = speed_mm_sq
+            .checked_sub(entry_speed_mm_sq)
+            .ok_or(PlannerError::ArithmeticError)?
+            / (2.to_fixed::<U20F12>() * acceleration_mms2);
 
+        let speed_mm_sq = if len_mm < accelerate_mm {
+            len_mm * 2.to_fixed::<U20F12>() * acceleration_mms2 + entry_speed_mm_sq
+        } else {
+            speed_mm_sq
+        };
+        let exit_speed_mm_sq = speed_mm_sq;
 
-
-        // println!("TimeEst: {}s", time_est);
+        Ok(Some(PlannerJob::StepperJobRun(Move {
+                delta_x_steps: new_move.motor_steps.clone(),
+                max_axis,
+                accelerate_mm,
+                decelerate_mm: 0.to_fixed::<U20F12>(),
+                len_mm,
+                unit_vec,
+                acceleration_mms2,
+                entry_speed_mm_sq,
+                speed_mm_sq,
+                exit_speed_mm_sq,
+            })))
     }
 
-    pub fn enqueue_move(&mut self, new_move: &PlannerMove) -> Result<(), ()> {
+    pub fn enqueue_move(&mut self, new_move: &PlannerMove) -> Result<(), PlannerError> {
+
+        // unfortunately we cannot reserve a slot in the job queue
+        if self.job_queue.is_full() {
+            return Err(PlannerError::CapacityError)
+        }
+
         let prev_move = self.job_queue.back().map_or(None, |m| {
             if let PlannerJob::StepperJobRun(run) = m {
                 Some(run)
@@ -193,7 +326,14 @@ impl Planner {
                 None
             }
         });
-        self.populate_block(new_move, prev_move);
-        Ok(())
+        let job = self.insert_move_job(new_move, prev_move)?;
+
+        if let Some(job) = job {
+            self.job_queue
+                .push_back(job)
+                .map_err(|_| PlannerError::CapacityError)
+        } else {
+            Ok(())
+        }
     }
 }

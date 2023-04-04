@@ -1,10 +1,12 @@
-use fixed::traits::Fixed;
+use core::ops::Index;
+
+use fixed::traits::{Fixed, ToFixed};
 use fixed_sqrt::FixedSqrt;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct FixedVector<T: Fixed + FixedSqrt + PartialEq, const N: usize>([T; N]);
 
-impl <T: Fixed + FixedSqrt, const N: usize> FixedVector<T, N> {
+impl <T: Fixed + FixedSqrt, const N: usize> FixedVector<T, N> where T::Unsigned: Fixed + FixedSqrt + ToFixed {
     pub fn new(s: [T; N]) -> Self {
         FixedVector(s)
     }
@@ -13,16 +15,16 @@ impl <T: Fixed + FixedSqrt, const N: usize> FixedVector<T, N> {
         self.0
     }
 
-    pub fn mag(&self) -> T {
+    pub fn mag(&self) -> T::Unsigned {
         let squared_sum = self.0.iter()
-            .fold(T::default(), |elem, acc| (*acc * *acc) + elem);
+            .fold(T::Unsigned::default(), |elem, acc| (*acc * *acc).to_fixed::<T::Unsigned>() + elem);
         squared_sum / squared_sum.sqrt()
     }
 
     pub fn unit(&self) -> Self {
         let mag = self.mag();
         let mut new_vec = self.clone();
-        new_vec.0.iter_mut().for_each(|f| { *f /= mag; });
+        new_vec.0.iter_mut().for_each(|f| { *f /= mag.to_fixed::<T>(); });
         new_vec
     }
 
@@ -38,6 +40,18 @@ impl <T: Fixed + FixedSqrt, const N: usize> FixedVector<T, N> {
                  .zip(other.0.iter())
                  .for_each(|(s, o)| *s -= *o);
         new_vec
+    }
+
+    pub fn iter(&self) -> impl Iterator<Item = &T> {
+        self.0.iter()
+    }
+}
+
+impl <T: Fixed + FixedSqrt, const N: usize> Index<usize> for FixedVector<T, N> {
+    type Output = T;
+
+    fn index(&self, index: usize) -> &Self::Output {
+        &self.0[index]
     }
 }
 

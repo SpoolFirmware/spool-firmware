@@ -39,7 +39,7 @@ macro_rules! print {
 struct SpoolLogger;
 static LOGGER: SpoolLogger = SpoolLogger;
 
-impl log::Log for SpoolLogger {
+impl Log for SpoolLogger {
     fn enabled(&self, _metadata: &Metadata) -> bool {
         true
     }

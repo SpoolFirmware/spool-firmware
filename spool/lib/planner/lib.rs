@@ -21,7 +21,7 @@ pub mod planner;
 
 use core::{ffi::c_void, mem::MaybeUninit};
 
-use planner::{Planner, PlannerJob};
+use planner::Planner;
 
 pub const MAX_STEPPERS: usize = 4;
 pub const MAX_AXIS: usize = 4;
