@@ -145,12 +145,14 @@ impl MachineState {
                 83 => {
                     self.e_abs = false;
                 }
+                // NOPs
+                140 | 104 | 109 | 190 | 106 | 107 => {}
                 _ => {
-                    debug!("Unsupported M: {}", gcode);
+                    panic!("Unsupported M: {}", gcode);
                 }
             }
             _ => {
-                debug!("Unsupported Type: {}", gcode);
+                panic!("Unsupported Type: {}", gcode);
             }
         }
         None
