@@ -74,6 +74,10 @@ crates_repository(
 	    version = "1.4",
 	    features = ["spin_no_std"],
 	),
+	"itertools": crate.spec(
+	    version = "0.10.5",
+	    default_features = False,
+	),
     },
     rust_version=rust_version,
     supported_platform_triples=rust_target_triples + host_triples,

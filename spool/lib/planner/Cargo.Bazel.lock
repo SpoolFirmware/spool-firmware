@@ -1,5 +1,5 @@
 {
-  "checksum": "c39552c18193c0a488c828d81468ef28977973351f411cbe016952860f3bea1f",
+  "checksum": "b744490cdd5f9289c51332b7b2a98f7b4d8e26a9d99cb593423df30ed35d0eb8",
   "crates": {
     "anstream 0.2.6": {
       "name": "anstream",
@@ -866,6 +866,10 @@
               "target": "gcode"
             },
             {
+              "id": "itertools 0.10.5",
+              "target": "itertools"
+            },
+            {
               "id": "lazy_static 1.4.0",
               "target": "lazy_static"
             },
@@ -880,6 +884,36 @@
         "version": "0.0.1"
       },
       "license": null
+    },
+    "either 1.8.1": {
+      "name": "either",
+      "version": "1.8.1",
+      "repository": {
+        "Http": {
+          "url": "https://crates.io/api/v1/crates/either/1.8.1/download",
+          "sha256": "7fcaabb2fef8c910e7f4c7ce9f67a1283a1715879a7c230ca9d6d1ae31f16d91"
+        }
+      },
+      "targets": [
+        {
+          "Library": {
+            "crate_name": "either",
+            "crate_root": "src/lib.rs",
+            "srcs": [
+              "**/*.rs"
+            ]
+          }
+        }
+      ],
+      "library_target_name": "either",
+      "common_attrs": {
+        "compile_data_glob": [
+          "**"
+        ],
+        "edition": "2018",
+        "version": "1.8.1"
+      },
+      "license": "MIT OR Apache-2.0"
     },
     "errno 0.3.0": {
       "name": "errno",
@@ -1432,6 +1466,45 @@
         "version": "0.4.6"
       },
       "license": "MIT"
+    },
+    "itertools 0.10.5": {
+      "name": "itertools",
+      "version": "0.10.5",
+      "repository": {
+        "Http": {
+          "url": "https://crates.io/api/v1/crates/itertools/0.10.5/download",
+          "sha256": "b0fd2260e829bddf4cb6ea802289de2f86d6a7a690192fbe91b3f46e0f2c8473"
+        }
+      },
+      "targets": [
+        {
+          "Library": {
+            "crate_name": "itertools",
+            "crate_root": "src/lib.rs",
+            "srcs": [
+              "**/*.rs"
+            ]
+          }
+        }
+      ],
+      "library_target_name": "itertools",
+      "common_attrs": {
+        "compile_data_glob": [
+          "**"
+        ],
+        "deps": {
+          "common": [
+            {
+              "id": "either 1.8.1",
+              "target": "either"
+            }
+          ],
+          "selects": {}
+        },
+        "edition": "2018",
+        "version": "0.10.5"
+      },
+      "license": "MIT/Apache-2.0"
     },
     "lazy_static 1.4.0": {
       "name": "lazy_static",
