@@ -1,13 +1,13 @@
 use clap::{Arg, Command};
 use fixed::traits::ToFixed;
 use gcode::Mnemonic;
-use log::{debug, info, trace, warn, error};
-use std::{fmt::Display, fs::File, io::Write, path::PathBuf};
+use log::{debug, error, info, trace, warn};
 use std::boxed::Box;
+use std::{fmt::Display, fs::File, io::Write, path::PathBuf};
 
-use fixed::types::I16F16;
+use fixed::types::{I16F16, U20F12};
 use log::{Log, Metadata, Record};
-use planner::planner::{JobType, Planner, PlannerMove, PlannerJob};
+use planner::planner::{JobType, Planner, PlannerError, PlannerJob, PlannerMove};
 
 struct YomamaLogger;
 
@@ -75,7 +75,7 @@ macro_rules! delta_axis {
                 } else {
                     $axis
                 }
-            },
+            }
             None => 0.0,
         }
     };
@@ -84,6 +84,11 @@ macro_rules! delta_axis {
 const STEPS_PER_MM: [f32; 4] = [80.0, 80.0, 400.0, 800.0];
 
 impl MachineState {
+
+    fn process_move(&mut self, m: MoveSteps) {
+
+    }
+
     fn process_gcode(&mut self, gcode: &gcode::GCode) -> Option<PlannerMove> {
         match gcode.mnemonic() {
             Mnemonic::General => match gcode.major_number() {
@@ -94,7 +99,11 @@ impl MachineState {
                     let delta_y = delta_axis!(self, gcode, 'Y', y, self.abs);
                     let delta_z = delta_axis!(self, gcode, 'Z', z, self.abs);
                     let xyze = [delta_x, delta_y, delta_z, delta_e];
-                    let xyze_steps: Vec<_> = xyze.iter().zip(STEPS_PER_MM.iter()).map(|(mm, step)| (mm * step) as i32).collect();
+                    let xyze_steps: Vec<_> = xyze
+                        .iter()
+                        .zip(STEPS_PER_MM.iter())
+                        .map(|(mm, step)| (mm * step) as i32)
+                        .collect();
                     self.x += xyze[0];
                     self.y += xyze[1];
                     self.z += xyze[2];
@@ -104,7 +113,12 @@ impl MachineState {
                         motor_steps: *(Box::<[i32; 4]>::try_from(xyze_steps).unwrap()),
                         delta_x: xyze.map(|x| x.to_fixed()),
                         max_v: [200, 200, 5, 40],
-                        min_v: [0.1.to_fixed(), 0.1.to_fixed(), 0.1.to_fixed(), 0.1.to_fixed()],
+                        min_v: [
+                            0.1.to_fixed(),
+                            0.1.to_fixed(),
+                            0.1.to_fixed(),
+                            0.1.to_fixed(),
+                        ],
                         acc: [1500, 1500, 500, 1000],
                         stop: false,
                     });
@@ -113,7 +127,8 @@ impl MachineState {
                     *self = Self::default();
                 }
                 90 => {
-                    self.abs = true; self.e_abs = true;
+                    self.abs = true;
+                    self.e_abs = true;
                 }
                 91 => {
                     self.abs = false;
@@ -133,7 +148,7 @@ impl MachineState {
                     }
                 }
                 // NOPS
-                29 => {},
+                29 => {}
                 _ => {
                     panic!("Unsupported G: {}", gcode);
                 }
@@ -150,7 +165,7 @@ impl MachineState {
                 _ => {
                     panic!("Unsupported M: {}", gcode);
                 }
-            }
+            },
             _ => {
                 panic!("Unsupported Type: {}", gcode);
             }
@@ -172,6 +187,12 @@ fn main() {
     info!("Trying file {:?}", &file_path);
 
     let mut planner = Planner::new(4, 4);
+    planner.steps_per_mm = [
+        80.to_fixed::<U20F12>(),
+        80.to_fixed::<U20F12>(),
+        400.to_fixed::<U20F12>(),
+        800.to_fixed::<U20F12>(),
+    ];
 
     debug!("Init Planner {:#?}", planner);
 
@@ -185,8 +206,16 @@ fn main() {
         info!("Input[{:04}]: {}", i, gcode);
         if let Some(planner_move) = machine_state.process_gcode(&gcode) {
             trace!("Move: {:#?}", &planner_move);
-            if let Err(_) = planner.enqueue_move(&planner_move) {
-                panic!("failed to enqueue");
+            loop {
+                match planner.enqueue_move(&planner_move) {
+                    Ok(_) => break,
+                    Err(PlannerError::CapacityError) => {
+                        planner.dequeue_move_test_only()
+                    },
+                    Err(_) => {
+                        panic!("skill issue");
+                    }
+                }
             }
         }
         info!("New State: {}", &machine_state);

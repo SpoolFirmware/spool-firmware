@@ -7,7 +7,7 @@ use core::{cell::RefCell, fmt::Display, result::Result};
 use crate::{MAX_AXIS, MAX_STEPPERS};
 use arraydeque::{ArrayDeque, Saturating};
 use fixed::{
-    traits::{Fixed, ToFixed},
+    traits::ToFixed,
     types::{I16F16, I20F12, U20F12},
 };
 use fixed_sqrt::FixedSqrt;
@@ -32,7 +32,7 @@ impl Display for PlannerError {
 pub struct Planner {
     num_axis: u8,
     num_stepper: u8,
-    pub steps_per_mm: [I20F12; MAX_AXIS],
+    pub steps_per_mm: [U20F12; MAX_AXIS],
 
     job_queue: ArrayDeque<RefCell<PlannerJob>, 8, Saturating>,
 }
@@ -72,6 +72,14 @@ pub struct Move {
     pub speed_mm_sq: U20F12,
     /// (Exit Speed) squared in mm
     pub exit_speed_mm_sq: U20F12,
+}
+
+#[derive(Debug)]
+pub struct MoveSteps {
+    pub delta_x_steps: [i32; MAX_STEPPERS],
+    pub max_axis: usize,
+    pub accelerate_steps: u32,
+    pub decelerate_steps: u32,
 }
 
 impl Move {
@@ -154,6 +162,12 @@ pub enum PlannerJob {
 }
 
 impl PlannerJob {
+    fn as_move_owned(self) -> Option<Move> {
+        match self {
+            PlannerJob::StepperJobRun(m) => Some(m),
+        }
+    }
+
     fn as_move(&self) -> Option<&Move> {
         match self {
             PlannerJob::StepperJobRun(m) => Some(m),
@@ -191,7 +205,7 @@ impl Planner {
         Planner {
             num_axis: num_axis as u8,
             num_stepper: num_stepper as u8,
-            steps_per_mm: [I20F12::from_num(0); MAX_AXIS],
+            steps_per_mm: [U20F12::from_num(0); MAX_AXIS],
             job_queue: ArrayDeque::new(),
         }
     }
@@ -246,7 +260,7 @@ impl Planner {
 
         // acceleration of the block, capped by moving axes
         let acceleration_mms2 = {
-            let mut acceleration_mms2: U20F12 = new_move.acc[max_axis].to_fixed();
+            let acceleration_mms2: U20F12 = new_move.acc[max_axis].to_fixed();
             // this deviates from the c impl, and opts to not exceed acceleration based on the direction
             delta_x
                 .iter()
@@ -276,7 +290,6 @@ impl Planner {
                         unit_vec.sub(&prev_move.unit_vec).unit();
 
                     let acceleration_mms2 = {
-                        let mut acceleration_mms2: U20F12 = new_move.acc[max_axis].to_fixed();
                         // this deviates from the c impl, and opts to not exceed acceleration based on the direction
                         delta_x
                             .iter()
@@ -380,22 +393,40 @@ impl Planner {
         }
     }
 
+    pub fn dequeue_move_test_only(&mut self) -> Option<(MoveSteps, Move)> {
+        if let Some(job) = self.job_queue.pop_front().map(|j| j.into_inner()) {
+            let job = job.as_move_owned().unwrap();
+
+            let max_axis_proj = job.unit_vec[job.max_axis].unsigned_abs();
+            let accelerate_steps = max_axis_proj * job.accelerate_mm * self.steps_per_mm[job.max_axis];
+            let decelerate_steps = max_axis_proj * job.decelerate_mm * self.steps_per_mm[job.max_axis];
+
+            let max_axis_delta_x = job.delta_x_steps[job.max_axis].unsigned_abs().to_fixed::<U20F12>();
+            let (accelerate_steps, decelerate_steps) =
+            if accelerate_steps + decelerate_steps > max_axis_delta_x {
+                let scaling_factor = max_axis_delta_x / (accelerate_steps + decelerate_steps);
+                (accelerate_steps * scaling_factor, decelerate_steps * scaling_factor)
+            } else {
+                (accelerate_steps, decelerate_steps)
+            };
+
+            Some(
+                (MoveSteps {
+                    delta_x_steps: job.delta_x_steps.clone(),
+                    max_axis: job.max_axis,
+                    accelerate_steps: accelerate_steps.to_num::<u32>(),
+                    decelerate_steps: decelerate_steps.to_num::<u32>(),
+                }, job))
+        } else {
+            None
+        }
+    }
+
     pub fn enqueue_move(&mut self, new_move: &PlannerMove) -> Result<(), PlannerError> {
         // unfortunately we cannot reserve a slot in the job queue
         if self.job_queue.is_full() {
             return Err(PlannerError::CapacityError);
         }
-
-        // let job = self
-        //     .job_queue
-        //     .iter()
-        //     .rev()
-        //     .find_map(|m| {
-        //         m.borrow()
-        //             .as_move()
-        //             .map(|prev_move| Self::insert_move_job(new_move, Some(prev_move)))
-        //     })
-        //     .unwrap_or_else(|| Self::insert_move_job(new_move, None));
 
         let prev_move = self
             .job_queue
