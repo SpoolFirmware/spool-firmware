@@ -7,7 +7,8 @@ use std::{fmt::Display, fs::File, io::Write, path::PathBuf};
 
 use fixed::types::{I16F16, U20F12};
 use log::{Log, Metadata, Record};
-use planner::planner::{JobType, Planner, PlannerError, PlannerJob, PlannerMove};
+use planner::planner::{JobType, Planner, PlannerError, PlannerJob, PlannerMove, MoveSteps};
+use std::cmp::min;
 
 struct YomamaLogger;
 
@@ -39,6 +40,7 @@ struct MachineState {
     pub y: f32,
     pub z: f32,
     pub e: f32,
+    pub fr: f32,
     pub abs: bool,
     pub e_abs: bool,
 }
@@ -60,6 +62,7 @@ impl Default for MachineState {
             y: 0.0,
             z: 0.0,
             e: 0.0,
+            fr: 100.0 * 60.0,
             abs: true,
             e_abs: true,
         }
@@ -104,15 +107,19 @@ impl MachineState {
                         .zip(STEPS_PER_MM.iter())
                         .map(|(mm, step)| (mm * step) as i32)
                         .collect();
+                    if let Some(f) = gcode.value_for('F') {
+                        self.fr = f / 60.0;
+                    }
                     self.x += xyze[0];
                     self.y += xyze[1];
                     self.z += xyze[2];
                     self.e += xyze[3];
+                    let fr = self.fr as u32;
                     return Some(PlannerMove {
                         job_type: JobType::StepperJobRun,
                         motor_steps: *(Box::<[i32; 4]>::try_from(xyze_steps).unwrap()),
                         delta_x: xyze.map(|x| x.to_fixed()),
-                        max_v: [200, 200, 5, 40],
+                        max_v: [min(fr, 200), min(fr, 200), min(fr, 5), min(fr, 40)],
                         min_v: [
                             0.1.to_fixed(),
                             0.1.to_fixed(),
@@ -210,7 +217,8 @@ fn main() {
                 match planner.enqueue_move(&planner_move) {
                     Ok(_) => break,
                     Err(PlannerError::CapacityError) => {
-                        planner.dequeue_move_test_only()
+                        let res = planner.dequeue_move_test_only();
+                        info!("[EXEC] {:?}", res);
                     },
                     Err(_) => {
                         panic!("skill issue");
