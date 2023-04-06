@@ -1,21 +1,22 @@
-#![no_std]
-
+#![cfg_attr(not(feature = "std"), no_std)]
 #[cfg(not(test))]
 #[cfg(not(feature = "std"))]
 #[macro_use]
-pub mod platform;
+pub mod platform_no_std;
 
-#[cfg(test)]
 #[cfg(feature = "std")]
-pub mod platform_std;
+mod platform_std;
 
 #[cfg(not(test))]
 #[cfg(not(feature = "std"))]
-use crate::platform::logger_init;
+use crate::platform_no_std::logger_init;
 
-#[cfg(test)]
-#[cfg(feature = "std")]
-use crate::platform_std::logger_init;
+pub mod platform {
+    #[cfg(feature = "std")]
+    pub use crate::platform_std::*;
+    #[cfg(not(feature = "std"))]
+    pub use crate::platform_no_std::*;
+}
 
 pub mod planner;
 

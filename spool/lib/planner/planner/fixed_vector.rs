@@ -3,6 +3,8 @@ use core::ops::Index;
 use fixed::traits::{Fixed, ToFixed};
 use fixed_sqrt::FixedSqrt;
 
+use crate::platform;
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct FixedVector<T: Fixed + FixedSqrt + PartialEq, const N: usize>([T; N]);
 
@@ -17,8 +19,10 @@ impl <T: Fixed + FixedSqrt, const N: usize> FixedVector<T, N> where T::Unsigned:
 
     pub fn mag(&self) -> T::Unsigned {
         let squared_sum = self.0.iter()
-            .fold(T::Unsigned::default(), |elem, acc| (*acc * *acc).to_fixed::<T::Unsigned>() + elem);
-        squared_sum.sqrt()
+            .map(|x| x.to_num::<f32>())
+            .fold(0f32, |acc, elem| elem * elem + acc);
+        platform::platform_sqrtf(squared_sum)
+            .to_fixed::<T::Unsigned>()
     }
 
     pub fn unit(&self) -> Self {

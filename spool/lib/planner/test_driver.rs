@@ -7,7 +7,7 @@ use std::{fmt::Display, fs::File, io::Write, path::PathBuf};
 
 use fixed::types::{I16F16, U20F12};
 use log::{Log, Metadata, Record};
-use planner::planner::{JobType, Planner, PlannerError, PlannerJob, PlannerMove, MoveSteps};
+use planner::planner::{JobType, Planner, PlannerError, PlannerJob, PlannerMove, MoveSteps, Move};
 use std::cmp::min;
 
 struct YomamaLogger;
@@ -181,6 +181,11 @@ impl MachineState {
     }
 }
 
+fn assert_kinematic_eq(x_steps: u32, steps_per_mm: u32, initial_speed: U20F12, acceleration_mms2: U20F12, final_speed: U20F12) {
+    let x = x_steps as f32 / steps_per_mm as f32;
+
+}
+
 fn main() {
     log::set_logger(&YOMAMA);
     log::set_max_level(log::LevelFilter::Trace);
@@ -209,6 +214,9 @@ fn main() {
     let buffer = std::fs::read(&file_path).expect("File no existo?");
     let string = String::from_utf8(buffer).expect("bad file content");
     let gcodes = gcode::parse(&string);
+
+    let mut last_move: Option<(MoveSteps, Move)> = None;
+
     for (i, gcode) in gcodes.enumerate() {
         info!("Input[{:04}]: {}", i, gcode);
         if let Some(planner_move) = machine_state.process_gcode(&gcode) {
@@ -217,8 +225,20 @@ fn main() {
                 match planner.enqueue_move(&planner_move) {
                     Ok(_) => break,
                     Err(PlannerError::CapacityError) => {
-                        let res = planner.dequeue_move_test_only();
+                        let res = planner.dequeue_move_test_only().unwrap();
+                        res.1.
                         info!("[EXEC] {:?}", res);
+                        if let Some(last_move_) = last_move {
+                            let vel_change_threshold = 10.to_fixed::<U20F12>();
+                            // invariant check against last move
+                            if !last_move_.1.exit_speed_mm_sq.abs_diff(res.1.entry_speed_mm_sq) <= vel_change_threshold {
+                                panic!("[LAST_MOVE] {:#?}", last_move_);
+                            }
+
+                            last_move = Some(res)
+                        } else {
+                            last_move = Some(res)
+                        }
                     },
                     Err(_) => {
                         panic!("skill issue");

@@ -80,11 +80,15 @@ pub struct MoveSteps {
     pub max_axis: usize,
     pub accelerate_steps: u32,
     pub decelerate_steps: u32,
+    pub acceleration_stepss2: u32,
 }
 
 impl Move {
     fn check_invariant(&self) {
-        assert!(self.accelerate_mm + self.decelerate_mm <= self.len_mm);
+        if !(self.accelerate_mm + self.decelerate_mm <= self.len_mm) {
+            log::error!("{:#?}", self);
+            panic!();
+        }
         assert!(self.speed_mm_sq >= self.entry_speed_mm_sq);
         assert!(self.speed_mm_sq >= self.exit_speed_mm_sq);
         let uv_mag = self.unit_vec.mag();
@@ -96,8 +100,6 @@ impl Move {
     }
 
     fn reverse_pass_kernel(&mut self) {
-        self.check_invariant();
-
         use PlannerError::*;
 
         if self.speed_mm_sq == U20F12::ZERO {
@@ -158,6 +160,7 @@ impl Move {
             self.accelerate_mm = accelerate_mm;
             self.decelerate_mm = decelerate_mm;
         }
+        self.check_invariant();
     }
 }
 

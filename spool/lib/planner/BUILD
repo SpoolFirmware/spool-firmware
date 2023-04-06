@@ -5,6 +5,7 @@ filegroup(
     srcs=[
         "lib.rs",
         "platform.rs",
+        "platform_std.rs",
         "planner/mod.rs",
         "planner/fixed_vector.rs",
     ]
