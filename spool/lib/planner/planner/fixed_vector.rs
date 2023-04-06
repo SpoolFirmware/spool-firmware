@@ -18,11 +18,14 @@ impl <T: Fixed + FixedSqrt, const N: usize> FixedVector<T, N> where T::Unsigned:
     pub fn mag(&self) -> T::Unsigned {
         let squared_sum = self.0.iter()
             .fold(T::Unsigned::default(), |elem, acc| (*acc * *acc).to_fixed::<T::Unsigned>() + elem);
-        squared_sum / squared_sum.sqrt()
+        squared_sum.sqrt()
     }
 
     pub fn unit(&self) -> Self {
         let mag = self.mag();
+        if mag.to_fixed::<T>() == T::ZERO {
+            return self.clone();
+        }
         let mut new_vec = self.clone();
         new_vec.0.iter_mut().for_each(|f| { *f /= mag.to_fixed::<T>(); });
         new_vec

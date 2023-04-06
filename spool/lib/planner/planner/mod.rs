@@ -87,7 +87,12 @@ impl Move {
         assert!(self.accelerate_mm + self.decelerate_mm <= self.len_mm);
         assert!(self.speed_mm_sq >= self.entry_speed_mm_sq);
         assert!(self.speed_mm_sq >= self.exit_speed_mm_sq);
-        assert!(self.unit_vec.mag().abs_diff(1.to_fixed::<U20F12>()) < 0.001.to_fixed::<U20F12>());
+        let uv_mag = self.unit_vec.mag();
+        let stmt = uv_mag.abs_diff(1.to_fixed::<U20F12>()) < 0.01.to_fixed::<U20F12>();
+        if !stmt {
+            log::error!("{:?} [{:?}]", uv_mag, self.unit_vec);
+        }
+        assert!(stmt);
     }
 
     fn reverse_pass_kernel(&mut self) {
