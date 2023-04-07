@@ -183,7 +183,6 @@ impl MachineState {
 
 fn assert_kinematic_eq(x_steps: u32, steps_per_mm: u32, initial_speed: U20F12, acceleration_mms2: U20F12, final_speed: U20F12) {
     let x = x_steps as f32 / steps_per_mm as f32;
-
 }
 
 fn main() {

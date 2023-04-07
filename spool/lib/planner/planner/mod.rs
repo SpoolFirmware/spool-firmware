@@ -17,8 +17,6 @@ use fixed_vector::FixedVector;
 
 #[derive(Debug)]
 pub enum PlannerError {
-    ArithmeticError,
-    InvariantError,
     CapacityError,
 }
 
@@ -75,12 +73,26 @@ pub struct Move {
 }
 
 #[derive(Debug)]
+#[repr(C)]
 pub struct MoveSteps {
     pub delta_x_steps: [i32; MAX_STEPPERS],
-    pub max_axis: usize,
+    pub max_axis: u32,
     pub accelerate_steps: u32,
     pub decelerate_steps: u32,
     pub acceleration_stepss2: u32,
+}
+
+#[repr(C)]
+pub union ExecutorUnion {
+    pub move_steps: MoveSteps,
+    pub seq: u32,
+    pub unit: (),
+}
+
+#[repr(c)]
+pub struct ExecutorJob {
+    pub job_type: JobType,
+    pub data: ExecutorUnion,
 }
 
 impl Move {
@@ -100,8 +112,6 @@ impl Move {
     }
 
     fn reverse_pass_kernel(&mut self) {
-        use PlannerError::*;
-
         if self.speed_mm_sq == U20F12::ZERO {
             warn!("reverse_pass_kernel: speed_mm_sq is zero");
         }
@@ -113,13 +123,11 @@ impl Move {
         let accelerate_mm = self
             .speed_mm_sq
             .checked_sub(self.entry_speed_mm_sq)
-            .ok_or(ArithmeticError)
             .expect("accelerate_mm")
             / (2.to_fixed::<U20F12>() * self.acceleration_mms2);
 
         // (self.speed_mm_sq - self.exit_speed_mm_sq) / (2 * self.acceleration_mms2)
         let decelerate_mm = (self.speed_mm_sq.checked_sub(self.exit_speed_mm_sq))
-            .ok_or(ArithmeticError)
             .expect("decelerate_mm")
             / (2.to_fixed::<U20F12>() * self.acceleration_mms2);
 
@@ -167,24 +175,33 @@ impl Move {
 #[derive(Debug)]
 pub enum PlannerJob {
     StepperJobRun(Move),
+    StepperJobHomeX(Move),
+    StepperJobHomeY(Move),
+    StepperJobHomeZ(Move),
+
+    StepperJobEnableSteppers,
+    StepperJobDisableSteppers,
+    StepperJobSync(u32),
 }
 
 impl PlannerJob {
-    fn as_move_owned(self) -> Option<Move> {
-        match self {
-            PlannerJob::StepperJobRun(m) => Some(m),
-        }
-    }
-
     fn as_move(&self) -> Option<&Move> {
         match self {
-            PlannerJob::StepperJobRun(m) => Some(m),
+            PlannerJob::StepperJobRun(m)
+            | PlannerJob::StepperJobHomeX(m)
+            | PlannerJob::StepperJobHomeY(m)
+            | PlannerJob::StepperJobHomeZ(m) => Some(m),
+            _ => None,
         }
     }
 
     fn as_move_mut(&mut self) -> Option<&mut Move> {
         match self {
-            PlannerJob::StepperJobRun(m) => Some(m),
+            PlannerJob::StepperJobRun(m)
+            | PlannerJob::StepperJobHomeX(m)
+            | PlannerJob::StepperJobHomeY(m)
+            | PlannerJob::StepperJobHomeZ(m) => Some(m),
+            _ => None,
         }
     }
 }
@@ -201,9 +218,9 @@ pub struct PlannerMove {
     /// Min velocity on each axis for the *carriage* in *mm*
     pub min_v: [I16F16; MAX_AXIS],
     /// Max velocity on each axis for the *carriage* in *mm*
-    pub max_v: [u32; MAX_AXIS],
+    pub max_v: [I16F16; MAX_AXIS],
     /// Acceleration on each axis for the *carriage* in *mm*
-    pub acc: [u32; MAX_AXIS],
+    pub acc: [I16F16; MAX_AXIS],
     /// Should the carriage come to a complete stop.
     pub stop: bool,
 }
@@ -218,10 +235,7 @@ impl Planner {
         }
     }
 
-    fn insert_move_job(
-        new_move: &PlannerMove,
-        prev_move: Option<&Move>,
-    ) -> Result<Option<PlannerJob>, PlannerError> {
+    fn construct_move(new_move: &PlannerMove, prev_move: Option<&Move>) -> Option<Move> {
         // using lazy_static (uses spin) or once_cell (uses critical_section) to
         // read a constant seems brain dead, so here it is, for now, a constant
         let junction_stop_vel_thres: I20F12 = I20F12::from_num(0.99999);
@@ -256,7 +270,7 @@ impl Planner {
 
         // empty block
         if time_est == U20F12::ZERO {
-            return Ok(None);
+            return None;
         }
 
         let speed_mm_sq = max_axis_len_mm / time_est;
@@ -348,7 +362,7 @@ impl Planner {
 
         let accelerate_mm = speed_mm_sq
             .checked_sub(entry_speed_mm_sq)
-            .ok_or(PlannerError::ArithmeticError)?
+            .expect("accelerate_mm")
             / (2.to_fixed::<U20F12>() * acceleration_mms2);
 
         let speed_mm_sq = if len_mm < accelerate_mm {
@@ -356,9 +370,10 @@ impl Planner {
         } else {
             speed_mm_sq
         };
-        let exit_speed_mm_sq = speed_mm_sq;
 
-        Ok(Some(PlannerJob::StepperJobRun(Move {
+        let exit_speed_mm_sq = if stop { U20F12::ZERO } else { speed_mm_sq };
+
+        Some(Move {
             delta_x_steps: new_move.motor_steps.clone(),
             max_axis,
             accelerate_mm,
@@ -369,7 +384,7 @@ impl Planner {
             entry_speed_mm_sq,
             speed_mm_sq,
             exit_speed_mm_sq,
-        })))
+        })
     }
 
     fn reverse_pass_kernel(next: &Move, prev: &mut Move) -> bool {
@@ -401,33 +416,108 @@ impl Planner {
         }
     }
 
-    pub fn dequeue_move_test_only(&mut self) -> Option<(MoveSteps, Move)> {
-        if let Some(job) = self.job_queue.pop_front().map(|j| j.into_inner()) {
-            let job = job.as_move_owned().unwrap();
+    pub fn dequeue_move(&mut self) -> Option<ExecutorJob> {
+        self.dequeue_move_test_only().map(|a| a.0)
+    }
 
-            let max_axis_proj = job.unit_vec[job.max_axis].unsigned_abs();
-            let accelerate_steps = max_axis_proj * job.accelerate_mm * self.steps_per_mm[job.max_axis];
-            let decelerate_steps = max_axis_proj * job.decelerate_mm * self.steps_per_mm[job.max_axis];
+    fn move_to_move_steps(&self, mov: &Move) -> MoveSteps {
+        let max_axis_proj = mov.unit_vec[job.max_axis].unsigned_abs();
+        let accelerate_steps = max_axis_proj * mov.accelerate_mm * self.steps_per_mm[mov.max_axis];
+        let decelerate_steps = max_axis_proj * mov.decelerate_mm * self.steps_per_mm[mov.max_axis];
 
-            let max_axis_delta_x = job.delta_x_steps[job.max_axis].unsigned_abs().to_fixed::<U20F12>();
-            let (accelerate_steps, decelerate_steps) =
+        let max_axis_delta_x = mov.delta_x_steps[mov.max_axis]
+            .unsigned_abs()
+            .to_fixed::<U20F12>();
+        let (accelerate_steps, decelerate_steps) =
             if accelerate_steps + decelerate_steps > max_axis_delta_x {
                 let scaling_factor = max_axis_delta_x / (accelerate_steps + decelerate_steps);
-                (accelerate_steps * scaling_factor, decelerate_steps * scaling_factor)
+                (
+                    accelerate_steps * scaling_factor,
+                    decelerate_steps * scaling_factor,
+                )
             } else {
                 (accelerate_steps, decelerate_steps)
             };
 
-            Some(
-                (MoveSteps {
-                    delta_x_steps: job.delta_x_steps.clone(),
-                    max_axis: job.max_axis,
-                    accelerate_steps: accelerate_steps.to_num::<u32>(),
-                    decelerate_steps: decelerate_steps.to_num::<u32>(),
-                }, job))
+        MoveSteps {
+            delta_x_steps: mov.delta_x_steps.clone(),
+            max_axis: mov.max_axis as u32,
+            accelerate_steps: accelerate_steps.to_num::<u32>(),
+            decelerate_steps: decelerate_steps.to_num::<u32>(),
+            acceleration_stepss2: (max_axis_proj * mov.acceleration_mms2).to_num::<u32>(),
+        }
+    }
+
+    pub fn dequeue_move_test_only(&mut self) -> Option<(ExecutorJob, PlannerJob)> {
+        if let Some(job) = self.job_queue.pop_front().map(|j| j.into_inner()) {
+            let executor_job = match &job {
+                PlannerJob::StepperJobRun(mov) => ExecutorJob {
+                    job_type: JobType::StepperJobRun,
+                    data: ExecutorUnion {
+                        move_steps: self.move_to_move_steps(mov),
+                    },
+                },
+                PlannerJob::StepperJobHomeX(mov) => ExecutorJob {
+                    job_type: JobType::StepperJobHomeX,
+                    data: ExecutorUnion {
+                        move_steps: self.move_to_move_steps(mov),
+                    },
+                },
+                PlannerJob::StepperJobHomeY(mov) => ExecutorJob {
+                    job_type: JobType::StepperJobHomeY,
+                    data: ExecutorUnion {
+                        move_steps: self.move_to_move_steps(mov),
+                    },
+                },
+                PlannerJob::StepperJobHomeZ(mov) => ExecutorJob {
+                    job_type: JobType::StepperJobHomeZ,
+                    data: ExecutorUnion {
+                        move_steps: self.move_to_move_steps(mov),
+                    },
+                },
+                PlannerJob::StepperJobEnableSteppers => ExecutorJob {
+                    job_type: JobType::StepperJobEnableSteppers,
+                    data: ExecutorUnion {
+                        unit: (),
+                    },
+                },
+                PlannerJob::StepperJobDisableSteppers => ExecutorJob {
+                    job_type: JobType::StepperJobDisableSteppers,
+                    data: ExecutorUnion {
+                        unit: (),
+                    },
+                },
+                PlannerJob::StepperJobSync(seq) => ExecutorJob {
+                    job_type: JobType::StepperJobSync,
+                    data: ExecutorUnion {
+                        seq,
+                    },
+                },
+            };
+            Some((executor_job, job))
         } else {
             None
         }
+    }
+
+    fn construct_move_job(&self, new_move: &PlannerMove) -> Option<Move> {
+        let prev_move = self
+            .job_queue
+            .iter()
+            .rev()
+            .find(|m| m.borrow().as_move().is_some());
+
+        if let Some(prev_move) = prev_move {
+            Self::construct_move(new_move, Some(prev_move.borrow().as_move().unwrap()))
+        } else {
+            Self::construct_move(new_move, None)
+        }
+    }
+
+    pub fn enqueue_sync(&mut self, seq: u32) -> Result<(), PlannerError> {
+        self.job_queue
+            .push_back(RefCell::new(PlannerJob::StepperJobSync(seq)))
+            .map_err(|_| PlannerError::CapacityError)
     }
 
     pub fn enqueue_move(&mut self, new_move: &PlannerMove) -> Result<(), PlannerError> {
@@ -436,16 +526,24 @@ impl Planner {
             return Err(PlannerError::CapacityError);
         }
 
-        let prev_move = self
-            .job_queue
-            .iter()
-            .rev()
-            .find(|m| m.borrow().as_move().is_some());
-        let job = if let Some(prev_move) = prev_move {
-            Self::insert_move_job(new_move, Some(prev_move.borrow().as_move().unwrap()))
-        } else {
-            Self::insert_move_job(new_move, None)
-        }?;
+        let job = match new_move.job_type {
+            JobType::StepperJobUndef => panic!(),
+            JobType::StepperJobRun => self
+                .construct_move_job(new_move)
+                .map(PlannerJob::StepperJobRun),
+            JobType::StepperJobHomeX => self
+                .construct_move_job(new_move)
+                .map(PlannerJob::StepperJobHomeX),
+            JobType::StepperJobHomeY => self
+                .construct_move_job(new_move)
+                .map(PlannerJob::StepperJobHomeY),
+            JobType::StepperJobHomeZ => self
+                .construct_move_job(new_move)
+                .map(PlannerJob::StepperJobHomeZ),
+            JobType::StepperJobEnableSteppers => Some(PlannerJob::StepperJobEnableSteppers),
+            JobType::StepperJobDisableSteppers => Some(PlannerJob::StepperJobDisableSteppers),
+            JobType::StepperJobSync => panic!(),
+        };
 
         if let Some(job) = job {
             self.job_queue
@@ -455,5 +553,9 @@ impl Planner {
             self.reverse_pass();
         }
         Ok(())
+    }
+
+    pub fn free_capacity(&self) -> u32 {
+        (self.job_queue.capacity() - self.job_queue.len()) as u32
     }
 }

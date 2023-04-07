@@ -12,17 +12,17 @@ mod platform_std;
 use crate::platform_no_std::logger_init;
 
 pub mod platform {
-    #[cfg(feature = "std")]
-    pub use crate::platform_std::*;
     #[cfg(not(feature = "std"))]
     pub use crate::platform_no_std::*;
+    #[cfg(feature = "std")]
+    pub use crate::platform_std::*;
 }
 
 pub mod planner;
 
 use core::{ffi::c_void, mem::MaybeUninit};
 
-use planner::Planner;
+use planner::{Planner, PlannerMove, MoveSteps};
 
 pub const MAX_STEPPERS: usize = 4;
 pub const MAX_AXIS: usize = 4;
@@ -36,8 +36,7 @@ unsafe fn alloc_static<T>() -> Option<&'static mut MaybeUninit<T>> {
     (ptr as *mut MaybeUninit<T>).as_mut::<'static>()
 }
 
-#[cfg(not(test))]
-#[cfg(not(feature = "std"))]
+#[cfg(any(not(test), not(feature = "std")))]
 #[no_mangle]
 #[allow(non_snake_case)]
 extern "C" fn plannerInit(num_axis: u32, num_stepper: u32) -> *mut Planner {
@@ -48,6 +47,53 @@ extern "C" fn plannerInit(num_axis: u32, num_stepper: u32) -> *mut Planner {
     };
     logger_init();
     planner as *mut Planner
+}
+
+#[cfg(any(not(test), not(feature = "std")))]
+#[no_mangle]
+#[allow(non_snake_case)]
+extern "C" fn plannerEnqueue<'a>(planner: *mut Planner, planner_move: *const PlannerMove) -> bool {
+    use planner::PlannerError;
+
+    match unsafe { (planner.as_mut::<'static>(), planner_move.as_ref::<'a>()) } {
+        (Some(planner), Some(planner_move)) =>
+            match planner.enqueue_move(planner_move) {
+                Ok(()) => true,
+                Err(PlannerError::CapacityError) => false
+            }
+        _ => panic!("planner/planner_move NULL"),
+    }
+}
+
+#[cfg(any(not(test), not(feature = "std")))]
+#[no_mangle]
+#[allow(non_snake_case)]
+extern "C" fn plannerDequeue<'a>(planner: *mut Planner, move_steps: *mut MoveSteps) -> bool {
+    use planner::PlannerError;
+
+    match unsafe { (planner.as_mut::<'static>(), move_steps.as_ref::<'a>()) } {
+        (Some(planner), Some(move_steps)) =>
+            match planner.dequeue_move() {
+                None => false,
+                Some(steps) => {
+                    *move_steps = steps;
+                    true
+                }
+            }
+        _ => panic!("planner/planner_move NULL"),
+    }
+}
+
+#[cfg(any(not(test), not(feature = "std")))]
+#[no_mangle]
+#[allow(non_snake_case)]
+extern "C" fn plannerFreeCapacity<'a>(planner: *const Planner) -> u32 {
+    use planner::PlannerError;
+
+    match unsafe { planner.as_ref::<'static>() } {
+        Some(planner) => planner.free_capacity(),
+        None => panic!("planner NULL"),
+    }
 }
 
 #[cfg(test)]
