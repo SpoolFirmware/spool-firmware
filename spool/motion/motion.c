@@ -12,7 +12,7 @@ static fix16_t motionMaxVel[NR_STEPPER];
 
 void motionInit(void)
 {
-    StepperExecutionQueue = xQueueCreate(STEPPER_EXECUTION_QUEUE_SIZE, sizeof(struct StepperJob));
+    StepperExecutionQueue = xQueueCreate(STEPPER_EXECUTION_QUEUE_SIZE, sizeof(struct ExecutorJob));
     if (StepperExecutionQueue == NULL) {
         panic();
     }

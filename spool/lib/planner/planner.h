@@ -68,10 +68,10 @@ PlannerHandle plannerInit(uint32_t numAxis, uint32_t numStepper);
 
 bool plannerEnqueue(PlannerHandle handle, const struct PlannerMove *plannerMove);
 bool plannerEnqueueSync(PlannerHandle handle, const struct SyncJob *syncJob);
-
+bool plannerEnqueueOther(PlannerHandle handle, uint32_t jobType);
 bool plannerDequeue(PlannerHandle handle, struct ExecutorJob *job);
-
 uint32_t plannerFreeCapacity(const PlannerHandle handle);
+bool plannerIsEmpty(const PlannerHandle handle);
 
 // Implemented In C
 void *portMallocAligned(size_t size, size_t align);

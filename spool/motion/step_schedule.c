@@ -77,9 +77,8 @@ static inline void s_bedLevelingReset(void)
 
 static uint32_t s_scheduleHomeMove(enum JobType k,
                                    const int32_t plan[NR_STEPPER],
-                                   const fix16_t unitVec[NR_AXIS],
-                                   const uint32_t maxV[NR_STEPPER],
-                                   const int32_t acc[NR_STEPPER], fix16_t len);
+                                   const fix16_t maxV[NR_STEPPER],
+                                   const fix16_t acc[NR_STEPPER]);
 
 TaskHandle_t stepScheduleTaskHandle;
 
@@ -161,12 +160,10 @@ static void scheduleMoveTo(const struct PrinterMove state,
     };
     memcpy(move.motor_steps, movementSteps, sizeof(move.motor_steps));
     memcpy(move.delta_x, movementMM, sizeof(move.delta_x));
+    memcpy(move.acc, moveAccelerationMM, sizeof(move.delta_x));
     memcpy(move.max_v, maxVel, sizeof(move.max_v));
 
     plannerEnqueue(PLANNER, &move);
-
-    plannerEnqueueMove(StepperJobRun, plan, unitVec, maxVel, moveAcceleration,
-                       lenMM, !currentState.continuousMode);
 
     currentState.x = currentState.homedX ? state.x : currentState.x;
     currentState.y = currentState.homedY ? state.y : currentState.y;
@@ -187,17 +184,9 @@ static void scheduleHomeX(void)
         0,
     };
     int32_t plan[NR_STEPPER];
-    fix16_t unitVec[NR_AXIS];
-    fix16_t movementMM[NR_AXIS];
-    for_each_axis(i) {
-        movementMM[i] = F16((float)home_x[i] / platformMotionStepsPerMMAxis[i]);
-    }
-
-    fix16_t lenMM;
-    lenMM = vecUnit(movementMM, unitVec);
     planMove(home_x, plan);
-    s_scheduleHomeMove(StepperJobHomeX, plan, unitVec, homeVelocity,
-                       homeAcceleration, lenMM);
+    s_scheduleHomeMove(StepperJobHomeX, plan, homeVelocityMM,
+                       homeAccelerationMM);
     currentState.x = 0;
     currentState.homedX = true;
 }
@@ -211,18 +200,9 @@ static void scheduleHomeY(void)
         0,
     };
     int32_t plan[NR_STEPPER];
-    fix16_t unitVec[NR_AXIS];
-    fix16_t movementMM[NR_AXIS];
-    for_each_axis(i) {
-        movementMM[i] = F16((float)home_y[i] / platformMotionStepsPerMMAxis[i]);
-    }
-
-    fix16_t lenMM;
-    lenMM = vecUnit(movementMM, unitVec);
-
     planMove(home_y, plan);
-    s_scheduleHomeMove(StepperJobHomeY, plan, unitVec, homeVelocity,
-                       homeAcceleration, lenMM);
+    s_scheduleHomeMove(StepperJobHomeX, plan, homeVelocityMM,
+                       homeAccelerationMM);
     currentState.y = 0;
     currentState.homedY = true;
 }
@@ -241,18 +221,9 @@ static uint32_t s_scheduleZMeasure(fix16_t velMM)
     rehomeZVelocityMM[Z_AXIS] = velMM;
 
     int32_t plan[NR_STEPPER];
-    fix16_t unitVec[NR_AXIS];
-    fix16_t movementMM[NR_AXIS];
-    for_each_axis(i) {
-        movementMM[i] = F16((float)home_z[i] / platformMotionStepsPerMMAxis[i]);
-    }
-
-    fix16_t lenMM;
-    lenMM = vecUnit(movementMM, unitVec);
-
     planMove(home_z, plan);
-    return s_scheduleHomeMove(StepperJobHomeZ, plan, unitVec, rehomeZVelocityMM,
-                              homeAccelerationMM, lenMM);
+    return s_scheduleHomeMove(StepperJobHomeZ, plan, rehomeZVelocityMM,
+                              homeAccelerationMM);
 }
 
 static void scheduleHomeZ(void)
@@ -280,15 +251,15 @@ static void scheduleHomeZ(void)
         currentState.z = 0;
 
         home_z_move.z = 5 * platformMotionStepsPerMMAxis[Z_AXIS];
-        scheduleMoveTo(home_z_move, homeVelocity);
+        scheduleMoveTo(home_z_move, homeVelocityMM);
     }
 
     currentState.homedZ = true;
     currentState.z = 0;
     home_z_move.z = 5 * platformMotionStepsPerMMAxis[Z_AXIS];
-    scheduleMoveTo(home_z_move, homeVelocity);
+    scheduleMoveTo(home_z_move, homeVelocityMM);
 
-    s_scheduleZMeasure(motionGetHomingVelocity(STEPPER_C) / 4);
+    s_scheduleZMeasure(fix16_div(motionGetHomingVelocityMM(STEPPER_C), F16(4)));
     currentState.z = 0;
 
     if (platformFeatureZOffset != 0) {
@@ -298,7 +269,7 @@ static void scheduleHomeZ(void)
         home_z_move.x = savedX;
         home_z_move.y = savedY;
         home_z_move.z = 0;
-        scheduleMoveTo(home_z_move, homeVelocity);
+        scheduleMoveTo(home_z_move, homeVelocityMM);
     }
 }
 
@@ -338,23 +309,24 @@ static void s_performBedLeveling(void)
     for (int i = 0; i < ARRAY_LENGTH(BedLevelingPositions); i++) {
         move_position.x = BedLevelingPositions[i].x;
         move_position.y = BedLevelingPositions[i].y;
-        scheduleMoveTo(move_position, homeVelocity);
-        int32_t actualTravel =
-            (int32_t)s_scheduleZMeasure(motionGetHomingVelocity(STEPPER_C) / 4);
+        scheduleMoveTo(move_position, homeVelocityMM);
+        int32_t actualTravel = (int32_t)s_scheduleZMeasure(
+            fix16_div(motionGetHomingVelocityMM(STEPPER_C), F16(4)));
+        ;
         currentState.z -= actualTravel;
         travels[i] = actualTravel;
-        scheduleMoveTo(move_position, homeVelocity);
+        scheduleMoveTo(move_position, homeVelocityMM);
     }
     move_position.x =
         platformFeatureZHomingPos.x_mm * platformMotionStepsPerMMAxis[X_AXIS];
     move_position.y =
         platformFeatureZHomingPos.y_mm * platformMotionStepsPerMMAxis[Y_AXIS];
-    scheduleMoveTo(move_position, homeVelocity);
+    scheduleMoveTo(move_position, homeVelocityMM);
     memcpy(bedLevelingFactors.points, travels, sizeof(travels));
     bedLevelingFactors.current =
         s_evaulateBedLevelingForCurrentPosition(currentState.x, currentState.y);
 
-    scheduleMoveTo(saved, homeVelocity);
+    scheduleMoveTo(saved, homeVelocityMM);
 }
 
 uint32_t getRequiredSpace(enum GcodeKind kind)
@@ -376,7 +348,7 @@ uint32_t getRequiredSpace(enum GcodeKind kind)
     /* require planner queue to be empty, G28/29 routinely flushes planner */
     case GcodeG29:
     case GcodeG28:
-        return plannerCapacity();
+        return plannerFreeCapacity(PLANNER);
     default:
         panic();
     }
@@ -417,10 +389,13 @@ static void s_enqueueG0G1(struct GcodeCommand *cmd, bool continuousMode)
     WARN_ON(cmd->xyzef.f < 0);
     if (cmd->xyzef.fSet && cmd->xyzef.f != 0) {
         for_each_stepper(i) {
-            const int32_t clampedVelMM =
-                min(abs(fix16_to_int(cmd->xyzef.f)) / SECONDS_PER_MIN,
-                    platformMotionDefaultMaxVel[i]);
-            motionSetMaxVelocity(i, platformMotionStepsPerMM[i] * clampedVelMM);
+            /* clang-format off */
+            const fix16_t clampedVelMM = fix16_min(
+                fix16_div(fix16_abs(cmd->xyzef.f), F16(SECONDS_PER_MIN)),
+                F16(platformMotionDefaultMaxVel[i])
+            );
+            /* clang-format on */
+            motionSetMaxVelocityMM(i, clampedVelMM);
         }
     }
     currentState.continuousMode = continuousMode;
@@ -452,13 +427,13 @@ static void enqueueAvailableGcode()
     resp.respKind = ResponseOK;
     bool continuousMode = false;
 
-    while (plannerAvailableSpace() > 0) {
+    while (plannerFreeCapacity(PLANNER) > 0) {
         resp.respKind = ResponseOK;
         continuousMode = uxQueueSpacesAvailable(MotionPlannerTaskQueue) <
                          CONTINUOUS_THRESHOLD;
         if (!commandAvailable) {
             if (xQueueReceive(MotionPlannerTaskQueue, &cmd,
-                              plannerSize() == 0 ? portMAX_DELAY : 0) !=
+                              plannerIsEmpty(PLANNER) ? portMAX_DELAY : 0) !=
                 pdTRUE) {
                 return;
             }
@@ -475,21 +450,23 @@ static void enqueueAvailableGcode()
             return;
         }
 
-        if (plannerAvailableSpace() < getRequiredSpace(cmd.kind)) {
+        if (plannerFreeCapacity(PLANNER) < getRequiredSpace(cmd.kind)) {
             return;
         }
 
         switch (cmd.kind) {
         case GcodeISRSync:
-            plannerEnqueueNotify(StepperJobSync, thermalTaskHandle,
-                                 cmd.seq.seqNumber);
+            plannerEnqueueSync(PLANNER, &(struct SyncJob) {
+                .notify = thermalTaskHandle,
+                cmd.seq.seqNumber,
+            });
             break;
         case GcodeG0:
         case GcodeG1:
             s_enqueueG0G1(&cmd, continuousMode);
             break;
         case GcodeG28:
-            plannerEnqueue(StepperJobEnableSteppers);
+            plannerEnqueueOther(PLANNER, StepperJobEnableSteppers);
             steppersEnabled = true;
             currentState.continuousMode = false;
             if (!(cmd.xyzef.xSet || cmd.xyzef.ySet || cmd.xyzef.zSet)) {
@@ -547,7 +524,7 @@ static void enqueueAvailableGcode()
             extrudersEnabled = false;
             break;
         case GcodeM84:
-            plannerEnqueue(StepperJobDisableSteppers);
+            plannerEnqueueOther(PLANNER, StepperJobDisableSteppers);
             steppersEnabled = false;
             currentState.homedX = false;
             currentState.homedY = false;
@@ -564,59 +541,20 @@ static void enqueueAvailableGcode()
     }
 }
 
-static void sendStepperJob(const struct PlannerJob *j)
+static void sendStepperJob(const struct ExecutorJob *j)
 {
-    QueueHandle_t queue = StepperExecutionQueue;
-    job_t job = { 0 };
-    job.type = j->type;
-
-    switch (j->type) {
-    /* move */
-    case StepperJobRun:
-    case StepperJobHomeX:
-    case StepperJobHomeY:
-    case StepperJobHomeZ:
-        for_each_stepper(i) {
-            motion_block_t *mb = &job.blocks[i];
-            const struct PlannerBlock *pb = &j->steppers[i];
-            mb->totalSteps = pb->x;
-        }
-        job.totalStepEvents = j->x;
-        job.accelerateUntil = j->accelerationX;
-        job.decelerateAfter = j->x - j->decelerationX;
-
-        job.entry_steps_s = (uint32_t)sqrtf((float)j->viSq);
-        job.cruise_steps_s = (uint32_t)sqrtf((float)j->vSq);
-        job.exit_steps_s = (uint32_t)sqrtf((float)j->vfSq);
-        job.accel_steps_s2 = j->accSteps;
-
-        job.stepDirs = j->stepDirs;
-        break;
-    /* no move */
-    case StepperJobSync:
-        job.notify = j->notify;
-        job.seq = j->seq;
-        break;
-    case StepperJobEnableSteppers:
-    case StepperJobDisableSteppers:
-        break;
-    case StepperJobUndef:
-    default:
-        PR_WARN("unknown job type %d\n", j->type);
-        return;
-    }
-    while (xQueueSend(queue, &job, portMAX_DELAY) != pdTRUE)
+    while (xQueueSend(StepperExecutionQueue, j, portMAX_DELAY) != pdTRUE)
         ;
 }
 
 static bool s_executePlannerJobs(void)
 {
-    struct PlannerJob j;
-    if (plannerSize() > 0) {
-        plannerDequeue(&j);
+    struct ExecutorJob j;
+    if (!plannerIsEmpty(PLANNER)) {
+        plannerDequeue(PLANNER, &j);
         sendStepperJob(&j);
     }
-    return plannerSize() > 0;
+    return !plannerIsEmpty(PLANNER);
 }
 
 uint32_t s_scheduleHomeMove(enum JobType k, const int32_t plan[NR_STEPPER],
@@ -628,8 +566,7 @@ uint32_t s_scheduleHomeMove(enum JobType k, const int32_t plan[NR_STEPPER],
 
     fix16_t movementMM[NR_AXIS];
     for_each_axis(i) {
-        movementMM[i] =
-            F16((float)plan[i] / platformMotionStepsPerMMAxis[i]);
+        movementMM[i] = F16((float)plan[i] / platformMotionStepsPerMMAxis[i]);
     }
 
     struct PlannerMove move = {
@@ -641,8 +578,8 @@ uint32_t s_scheduleHomeMove(enum JobType k, const int32_t plan[NR_STEPPER],
     memcpy(move.delta_x, movementMM, sizeof(move.delta_x));
     memcpy(move.max_v, maxVMM, sizeof(move.max_v));
     memcpy(move.acc, accMM, sizeof(move.acc));
-
     plannerEnqueue(PLANNER, &move);
+
     // Empty Planner Queue
     while (s_executePlannerJobs())
         ;
