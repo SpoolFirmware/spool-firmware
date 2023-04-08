@@ -44,8 +44,8 @@ struct MoveSteps {
     uint32_t accelerate_stepss2;
 
     uint32_t entry_steps_s;
-    uint32_t cruise_steps_s;
     uint32_t exit_steps_s;
+    uint32_t cruise_steps_s;
 };
 
 struct SyncJob {

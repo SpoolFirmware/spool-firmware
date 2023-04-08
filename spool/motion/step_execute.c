@@ -54,8 +54,11 @@ static uint16_t sCalcInterval(struct MoveSteps *pJob)
     }
 
     // TODO: CONFIG:MIN_STEP_RATE
-    if (stepRate < motionGetMinVelocityMM(0)) {
-        stepRate = motionGetMinVelocityMM(0);
+    const int32_t maxAxisMinVel =
+        fix16_mul_int32(motionGetMinVelocityMM(pJob->max_axis),
+                        platformMotionStepsPerMMAxis[pJob->max_axis]);
+    if (stepRate < maxAxisMinVel) {
+        stepRate = maxAxisMinVel;
     }
     configASSERT(stepRate > 0);
 
