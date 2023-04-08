@@ -21,7 +21,7 @@ void motionInit(void)
     }
     platformDisableStepper(0xFF);
     motionPlannerTaskInit();
-	PLANNER = plannerInit(0, 0, (const uint32_t *)platformMotionStepsPerMM);
+	PLANNER = plannerInit(NR_AXIS, NR_STEPPER, (const uint32_t *)platformMotionStepsPerMM);
 }
 
 fix16_t vecUnit(const fix16_t vec[NR_AXIS], fix16_t unit_vec[NR_AXIS])
