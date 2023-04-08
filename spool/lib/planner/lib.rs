@@ -22,7 +22,11 @@ pub mod planner;
 
 use core::{ffi::c_void, mem::MaybeUninit};
 
-use planner::{Planner, PlannerMove, ExecutorJob};
+use planner::{Planner, PlannerMove, ExecutorJob, SyncJob, JobType};
+use fixed::{
+    traits::ToFixed,
+    types::U20F12,
+};
 
 pub const MAX_STEPPERS: usize = 4;
 pub const MAX_AXIS: usize = 4;
@@ -42,14 +46,47 @@ unsafe fn alloc_static<T>() -> Option<&'static mut MaybeUninit<T>> {
 extern "C" fn plannerInit(num_axis: u32, num_stepper: u32, steps_per_mm: *const u32) -> *mut Planner {
     let planner = unsafe {
         let planner = alloc_static::<Planner>().unwrap();
-        *planner = Planner::new(num_axis, num_stepper);
-        let steps_per_mm_slice = core::slice::from_raw_parts(steps_per_mm, num_axis);
+        *planner = MaybeUninit::new(Planner::new(num_axis, num_stepper));
+        let steps_per_mm_slice = core::slice::from_raw_parts(steps_per_mm, num_axis as usize);
         let planner = planner.assume_init_mut();
-        planner.steps_per_mm[..].clone_from_slice(steps_per_mm_slice);
+        planner.steps_per_mm.iter_mut().zip(steps_per_mm_slice.iter())
+            .for_each(|(planner, input)| *planner = input.to_fixed::<U20F12>());
         planner
     };
     logger_init();
     planner as *mut Planner
+}
+
+#[cfg(all(not(test), not(feature = "std")))]
+#[no_mangle]
+#[allow(non_snake_case)]
+extern "C" fn plannerEnqueueSync<'a>(planner: *mut Planner, sync_job: *const SyncJob) -> bool {
+    use planner::PlannerError;
+
+    match unsafe { (planner.as_mut::<'static>(), sync_job.as_ref::<'a>()) } {
+        (Some(planner), Some(sync_job)) =>
+            match planner.enqueue_sync(sync_job) {
+                Ok(()) => true,
+                Err(PlannerError::CapacityError) => false
+            }
+        _ => panic!("planner/sync_job NULL"),
+    }
+}
+
+#[cfg(all(not(test), not(feature = "std")))]
+#[no_mangle]
+#[allow(non_snake_case)]
+extern "C" fn plannerEnqueueOther<'a>(planner: *mut Planner, job_type: JobType) -> bool {
+    use planner::PlannerError;
+
+    match unsafe { planner.as_mut::<'static>() } {
+        Some(planner) =>
+            match planner.enqueue_other(job_type) {
+                Ok(()) => true,
+                Err(PlannerError::CapacityError) => false
+            }
+        _ => panic!("planner NULL"),
+    }
 }
 
 #[cfg(all(not(test), not(feature = "std")))]
@@ -72,9 +109,7 @@ extern "C" fn plannerEnqueue<'a>(planner: *mut Planner, planner_move: *const Pla
 #[no_mangle]
 #[allow(non_snake_case)]
 extern "C" fn plannerDequeue<'a>(planner: *mut Planner, executor_job: *mut ExecutorJob) -> bool {
-    use planner::PlannerError;
-
-    match unsafe { (planner.as_mut::<'static>(), executor_job.as_ref::<'a>()) } {
+    match unsafe { (planner.as_mut::<'static>(), executor_job.as_mut::<'a>()) } {
         (Some(planner), Some(executor_job)) =>
             match planner.dequeue_move() {
                 None => false,
@@ -91,10 +126,18 @@ extern "C" fn plannerDequeue<'a>(planner: *mut Planner, executor_job: *mut Execu
 #[no_mangle]
 #[allow(non_snake_case)]
 extern "C" fn plannerFreeCapacity<'a>(planner: *const Planner) -> u32 {
-    use planner::PlannerError;
-
     match unsafe { planner.as_ref::<'static>() } {
         Some(planner) => planner.free_capacity(),
+        None => panic!("planner NULL"),
+    }
+}
+
+#[cfg(all(not(test), not(feature = "std")))]
+#[no_mangle]
+#[allow(non_snake_case)]
+extern "C" fn plannerIsEmpty<'a>(planner: *const Planner) -> bool {
+    match unsafe { planner.as_ref::<'static>() } {
+        Some(planner) => planner.is_empty(),
         None => panic!("planner NULL"),
     }
 }

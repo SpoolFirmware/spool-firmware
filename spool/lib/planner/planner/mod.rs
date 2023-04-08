@@ -75,7 +75,7 @@ pub struct Move {
 #[derive(Debug)]
 #[repr(C)]
 pub struct MoveSteps {
-    pub delta_x_steps: [i32; MAX_STEPPERS],
+    pub delta_x_steps: [u32; MAX_STEPPERS],
     pub step_dirs: u32,
     pub max_axis: u32,
     pub accelerate_until: u32,
@@ -87,7 +87,7 @@ pub struct MoveSteps {
     pub cruise_steps_s: u32,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 #[repr(C)]
 pub struct SyncJob {
     pub notify: *const u8,
@@ -383,7 +383,11 @@ impl Planner {
             speed_mm_sq
         };
 
-        let exit_speed_mm_sq = if new_move.stop { U20F12::ZERO } else { speed_mm_sq };
+        let exit_speed_mm_sq = if new_move.stop {
+            U20F12::ZERO
+        } else {
+            speed_mm_sq
+        };
 
         Some(Move {
             delta_x_steps: new_move.motor_steps.clone(),
@@ -451,12 +455,36 @@ impl Planner {
                 (accelerate_steps, decelerate_steps)
             };
 
+        let mut step_dirs: u32 = 0;
+        for i in 0..self.num_stepper {
+            if mov.delta_x_steps[i as usize] > 0 {
+                step_dirs |= 1 << i;
+            }
+        }
+
+        let mut delta_x_steps: [u32; MAX_STEPPERS] = [0u32; MAX_STEPPERS];
+        delta_x_steps
+            .iter_mut()
+            .zip(mov.delta_x_steps.iter())
+            .for_each(|(unsigned, signed)| *unsigned = signed.unsigned_abs());
+
         core::mem::ManuallyDrop::new(MoveSteps {
-            delta_x_steps: mov.delta_x_steps.clone(),
+            delta_x_steps,
+            step_dirs,
             max_axis: mov.max_axis as u32,
             accelerate_until: accelerate_steps.to_num::<u32>(),
-            decelerate_after: mov.delta_x_steps[mov.max_axis].to_num::<u32>() - decelerate_steps.to_num::<u32>(),
+            decelerate_after: delta_x_steps[mov.max_axis]
+                - decelerate_steps.to_num::<u32>(),
             acceleration_stepss2: (max_axis_proj * mov.acceleration_mms2).to_num::<u32>(),
+
+            entry_steps_s: (mov.entry_speed_mm_sq
+                * max_axis_proj
+                * self.steps_per_mm[mov.max_axis])
+                .to_num::<u32>(),
+            cruise_steps_s: (mov.speed_mm_sq * max_axis_proj * self.steps_per_mm[mov.max_axis])
+                .to_num::<u32>(),
+            exit_steps_s: (mov.exit_speed_mm_sq * max_axis_proj * self.steps_per_mm[mov.max_axis])
+                .to_num::<u32>(),
         })
     }
 
@@ -489,21 +517,15 @@ impl Planner {
                 },
                 PlannerJob::StepperJobEnableSteppers => ExecutorJob {
                     job_type: JobType::StepperJobEnableSteppers,
-                    data: ExecutorUnion {
-                        unit: (),
-                    },
+                    data: ExecutorUnion { unit: () },
                 },
                 PlannerJob::StepperJobDisableSteppers => ExecutorJob {
                     job_type: JobType::StepperJobDisableSteppers,
-                    data: ExecutorUnion {
-                        unit: (),
-                    },
+                    data: ExecutorUnion { unit: () },
                 },
-                PlannerJob::StepperJobSync(seq) => ExecutorJob {
+                PlannerJob::StepperJobSync(sync) => ExecutorJob {
                     job_type: JobType::StepperJobSync,
-                    data: ExecutorUnion {
-                        seq: *seq,
-                    },
+                    data: ExecutorUnion { sync: core::mem::ManuallyDrop::new(sync.clone()) },
                 },
             };
             Some((executor_job, job))
@@ -532,6 +554,23 @@ impl Planner {
             .map_err(|_| PlannerError::CapacityError)
     }
 
+    pub fn enqueue_other(&mut self, job_type: JobType) -> Result<(), PlannerError> {
+        let job = match job_type {
+            JobType::StepperJobEnableSteppers => PlannerJob::StepperJobEnableSteppers,
+            JobType::StepperJobDisableSteppers => PlannerJob::StepperJobDisableSteppers,
+            JobType::StepperJobUndef
+            | JobType::StepperJobRun
+            | JobType::StepperJobHomeX
+            | JobType::StepperJobHomeY
+            | JobType::StepperJobHomeZ
+            | JobType::StepperJobSync => panic!(),
+        };
+
+        self.job_queue
+            .push_back(RefCell::new(job))
+            .map_err(|_| PlannerError::CapacityError)
+    }
+
     pub fn enqueue_move(&mut self, new_move: &PlannerMove) -> Result<(), PlannerError> {
         // unfortunately we cannot reserve a slot in the job queue
         if self.job_queue.is_full() {
@@ -552,9 +591,9 @@ impl Planner {
             JobType::StepperJobHomeZ => self
                 .construct_move_job(new_move)
                 .map(PlannerJob::StepperJobHomeZ),
-            JobType::StepperJobEnableSteppers => Some(PlannerJob::StepperJobEnableSteppers),
-            JobType::StepperJobDisableSteppers => Some(PlannerJob::StepperJobDisableSteppers),
-            JobType::StepperJobSync => panic!(),
+            JobType::StepperJobEnableSteppers
+            | JobType::StepperJobDisableSteppers
+            | JobType::StepperJobSync => panic!(),
         };
 
         if let Some(job) = job {
@@ -565,6 +604,10 @@ impl Planner {
             self.reverse_pass();
         }
         Ok(())
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.job_queue.is_empty()
     }
 
     pub fn free_capacity(&self) -> u32 {

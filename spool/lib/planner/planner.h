@@ -64,7 +64,7 @@ struct ExecutorJob {
 typedef struct Planner *PlannerHandle;
 
 // Implemented In Rust
-PlannerHandle plannerInit(uint32_t numAxis, uint32_t numStepper);
+PlannerHandle plannerInit(uint32_t numAxis, uint32_t numStepper, const uint32_t stepsPerMM[MAX_STEPPERS]);
 
 bool plannerEnqueue(PlannerHandle handle, const struct PlannerMove *plannerMove);
 bool plannerEnqueueSync(PlannerHandle handle, const struct SyncJob *syncJob);
