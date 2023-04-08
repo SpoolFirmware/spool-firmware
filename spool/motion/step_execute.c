@@ -54,8 +54,8 @@ static uint16_t sCalcInterval(struct MoveSteps *pJob)
     }
 
     // TODO: CONFIG:MIN_STEP_RATE
-    if (stepRate < motionGetMinVelocity(0)) {
-        stepRate = motionGetMinVelocity(0);
+    if (stepRate < motionGetMinVelocityMM(0)) {
+        stepRate = motionGetMinVelocityMM(0);
     }
     configASSERT(stepRate > 0);
 
