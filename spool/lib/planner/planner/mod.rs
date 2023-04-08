@@ -294,7 +294,10 @@ impl Planner {
             return None;
         }
 
-        let speed_mm_sq = max_axis_len_mm / time_est;
+        let speed_mm_sq = {
+            let a = max_axis_len_mm / time_est;
+            a * a
+        };
 
         let delta_x_vec = FixedVector::new(delta_x.clone());
         let len_mm = delta_x_vec.mag();
