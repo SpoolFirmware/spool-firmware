@@ -36,7 +36,7 @@ pub struct Planner {
 }
 
 #[repr(u32)]
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum JobType {
     StepperJobUndef = 0,
     /* moves */
@@ -84,12 +84,12 @@ pub struct MoveSteps {
 
 #[repr(C)]
 pub union ExecutorUnion {
-    pub move_steps: MoveSteps,
+    pub move_steps: core::mem::ManuallyDrop<MoveSteps>,
     pub seq: u32,
     pub unit: (),
 }
 
-#[repr(c)]
+#[repr(C)]
 pub struct ExecutorJob {
     pub job_type: JobType,
     pub data: ExecutorUnion,
@@ -185,7 +185,7 @@ pub enum PlannerJob {
 }
 
 impl PlannerJob {
-    fn as_move(&self) -> Option<&Move> {
+    pub fn as_move(&self) -> Option<&Move> {
         match self {
             PlannerJob::StepperJobRun(m)
             | PlannerJob::StepperJobHomeX(m)
@@ -195,7 +195,7 @@ impl PlannerJob {
         }
     }
 
-    fn as_move_mut(&mut self) -> Option<&mut Move> {
+    pub fn as_move_mut(&mut self) -> Option<&mut Move> {
         match self {
             PlannerJob::StepperJobRun(m)
             | PlannerJob::StepperJobHomeX(m)
@@ -371,7 +371,7 @@ impl Planner {
             speed_mm_sq
         };
 
-        let exit_speed_mm_sq = if stop { U20F12::ZERO } else { speed_mm_sq };
+        let exit_speed_mm_sq = if new_move.stop { U20F12::ZERO } else { speed_mm_sq };
 
         Some(Move {
             delta_x_steps: new_move.motor_steps.clone(),
@@ -420,8 +420,8 @@ impl Planner {
         self.dequeue_move_test_only().map(|a| a.0)
     }
 
-    fn move_to_move_steps(&self, mov: &Move) -> MoveSteps {
-        let max_axis_proj = mov.unit_vec[job.max_axis].unsigned_abs();
+    fn move_to_move_steps(&self, mov: &Move) -> core::mem::ManuallyDrop<MoveSteps> {
+        let max_axis_proj = mov.unit_vec[mov.max_axis].unsigned_abs();
         let accelerate_steps = max_axis_proj * mov.accelerate_mm * self.steps_per_mm[mov.max_axis];
         let decelerate_steps = max_axis_proj * mov.decelerate_mm * self.steps_per_mm[mov.max_axis];
 
@@ -439,13 +439,13 @@ impl Planner {
                 (accelerate_steps, decelerate_steps)
             };
 
-        MoveSteps {
+        core::mem::ManuallyDrop::new(MoveSteps {
             delta_x_steps: mov.delta_x_steps.clone(),
             max_axis: mov.max_axis as u32,
             accelerate_steps: accelerate_steps.to_num::<u32>(),
             decelerate_steps: decelerate_steps.to_num::<u32>(),
             acceleration_stepss2: (max_axis_proj * mov.acceleration_mms2).to_num::<u32>(),
-        }
+        })
     }
 
     pub fn dequeue_move_test_only(&mut self) -> Option<(ExecutorJob, PlannerJob)> {
@@ -490,7 +490,7 @@ impl Planner {
                 PlannerJob::StepperJobSync(seq) => ExecutorJob {
                     job_type: JobType::StepperJobSync,
                     data: ExecutorUnion {
-                        seq,
+                        seq: *seq,
                     },
                 },
             };

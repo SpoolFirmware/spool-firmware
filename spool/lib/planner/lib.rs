@@ -22,7 +22,7 @@ pub mod planner;
 
 use core::{ffi::c_void, mem::MaybeUninit};
 
-use planner::{Planner, PlannerMove, MoveSteps};
+use planner::{Planner, PlannerMove, ExecutorJob};
 
 pub const MAX_STEPPERS: usize = 4;
 pub const MAX_AXIS: usize = 4;
@@ -36,7 +36,7 @@ unsafe fn alloc_static<T>() -> Option<&'static mut MaybeUninit<T>> {
     (ptr as *mut MaybeUninit<T>).as_mut::<'static>()
 }
 
-#[cfg(any(not(test), not(feature = "std")))]
+#[cfg(all(not(test), not(feature = "std")))]
 #[no_mangle]
 #[allow(non_snake_case)]
 extern "C" fn plannerInit(num_axis: u32, num_stepper: u32, steps_per_mm: *const u32) -> *mut Planner {
@@ -52,7 +52,7 @@ extern "C" fn plannerInit(num_axis: u32, num_stepper: u32, steps_per_mm: *const 
     planner as *mut Planner
 }
 
-#[cfg(any(not(test), not(feature = "std")))]
+#[cfg(all(not(test), not(feature = "std")))]
 #[no_mangle]
 #[allow(non_snake_case)]
 extern "C" fn plannerEnqueue<'a>(planner: *mut Planner, planner_move: *const PlannerMove) -> bool {
@@ -68,18 +68,18 @@ extern "C" fn plannerEnqueue<'a>(planner: *mut Planner, planner_move: *const Pla
     }
 }
 
-#[cfg(any(not(test), not(feature = "std")))]
+#[cfg(all(not(test), not(feature = "std")))]
 #[no_mangle]
 #[allow(non_snake_case)]
-extern "C" fn plannerDequeue<'a>(planner: *mut Planner, move_steps: *mut MoveSteps) -> bool {
+extern "C" fn plannerDequeue<'a>(planner: *mut Planner, executor_job: *mut ExecutorJob) -> bool {
     use planner::PlannerError;
 
-    match unsafe { (planner.as_mut::<'static>(), move_steps.as_ref::<'a>()) } {
-        (Some(planner), Some(move_steps)) =>
+    match unsafe { (planner.as_mut::<'static>(), executor_job.as_ref::<'a>()) } {
+        (Some(planner), Some(executor_job)) =>
             match planner.dequeue_move() {
                 None => false,
-                Some(steps) => {
-                    *move_steps = steps;
+                Some(job) => {
+                    *executor_job = job;
                     true
                 }
             }
@@ -87,7 +87,7 @@ extern "C" fn plannerDequeue<'a>(planner: *mut Planner, move_steps: *mut MoveSte
     }
 }
 
-#[cfg(any(not(test), not(feature = "std")))]
+#[cfg(all(not(test), not(feature = "std")))]
 #[no_mangle]
 #[allow(non_snake_case)]
 extern "C" fn plannerFreeCapacity<'a>(planner: *const Planner) -> u32 {

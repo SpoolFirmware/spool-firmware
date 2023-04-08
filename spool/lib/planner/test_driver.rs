@@ -7,7 +7,7 @@ use std::{fmt::Display, fs::File, io::Write, path::PathBuf};
 
 use fixed::types::{I16F16, U20F12};
 use log::{Log, Metadata, Record};
-use planner::planner::{JobType, Planner, PlannerError, PlannerJob, PlannerMove, MoveSteps, Move};
+use planner::planner::{JobType, Move, MoveSteps, Planner, PlannerError, PlannerJob, PlannerMove};
 use std::cmp::min;
 
 struct YomamaLogger;
@@ -87,10 +87,7 @@ macro_rules! delta_axis {
 const STEPS_PER_MM: [f32; 4] = [80.0, 80.0, 400.0, 800.0];
 
 impl MachineState {
-
-    fn process_move(&mut self, m: MoveSteps) {
-
-    }
+    fn process_move(&mut self, m: MoveSteps) {}
 
     fn process_gcode(&mut self, gcode: &gcode::GCode) -> Option<PlannerMove> {
         match gcode.mnemonic() {
@@ -119,14 +116,24 @@ impl MachineState {
                         job_type: JobType::StepperJobRun,
                         motor_steps: *(Box::<[i32; 4]>::try_from(xyze_steps).unwrap()),
                         delta_x: xyze.map(|x| x.to_fixed()),
-                        max_v: [min(fr, 200), min(fr, 200), min(fr, 5), min(fr, 40)],
+                        max_v: [
+                            min(fr, 200).to_fixed::<I16F16>(),
+                            min(fr, 200).to_fixed::<I16F16>(),
+                            min(fr, 5).to_fixed::<I16F16>(),
+                            min(fr, 40).to_fixed::<I16F16>(),
+                        ],
                         min_v: [
                             0.1.to_fixed(),
                             0.1.to_fixed(),
                             0.1.to_fixed(),
                             0.1.to_fixed(),
                         ],
-                        acc: [1500, 1500, 500, 1000],
+                        acc: [
+                            1500.to_fixed::<I16F16>(),
+                            1500.to_fixed::<I16F16>(),
+                            500.to_fixed::<I16F16>(),
+                            1000.to_fixed::<I16F16>(),
+                        ],
                         stop: false,
                     });
                 }
@@ -181,7 +188,13 @@ impl MachineState {
     }
 }
 
-fn assert_kinematic_eq(x_steps: u32, steps_per_mm: u32, initial_speed: U20F12, acceleration_mms2: U20F12, final_speed: U20F12) {
+fn assert_kinematic_eq(
+    x_steps: u32,
+    steps_per_mm: u32,
+    initial_speed: U20F12,
+    acceleration_mms2: U20F12,
+    final_speed: U20F12,
+) {
     let x = x_steps as f32 / steps_per_mm as f32;
 }
 
@@ -214,7 +227,7 @@ fn main() {
     let string = String::from_utf8(buffer).expect("bad file content");
     let gcodes = gcode::parse(&string);
 
-    let mut last_move: Option<(MoveSteps, Move)> = None;
+    let mut last_move: Option<(MoveSteps, PlannerJob)> = None;
 
     for (i, gcode) in gcodes.enumerate() {
         info!("Input[{:04}]: {}", i, gcode);
@@ -224,21 +237,28 @@ fn main() {
                 match planner.enqueue_move(&planner_move) {
                     Ok(_) => break,
                     Err(PlannerError::CapacityError) => {
-                        let res = planner.dequeue_move_test_only().unwrap();
-                        res.1.
+                        let (executor_job, planner_job) = planner.dequeue_move_test_only().unwrap();
+                        assert_eq!(executor_job.job_type, JobType::StepperJobRun);
+                        let res = core::mem::ManuallyDrop::into_inner(unsafe { executor_job.data.move_steps });
+
                         info!("[EXEC] {:?}", res);
                         if let Some(last_move_) = last_move {
                             let vel_change_threshold = 10.to_fixed::<U20F12>();
                             // invariant check against last move
-                            if !last_move_.1.exit_speed_mm_sq.abs_diff(res.1.entry_speed_mm_sq) <= vel_change_threshold {
+                            if !last_move_
+                                .1.as_move().unwrap()
+                                .exit_speed_mm_sq
+                                .abs_diff(planner_job.as_move().unwrap().entry_speed_mm_sq)
+                                <= vel_change_threshold
+                            {
                                 panic!("[LAST_MOVE] {:#?}", last_move_);
                             }
 
-                            last_move = Some(res)
+                            last_move = Some((res, planner_job))
                         } else {
-                            last_move = Some(res)
+                            last_move = Some((res, planner_job))
                         }
-                    },
+                    }
                     Err(_) => {
                         panic!("skill issue");
                     }
