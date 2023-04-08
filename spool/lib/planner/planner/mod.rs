@@ -237,6 +237,12 @@ pub struct PlannerMove {
     pub stop: bool,
 }
 
+impl PlannerMove {
+    fn check_invariant(&self) {
+        assert_ne!(self.job_type, JobType::StepperJobUndef);
+    }
+}
+
 impl Planner {
     pub fn new(num_axis: u32, num_stepper: u32) -> Self {
         Planner {
@@ -269,6 +275,9 @@ impl Planner {
             let mut max_axis_len_mm = U20F12::ZERO;
             let mut max_axis = 0;
             for (i, x) in delta_x.iter().enumerate() {
+                if *x == I20F12::ZERO {
+                    continue
+                }
                 let x_time_est = x.abs() / I20F12::from_num(new_move.max_v[i]);
 
                 time_est = core::cmp::max(time_est, x_time_est.to_fixed::<U20F12>());
@@ -576,6 +585,8 @@ impl Planner {
         if self.job_queue.is_full() {
             return Err(PlannerError::CapacityError);
         }
+
+        new_move.check_invariant();
 
         let job = match new_move.job_type {
             JobType::StepperJobUndef => panic!(),

@@ -60,7 +60,7 @@ void __warn_on_err(const char *file, int line, status_t err);
 
 #define DEFINE_OR_RETURN(x, expr) _DEFINE_OR_STATEMENT(x, expr, return x)
 
-#define panic() __panic(__FILE__, __LINE__, "")
+#define panic() __panic(__FILE__, __LINE__, NULL)
 
 #define UNIMPLEMENTED(x) __panic(__FILE__, __LINE__, "unimplemented " #x)
 

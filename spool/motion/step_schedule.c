@@ -157,6 +157,7 @@ static void scheduleMoveTo(const struct PrinterMove state,
     struct PlannerMove move = {
         .job_type = StepperJobRun,
         .min_v = { F16(0.1), F16(0.1), F16(0.1), F16(0.1) },
+		.stop = currentState.continuousMode,
     };
     memcpy(move.motor_steps, movementSteps, sizeof(move.motor_steps));
     memcpy(move.delta_x, movementMM, sizeof(move.delta_x));
@@ -201,7 +202,7 @@ static void scheduleHomeY(void)
     };
     int32_t plan[NR_STEPPER];
     planMove(home_y, plan);
-    s_scheduleHomeMove(StepperJobHomeX, plan, homeVelocityMM,
+    s_scheduleHomeMove(StepperJobHomeY, plan, homeVelocityMM,
                        homeAccelerationMM);
     currentState.y = 0;
     currentState.homedY = true;
