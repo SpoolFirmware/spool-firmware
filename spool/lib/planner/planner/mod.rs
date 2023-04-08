@@ -76,16 +76,28 @@ pub struct Move {
 #[repr(C)]
 pub struct MoveSteps {
     pub delta_x_steps: [i32; MAX_STEPPERS],
+    pub step_dirs: u32,
     pub max_axis: u32,
-    pub accelerate_steps: u32,
-    pub decelerate_steps: u32,
+    pub accelerate_until: u32,
+    pub decelerate_after: u32,
     pub acceleration_stepss2: u32,
+
+    pub entry_steps_s: u32,
+    pub exit_steps_s: u32,
+    pub cruise_steps_s: u32,
+}
+
+#[derive(Debug)]
+#[repr(C)]
+pub struct SyncJob {
+    pub notify: *const u8,
+    pub seq: u32,
 }
 
 #[repr(C)]
 pub union ExecutorUnion {
     pub move_steps: core::mem::ManuallyDrop<MoveSteps>,
-    pub seq: u32,
+    pub sync: core::mem::ManuallyDrop<SyncJob>,
     pub unit: (),
 }
 
@@ -181,7 +193,7 @@ pub enum PlannerJob {
 
     StepperJobEnableSteppers,
     StepperJobDisableSteppers,
-    StepperJobSync(u32),
+    StepperJobSync(SyncJob),
 }
 
 impl PlannerJob {
@@ -442,8 +454,8 @@ impl Planner {
         core::mem::ManuallyDrop::new(MoveSteps {
             delta_x_steps: mov.delta_x_steps.clone(),
             max_axis: mov.max_axis as u32,
-            accelerate_steps: accelerate_steps.to_num::<u32>(),
-            decelerate_steps: decelerate_steps.to_num::<u32>(),
+            accelerate_until: accelerate_steps.to_num::<u32>(),
+            decelerate_after: mov.delta_x_steps[mov.max_axis].to_num::<u32>() - decelerate_steps.to_num::<u32>(),
             acceleration_stepss2: (max_axis_proj * mov.acceleration_mms2).to_num::<u32>(),
         })
     }
@@ -514,9 +526,9 @@ impl Planner {
         }
     }
 
-    pub fn enqueue_sync(&mut self, seq: u32) -> Result<(), PlannerError> {
+    pub fn enqueue_sync(&mut self, sync: &SyncJob) -> Result<(), PlannerError> {
         self.job_queue
-            .push_back(RefCell::new(PlannerJob::StepperJobSync(seq)))
+            .push_back(RefCell::new(PlannerJob::StepperJobSync(sync.clone())))
             .map_err(|_| PlannerError::CapacityError)
     }
 

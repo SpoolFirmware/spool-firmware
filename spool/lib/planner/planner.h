@@ -48,15 +48,17 @@ struct MoveSteps {
     uint32_t exit_steps_s;
 };
 
+struct SyncJob {
+	void *notify;
+	uint32_t seq;
+};
+
 struct ExecutorJob {
-    enum JobType type;
-    union {
-        struct MoveSteps moveSteps;
-        struct {
-            void* notify;
-            uint32_t seq;
-        } sync;
-    };
+	enum JobType type;
+	union {
+		struct MoveSteps moveSteps;
+		struct SyncJob sync;
+	};
 };
 
 typedef struct Planner *PlannerHandle;
@@ -65,8 +67,9 @@ typedef struct Planner *PlannerHandle;
 PlannerHandle plannerInit(uint32_t numAxis, uint32_t numStepper);
 
 bool plannerEnqueue(PlannerHandle handle, const struct PlannerMove *plannerMove);
+bool plannerEnqueueSync(PlannerHandle handle, const struct SyncJob *syncJob);
 
-bool plannerDequeue(PlannerHandle handle, struct MoveSteps *plannerMove);
+bool plannerDequeue(PlannerHandle handle, struct ExecutorJob *job);
 
 uint32_t plannerFreeCapacity(const PlannerHandle handle);
 
