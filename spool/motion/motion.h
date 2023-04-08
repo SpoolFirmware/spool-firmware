@@ -2,6 +2,9 @@
 
 #include "fix16.h"
 #include "configuration.h"
+#include "lib/planner/planner.h"
+
+extern PlannerHandle PLANNER;
 
 #define X_AND_Y 2
 
@@ -12,12 +15,12 @@
 void motionInit(void);
 fix16_t vecUnit(const fix16_t vec[NR_AXIS], fix16_t unit_vec[NR_AXIS]);
 
-int32_t motionGetMaxVelocity(uint8_t stepper);
-void motionSetMaxVelocity(uint8_t stepper, int32_t maxVel);
-int32_t motionGetDefaultAcceleration(uint8_t stepper);
-int32_t motionGetHomingVelocity(uint8_t stepper);
-int32_t motionGetHomingAcceleration(uint8_t stepper);
-int32_t motionGetMinVelocity(uint8_t stepper);
+fix16_t motionGetMaxVelocityMM(uint8_t stepper);
+void motionSetMaxVelocityMM(uint8_t stepper, fix16_t maxVel);
+fix16_t motionGetDefaultAccelerationMM(uint8_t stepper);
+fix16_t motionGetHomingVelocityMM(uint8_t stepper);
+fix16_t motionGetHomingAccelerationMM(uint8_t stepper);
+fix16_t motionGetMinVelocityMM(uint8_t stepper);
 
 #define PLATFORM_MOTION_STEPS_PER_MM(STEPPER) PLATFORM_MOTION_STEPS_PER_MM_##STEPPER
 #define PLATFORM_MOTION_STEPS_PER_MM_AXIS(AXIS) PLATFORM_MOTION_STEPS_PER_MM_##AXIS

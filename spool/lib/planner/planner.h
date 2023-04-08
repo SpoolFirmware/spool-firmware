@@ -1,3 +1,5 @@
+#pragma once
+
 #include <stdint.h>
 #include <stddef.h>
 #include <stdbool.h>
@@ -26,22 +28,41 @@ struct PlannerMove {
     fix16_t delta_x[MAX_AXIS];
     fix16_t min_v[MAX_AXIS];
     fix16_t max_v[MAX_AXIS];
-    fix16_t acc_v[MAX_AXIS];
+    fix16_t acc[MAX_AXIS];
     bool stop;
 };
 
 struct MoveSteps {
-    int32_t delta_x_steps[MAX_STEPPERS];
+    uint32_t delta_x_steps[MAX_STEPPERS];
+    uint32_t step_dirs;
+
     uint32_t max_axis;
-    uint32_t accelerate_steps;
-    uint32_t decelerate_steps;
+    uint32_t accelerateUntil;
+    uint32_t decelerateAfter;
+    
+    //! Acceleration
     uint32_t accelerate_stepss2;
+
+    uint32_t entry_steps_s;
+    uint32_t cruise_steps_s;
+    uint32_t exit_steps_s;
+};
+
+struct ExecutorJob {
+    enum JobType type;
+    union {
+        struct MoveSteps moveSteps;
+        struct {
+            void* notify;
+            uint32_t seq;
+        } sync;
+    };
 };
 
 typedef struct Planner *PlannerHandle;
 
 // Implemented In Rust
-PlannerHandle plannerInit(PlannerHandle handle, uint32_t numAxis, uint32_t numStepper);
+PlannerHandle plannerInit(uint32_t numAxis, uint32_t numStepper);
 
 bool plannerEnqueue(PlannerHandle handle, const struct PlannerMove *plannerMove);
 

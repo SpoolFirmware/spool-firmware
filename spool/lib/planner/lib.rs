@@ -39,11 +39,14 @@ unsafe fn alloc_static<T>() -> Option<&'static mut MaybeUninit<T>> {
 #[cfg(any(not(test), not(feature = "std")))]
 #[no_mangle]
 #[allow(non_snake_case)]
-extern "C" fn plannerInit(num_axis: u32, num_stepper: u32) -> *mut Planner {
+extern "C" fn plannerInit(num_axis: u32, num_stepper: u32, steps_per_mm: *const u32) -> *mut Planner {
     let planner = unsafe {
         let planner = alloc_static::<Planner>().unwrap();
-        *planner = MaybeUninit::new(Planner::new(num_axis, num_stepper));
-        planner.assume_init_mut()
+        *planner = Planner::new(num_axis, num_stepper);
+        let steps_per_mm_slice = core::slice::from_raw_parts(steps_per_mm, num_axis);
+        let planner = planner.assume_init_mut();
+        planner.steps_per_mm[..].clone_from_slice(steps_per_mm_slice);
+        planner
     };
     logger_init();
     planner as *mut Planner

@@ -1,4 +1,3 @@
-#include "motion/step_plan_ng.h"
 #include <stdbool.h>
 
 #include "misc.h"
@@ -11,7 +10,10 @@
 #include "step_execute.h"
 #include "step_schedule.h"
 
-static struct StepperJob job = { 0 };
+#include "motion/motion.h"
+#include "lib/planner/planner.h"
+
+static struct ExecutorJob job = { 0 };
 static uint32_t sIterationCompleted = 0;
 // Line Drawing
 static uint32_t sAccelerationTime;
@@ -27,13 +29,13 @@ static inline void sDiscardJob(void)
     job.type = StepperJobUndef;
 }
 
-static uint16_t sCalcInterval(struct StepperJob *pJob)
+static uint16_t sCalcInterval(struct MoveSteps *pJob)
 {
     int32_t stepRate;
 
     if (sIterationCompleted < pJob->accelerateUntil) { // Accelerating
         stepRate =
-            (int32_t)(((uint32_t)sAccelerationTime * pJob->accel_steps_s2) /
+            (int32_t)(((uint32_t)sAccelerationTime * pJob->accelerate_stepss2) /
                       platformGetStepperTimerFreq()) +
             pJob->entry_steps_s;
         if (stepRate > pJob->cruise_steps_s) {
@@ -42,7 +44,7 @@ static uint16_t sCalcInterval(struct StepperJob *pJob)
     } else if (sIterationCompleted > pJob->decelerateAfter) { // Decelertaing
         stepRate =
             (int32_t)pJob->cruise_steps_s -
-            (int32_t)(((int64_t)sDecelerationTime * pJob->accel_steps_s2) /
+            (int32_t)(((int64_t)sDecelerationTime * pJob->accelerate_stepss2) /
                       platformGetStepperTimerFreq());
         if (stepRate < pJob->exit_steps_s) { // Never go below exit velocity
             stepRate = pJob->exit_steps_s;
@@ -52,8 +54,8 @@ static uint16_t sCalcInterval(struct StepperJob *pJob)
     }
 
     // TODO: CONFIG:MIN_STEP_RATE
-    if (stepRate < motionGetMinVelocity(STEPPER_A)) {
-        stepRate = motionGetMinVelocity(STEPPER_A);
+    if (stepRate < motionGetMinVelocity(0)) {
+        stepRate = motionGetMinVelocity(0);
     }
     configASSERT(stepRate > 0);
 
@@ -87,12 +89,13 @@ __attribute__((noinline)) uint16_t executeStep(uint16_t ticksElapsed)
 
     // Executes Steps *FIRST*
     if (job.type != StepperJobUndef) {
+        struct MoveSteps *pMove = &job.moveSteps;
         uint8_t stepperMask = 0;
         for (uint8_t i = 0; i < NR_STEPPER; i++) {
             sDeltaError[i] += sIncrementRatio[i];
             if (sDeltaError[i] >= 0) {
                 sDeltaError[i] -= sStepSize;
-                if (sStepsExecuted[i] < job.blocks[i].totalSteps) {
+                if (sStepsExecuted[i] < pMove->delta_x_steps[i]) {
                     sStepsExecuted[i]++;
                     stepperMask |= BIT(i);
                 }
@@ -101,10 +104,10 @@ __attribute__((noinline)) uint16_t executeStep(uint16_t ticksElapsed)
         platformStepStepper(stepperMask);
 
         sIterationCompleted += 1;
-        if (sIterationCompleted >= job.totalStepEvents) {
+        if (sIterationCompleted >= pMove->delta_x_steps[pMove->max_axis]) {
             bool finished = true;
             for_each_stepper(i) {
-                if (sStepsExecuted[i] < job.blocks[i].totalSteps) {
+                if (sStepsExecuted[i] < pMove->delta_x_steps[i]) {
                     finished = false;
                 }
             }
@@ -141,32 +144,35 @@ __attribute__((noinline)) uint16_t executeStep(uint16_t ticksElapsed)
             sDiscardJob();
             return 0;
         case StepperJobSync:
-            xTaskNotifyFromISR(job.notify, job.seq, eSetValueWithOverwrite,
+            xTaskNotifyFromISR(job.sync.notify, job.sync.seq, eSetValueWithOverwrite,
                                NULL);
             sDiscardJob();
             return 0;
         case StepperJobUndef:
         default:
-            PR_WARN("job type %d in execute\n", job.type);
+            panic();
             break;
         }
+
+        // All other return directly
         sStepCounter = 0;
         for_each_stepper(i) {
             if (platformMotionInvertStepper[i])
-                job.stepDirs ^= BIT(i);
+                job.moveSteps.step_dirs ^= BIT(i);
         }
-        platformSetStepperDir(job.stepDirs);
+        platformSetStepperDir((uint8_t) job.moveSteps.step_dirs);
 
         sIterationCompleted = 0;
         for_each_stepper(i)
             sStepsExecuted[i] = 0;
         sAccelerationTime = sDecelerationTime = 0;
-        sStepSize = job.totalStepEvents * 2;
+        const uint32_t totalStepEvents = job.moveSteps.delta_x_steps[job.moveSteps.max_axis];
+        sStepSize = totalStepEvents * 2;
         for (int i = 0; i < NR_STEPPER; i++) {
-            sDeltaError[i] = -((int32_t)job.totalStepEvents);
-            sIncrementRatio[i] = job.blocks[i].totalSteps * 2;
+            sDeltaError[i] = -((int32_t)totalStepEvents);
+            sIncrementRatio[i] = job.moveSteps.delta_x_steps[i] * 2;
         }
     }
 
-    return sCalcInterval(&job);
+    return sCalcInterval(&job.moveSteps);
 }
