@@ -125,7 +125,7 @@ impl Move {
 
     fn reverse_pass_kernel(&mut self) {
         if self.speed_mm_sq == U20F12::ZERO {
-            warn!("reverse_pass_kernel: speed_mm_sq is zero");
+            panic!("reverse_pass_kernel: speed_mm_sq is zero");
         }
         // TODO convincing explanation here
         //
@@ -398,7 +398,7 @@ impl Planner {
             speed_mm_sq
         };
 
-        let mov = Move {
+        let mut mov = Move {
             delta_x_steps: new_move.motor_steps.clone(),
             max_axis,
             accelerate_mm,
@@ -456,6 +456,8 @@ impl Planner {
         let accelerate_steps = max_axis_proj * mov.accelerate_mm * self.steps_per_mm[mov.max_axis];
         let decelerate_steps = max_axis_proj * mov.decelerate_mm * self.steps_per_mm[mov.max_axis];
 
+        let acceleration_stepss2 = (max_axis_proj * mov.acceleration_mms2 * self.steps_per_mm[mov.max_axis]).to_num::<u32>();
+
         let max_axis_delta_x = mov.delta_x_steps[mov.max_axis]
             .unsigned_abs()
             .to_fixed::<U20F12>();
@@ -490,7 +492,7 @@ impl Planner {
             accelerate_until: accelerate_steps.to_num::<u32>(),
             decelerate_after: delta_x_steps[mov.max_axis]
                 - decelerate_steps.to_num::<u32>(),
-            acceleration_stepss2: (max_axis_proj * mov.acceleration_mms2).to_num::<u32>(),
+            acceleration_stepss2,
 
             entry_steps_s: (mov.entry_speed_mm_sq
                 * max_axis_proj

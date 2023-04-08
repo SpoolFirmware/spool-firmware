@@ -275,5 +275,6 @@ fn main() {
         assert_eq!(executor_job.job_type, JobType::StepperJobRun);
         let res = core::mem::ManuallyDrop::into_inner(unsafe { executor_job.data.move_steps });
         info!("[FINAL_BLK] {:#?}", res);
+        info!("{:#?}", planner_job)
     }
 }
