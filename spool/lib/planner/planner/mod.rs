@@ -497,13 +497,13 @@ impl Planner {
                 - decelerate_steps.to_num::<u32>(),
             acceleration_stepss2,
 
-            entry_steps_s: (mov.entry_speed_mm_sq
+            entry_steps_s: (mov.entry_speed_mm_sq.sqrt()
                 * max_axis_proj
                 * self.steps_per_mm[mov.max_axis])
                 .to_num::<u32>(),
-            cruise_steps_s: (mov.speed_mm_sq * max_axis_proj * self.steps_per_mm[mov.max_axis])
+            cruise_steps_s: (mov.speed_mm_sq.sqrt() * max_axis_proj * self.steps_per_mm[mov.max_axis])
                 .to_num::<u32>(),
-            exit_steps_s: (mov.exit_speed_mm_sq * max_axis_proj * self.steps_per_mm[mov.max_axis])
+            exit_steps_s: (mov.exit_speed_mm_sq.sqrt() * max_axis_proj * self.steps_per_mm[mov.max_axis])
                 .to_num::<u32>(),
         })
     }
