@@ -398,7 +398,7 @@ impl Planner {
             speed_mm_sq
         };
 
-        Some(Move {
+        let mov = Move {
             delta_x_steps: new_move.motor_steps.clone(),
             max_axis,
             accelerate_mm,
@@ -409,7 +409,13 @@ impl Planner {
             entry_speed_mm_sq,
             speed_mm_sq,
             exit_speed_mm_sq,
-        })
+        };
+
+        if new_move.stop {
+            mov.reverse_pass_kernel();
+        }
+
+        Some(mov)
     }
 
     fn reverse_pass_kernel(next: &Move, prev: &mut Move) -> bool {
