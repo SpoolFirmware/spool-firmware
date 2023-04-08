@@ -225,13 +225,16 @@ fn main() {
 
     let buffer = std::fs::read(&file_path).expect("File no existo?");
     let string = String::from_utf8(buffer).expect("bad file content");
-    let gcodes = gcode::parse(&string);
+    let gcodes: Vec<_> = gcode::parse(&string).collect();
 
     let mut last_move: Option<(MoveSteps, PlannerJob)> = None;
 
-    for (i, gcode) in gcodes.enumerate() {
+    for (i, gcode) in gcodes.iter().enumerate() {
         info!("Input[{:04}]: {}", i, gcode);
-        if let Some(planner_move) = machine_state.process_gcode(&gcode) {
+        if let Some(mut planner_move) = machine_state.process_gcode(&gcode) {
+            if i == gcodes.len() - 1 {
+                planner_move.stop = true;
+            }
             trace!("Move: {:#?}", &planner_move);
             loop {
                 match planner.enqueue_move(&planner_move) {
@@ -266,5 +269,11 @@ fn main() {
             }
         }
         info!("New State: {}", &machine_state);
+    }
+    while !planner.is_empty() {
+        let (executor_job, planner_job) = planner.dequeue_move_test_only().unwrap();
+        assert_eq!(executor_job.job_type, JobType::StepperJobRun);
+        let res = core::mem::ManuallyDrop::into_inner(unsafe { executor_job.data.move_steps });
+        info!("[FINAL_BLK] {:#?}", res);
     }
 }
