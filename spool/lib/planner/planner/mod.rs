@@ -396,10 +396,10 @@ impl Planner {
                             / one_minus_sin_theta_div_2;
 
                     let limited_speed_mm_sq =
-                        if (len_mm < 1.to_fixed() && cos_theta < junction_smoothing_thres) {
-                            let theta = cordic::acos(cos_theta);
-                            let limit_sqr = (len_mm / theta) * acceleration_mms2;
-                            core::cmp::min(speed_mm_sq, limit_sqr);
+                        if len_mm < 1.to_fixed::<I20F12>() && cos_theta < junction_smoothing_thres {
+                            let theta: I20F12 = cordic::acos(cos_theta);
+                            let limit_sqr: U20F12 = ((len_mm.to_fixed::<I20F12>() / theta) * acceleration_mms2.to_fixed::<I20F12>()).to_fixed();
+                            core::cmp::min(speed_mm_sq, limit_sqr)
                         } else {
                             speed_mm_sq
                         };
