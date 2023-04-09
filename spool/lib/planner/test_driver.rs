@@ -7,7 +7,7 @@ use std::{fmt::Display, fs::File, io::Write, path::PathBuf};
 
 use fixed::types::{I16F16, U20F12};
 use log::{Log, Metadata, Record};
-use planner::planner::{JobType, Move, MoveSteps, Planner, PlannerError, PlannerJob, PlannerMove};
+use planner::planner::{JobType, Move, MoveSteps, Planner, PlannerError, PlannerJob, PlannerMove, KinematicKind};
 use std::cmp::min;
 
 struct YomamaLogger;
@@ -210,7 +210,7 @@ fn main() {
     let file_path = PathBuf::from(file_path);
     info!("Trying file {:?}", &file_path);
 
-    let mut planner = Planner::new(4, 4);
+    let mut planner = Planner::new(4, 4, KinematicKind::CoreXY);
     planner.steps_per_mm = [
         80.to_fixed::<U20F12>(),
         80.to_fixed::<U20F12>(),
