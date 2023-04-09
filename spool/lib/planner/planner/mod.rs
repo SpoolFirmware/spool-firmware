@@ -305,9 +305,13 @@ impl Planner {
             return None;
         }
 
-        let delta_x_vec = FixedVector::new(delta_x.clone());
+        let delta_x_vec = FixedVector::new(delta_x);
         let len_mm = delta_x_vec.mag();
-        let unit_vec = delta_x_vec.unit();
+        let mut delta_x = [I20F12::ZERO; MAX_AXIS];
+        self.kinematic_kind.plan(&delta_x_vec.inner(), &mut delta_x);
+        let delta_x = FixedVector::new(delta_x);
+        let unit_vec = delta_x.unit();
+        let delta_x = delta_x.inner();
 
         let speed_mm_sq = {
             let a = len_mm / time_est;
@@ -483,10 +487,12 @@ impl Planner {
                 }
             },
         ).0;
-        let mut motor_steps_planned = [I20F12::ZERO; MAX_AXIS];
-        self.kinematic_kind.plan(&mov.unit_vec.clone().inner(), &mut motor_steps_planned);
-        let motor_steps_planned = FixedVector::new(motor_steps_planned).unit();
-        let max_axis_proj = motor_steps_planned[max_stepper].unsigned_abs();
+        // let mut motor_steps_planned = [I20F12::ZERO; MAX_AXIS];
+        // self.kinematic_kind.plan(&mov.unit_vec.clone().inner(), &mut motor_steps_planned);
+        // let motor_steps_planned = FixedVector::new(motor_steps_planned).unit();
+
+        // let max_axis_proj = motor_steps_planned[max_stepper].unsigned_abs();
+        let max_axis_proj = mov.unit_vec[max_stepper].unsigned_abs();
         let accelerate_steps = max_axis_proj * mov.accelerate_mm * self.steps_per_mm[max_stepper];
         let decelerate_steps = max_axis_proj * mov.decelerate_mm * self.steps_per_mm[max_stepper];
 
