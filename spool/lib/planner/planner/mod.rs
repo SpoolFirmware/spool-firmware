@@ -483,7 +483,10 @@ impl Planner {
                 }
             },
         ).0;
-        let max_axis_proj = mov.unit_vec[max_stepper].unsigned_abs();
+        let mut motor_steps_planned = [I20F12::ZERO; MAX_AXIS];
+        self.kinematic_kind.plan(&mov.unit_vec.clone().inner(), &mut motor_steps_planned);
+        let motor_steps_planned = FixedVector::new(motor_steps_planned).unit();
+        let max_axis_proj = motor_steps_planned[max_stepper].unsigned_abs();
         let accelerate_steps = max_axis_proj * mov.accelerate_mm * self.steps_per_mm[max_stepper];
         let decelerate_steps = max_axis_proj * mov.decelerate_mm * self.steps_per_mm[max_stepper];
 
@@ -491,12 +494,12 @@ impl Planner {
             (max_axis_proj * mov.acceleration_mms2 * self.steps_per_mm[max_stepper])
                 .to_num::<u32>();
 
-        let max_axis_delta_x = mov.delta_x_steps[max_stepper]
+        let max_stepper_delta_x = mov.delta_x_steps[max_stepper]
             .unsigned_abs()
             .to_fixed::<U20F12>();
         let (accelerate_steps, decelerate_steps) =
-            if accelerate_steps + decelerate_steps > max_axis_delta_x {
-                let scaling_factor = max_axis_delta_x / (accelerate_steps + decelerate_steps);
+            if accelerate_steps + decelerate_steps > max_stepper_delta_x {
+                let scaling_factor = max_stepper_delta_x / (accelerate_steps + decelerate_steps);
                 (
                     accelerate_steps * scaling_factor,
                     decelerate_steps * scaling_factor,
