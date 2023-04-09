@@ -66,5 +66,5 @@ fix16_t motionGetHomingAccelerationMM(uint8_t stepper)
 
 fix16_t motionGetMinVelocityMM(uint8_t stepper)
 {
-    return F16(platformMotionMinVelSteps[stepper]);
+    return platformMotionMinVelMM[stepper];
 }

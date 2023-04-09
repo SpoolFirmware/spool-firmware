@@ -1,7 +1,9 @@
 cc_library(
     name="lib",
     hdrs=glob(["src/*.h",]),
-    srcs=glob(["src/*.c",]),
+    srcs=[
+      "src/fix16.c",
+    ],
     strip_include_prefix="src",
     visibility = ["//visibility:public"],
 )

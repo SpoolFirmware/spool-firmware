@@ -77,11 +77,11 @@ const int32_t platformMotionStepsPerMMAxis[] = {
     PLATFORM_MOTION_STEPS_PER_MM_Z_AXIS,
     PLATFORM_MOTION_STEPS_PER_MM_E_AXIS,
 };
-const int32_t platformMotionMinVelSteps[] = {
-    1 * PLATFORM_MOTION_STEPS_PER_MM_STEPPER_A,
-    1 * PLATFORM_MOTION_STEPS_PER_MM_STEPPER_B,
-    1 * PLATFORM_MOTION_STEPS_PER_MM_STEPPER_C,
-    1 * PLATFORM_MOTION_STEPS_PER_MM_STEPPER_D,
+const fix16_t platformMotionMinVelMM[] = {
+    F16(0.1),
+    F16(0.1),
+    F16(0.1),
+    F16(0.1),
 };
 
 const enum Stepper platformFeatureExtruderStepper = STEPPER_D;
@@ -94,6 +94,6 @@ STATIC_ASSERT(ARRAY_SIZE(platformMotionMaxAccAxis) == NR_AXIS);
 STATIC_ASSERT(ARRAY_SIZE(platformMotionDefaultAcc) == NR_STEPPER);
 STATIC_ASSERT(ARRAY_SIZE(platformMotionHomingVel) == NR_STEPPER);
 STATIC_ASSERT(ARRAY_SIZE(platformMotionHomingAcc) == NR_STEPPER);
-STATIC_ASSERT(ARRAY_SIZE(platformMotionMinVelSteps) == NR_STEPPER);
+STATIC_ASSERT(ARRAY_SIZE(platformMotionMinVelMM) == NR_STEPPER);
 STATIC_ASSERT(ARRAY_SIZE(platformMotionStepsPerMM) == NR_STEPPER);
 STATIC_ASSERT(ARRAY_SIZE(platformMotionStepsPerMMAxis) == NR_AXIS);

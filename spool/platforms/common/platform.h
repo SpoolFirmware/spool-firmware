@@ -58,7 +58,7 @@ extern const fix16_t platformJunctionDeviation;
 /* Steps, TODO per stepper/per-axis steps, it doesn't make sense */
 extern const int32_t platformMotionStepsPerMM[];
 extern const int32_t platformMotionStepsPerMMAxis[];
-extern const int32_t platformMotionMinVelSteps[];
+extern const fix16_t platformMotionMinVelMM[];
 
 extern const struct IOLine sdCSPin;
 /* ---------------- Functions to be implemented by platform ----------------- */

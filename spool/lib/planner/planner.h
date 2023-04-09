@@ -40,7 +40,7 @@ struct MoveSteps {
     uint32_t accelerateUntil;
     uint32_t decelerateAfter;
     
-    //! Acceleration
+    /// Acceleration Steps/s^2
     uint32_t accelerate_stepss2;
 
     uint32_t entry_steps_s;

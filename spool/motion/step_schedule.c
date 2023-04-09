@@ -53,6 +53,7 @@ static struct {
 static inline int32_t s_lerpi32(int32_t x1, int32_t v1, int32_t x2, int32_t v2,
                                 int32_t x)
 {
+    const int32_t a = F16(1.0);
     return ((x2 - x) * v1 / (x2 - x1)) + ((x - x1) * v2 / (x2 - x1));
 }
 
@@ -553,6 +554,7 @@ static bool s_executePlannerJobs(void)
     struct ExecutorJob j;
     if (!plannerIsEmpty(PLANNER)) {
         plannerDequeue(PLANNER, &j);
+        const struct MoveSteps *const pSteps = &j.moveSteps;
         sendStepperJob(&j);
     }
     return !plannerIsEmpty(PLANNER);

@@ -77,9 +77,11 @@ pub struct Move {
 pub struct MoveSteps {
     pub delta_x_steps: [u32; MAX_STEPPERS],
     pub step_dirs: u32,
+
     pub max_axis: u32,
     pub accelerate_until: u32,
     pub decelerate_after: u32,
+
     pub acceleration_stepss2: u32,
 
     pub entry_steps_s: u32,
@@ -325,6 +327,7 @@ impl Planner {
         let (entry_speed_mm_sq, acceleration_mms2): (U20F12, U20F12) =
             prev_move.map_or((U20F12::ZERO, acceleration_mms2), |prev_move: &Move| {
                 let cos_theta = -unit_vec.dot(&prev_move.unit_vec);
+                info!("cos_theta: {} >? {}", cos_theta, junction_stop_vel_thres);
 
                 if cos_theta > junction_stop_vel_thres {
                     // FIXME this may be an okay min_speed, but not ideal
@@ -334,6 +337,7 @@ impl Planner {
                 } else {
                     let junction_unit_vec: FixedVector<_, MAX_AXIS> =
                         unit_vec.sub(&prev_move.unit_vec).unit();
+                    info!("({:?} - {:?}) = JUV: {:?}", unit_vec, &prev_move.unit_vec,junction_unit_vec);
 
                     let acceleration_mms2 = {
                         // this deviates from the c impl, and opts to not exceed acceleration based on the direction
@@ -341,14 +345,14 @@ impl Planner {
                             .iter()
                             .zip(new_move.acc.iter())
                             .zip(junction_unit_vec.iter())
-                            .fold(acceleration_mms2, |y, ((x, acceleration_x), unit_vec_x)| {
+                            .fold(acceleration_mms2, |accum, ((x, acceleration_x), junc_unit_vec_axis)| {
                                 let acceleration_x = acceleration_x.to_fixed::<U20F12>();
                                 if *x == I20F12::ZERO
-                                    || acceleration_x >= y * unit_vec_x.unsigned_abs()
+                                    || acceleration_x >= accum * junc_unit_vec_axis.unsigned_abs()
                                 {
-                                    y
+                                    accum
                                 } else {
-                                    core::cmp::min(y, acceleration_x / unit_vec_x.unsigned_abs())
+                                    core::cmp::min(accum, acceleration_x / junc_unit_vec_axis.unsigned_abs())
                                 }
                             })
                     };
