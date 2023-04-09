@@ -492,12 +492,12 @@ impl Planner {
         // let motor_steps_planned = FixedVector::new(motor_steps_planned).unit();
 
         // let max_axis_proj = motor_steps_planned[max_stepper].unsigned_abs();
-        let max_axis_proj = mov.unit_vec[max_stepper].unsigned_abs();
-        let accelerate_steps = max_axis_proj * mov.accelerate_mm * self.steps_per_mm[max_stepper];
-        let decelerate_steps = max_axis_proj * mov.decelerate_mm * self.steps_per_mm[max_stepper];
+        // let max_axis_proj = mov.unit_vec[max_stepper].unsigned_abs();
+        let accelerate_steps =  mov.accelerate_mm * self.steps_per_mm[max_stepper];
+        let decelerate_steps =  mov.decelerate_mm * self.steps_per_mm[max_stepper];
 
         let acceleration_stepss2 =
-            (max_axis_proj * mov.acceleration_mms2 * self.steps_per_mm[max_stepper])
+            ( mov.acceleration_mms2 * self.steps_per_mm[max_stepper])
                 .to_num::<u32>();
 
         let max_stepper_delta_x = mov.delta_x_steps[max_stepper]
@@ -536,15 +536,12 @@ impl Planner {
             acceleration_stepss2,
 
             entry_steps_s: (mov.entry_speed_mm_sq.sqrt()
-                * max_axis_proj
                 * self.steps_per_mm[max_stepper])
                 .to_num::<u32>(),
             cruise_steps_s: (mov.speed_mm_sq.sqrt()
-                * max_axis_proj
                 * self.steps_per_mm[max_stepper])
                 .to_num::<u32>(),
             exit_steps_s: (mov.exit_speed_mm_sq.sqrt()
-                * max_axis_proj
                 * self.steps_per_mm[max_stepper])
                 .to_num::<u32>(),
         };
