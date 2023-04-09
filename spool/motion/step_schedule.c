@@ -53,7 +53,6 @@ static struct {
 static inline int32_t s_lerpi32(int32_t x1, int32_t v1, int32_t x2, int32_t v2,
                                 int32_t x)
 {
-    const int32_t a = F16(1.0);
     return ((x2 - x) * v1 / (x2 - x1)) + ((x - x1) * v2 / (x2 - x1));
 }
 
@@ -160,7 +159,7 @@ static void scheduleMoveTo(const struct PrinterMove state,
         .min_v = { F16(0.1), F16(0.1), F16(0.1), F16(0.1) },
 		.stop = !currentState.continuousMode,
     };
-    memcpy(move.motor_steps, movementSteps, sizeof(move.motor_steps));
+    memcpy(move.motor_steps, plan, sizeof(move.motor_steps));
     memcpy(move.delta_x, movementMM, sizeof(move.delta_x));
     memcpy(move.acc, moveAccelerationMM, sizeof(move.delta_x));
     memcpy(move.max_v, maxVel, sizeof(move.max_v));
@@ -312,9 +311,11 @@ static void s_performBedLeveling(void)
         move_position.x = BedLevelingPositions[i].x;
         move_position.y = BedLevelingPositions[i].y;
         scheduleMoveTo(move_position, homeVelocityMM);
+		dbgPrintf("yomama\n");
         int32_t actualTravel = (int32_t)s_scheduleZMeasure(
-            fix16_div(motionGetHomingVelocityMM(STEPPER_C), F16(4)));
+            fix16_div(motionGetHomingVelocityMM(STEPPER_C), F16(2)));
         ;
+		dbgPrintf("performBedLeveling %d\n", actualTravel);
         currentState.z -= actualTravel;
         travels[i] = actualTravel;
         scheduleMoveTo(move_position, homeVelocityMM);
@@ -554,7 +555,6 @@ static bool s_executePlannerJobs(void)
     struct ExecutorJob j;
     if (!plannerIsEmpty(PLANNER)) {
         plannerDequeue(PLANNER, &j);
-        const struct MoveSteps *const pSteps = &j.moveSteps;
         sendStepperJob(&j);
     }
     return !plannerIsEmpty(PLANNER);

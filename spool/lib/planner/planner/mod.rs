@@ -11,7 +11,7 @@ use fixed::{
     types::{I16F16, I20F12, U20F12},
 };
 use fixed_sqrt::FixedSqrt;
-use log::{warn, info};
+use log::{info, warn};
 
 use fixed_vector::FixedVector;
 
@@ -278,7 +278,7 @@ impl Planner {
             let mut max_axis = 0;
             for (i, x) in delta_x.iter().enumerate() {
                 if *x == I20F12::ZERO {
-                    continue
+                    continue;
                 }
                 let x_time_est = x.abs() / I20F12::from_num(new_move.max_v[i]);
 
@@ -327,7 +327,6 @@ impl Planner {
         let (entry_speed_mm_sq, acceleration_mms2): (U20F12, U20F12) =
             prev_move.map_or((U20F12::ZERO, acceleration_mms2), |prev_move: &Move| {
                 let cos_theta = -unit_vec.dot(&prev_move.unit_vec);
-                info!("cos_theta: {} >? {}", cos_theta, junction_stop_vel_thres);
 
                 if cos_theta > junction_stop_vel_thres {
                     // FIXME this may be an okay min_speed, but not ideal
@@ -337,7 +336,6 @@ impl Planner {
                 } else {
                     let junction_unit_vec: FixedVector<_, MAX_AXIS> =
                         unit_vec.sub(&prev_move.unit_vec).unit();
-                    info!("({:?} - {:?}) = JUV: {:?}", unit_vec, &prev_move.unit_vec,junction_unit_vec);
 
                     let acceleration_mms2 = {
                         // this deviates from the c impl, and opts to not exceed acceleration based on the direction
@@ -345,16 +343,23 @@ impl Planner {
                             .iter()
                             .zip(new_move.acc.iter())
                             .zip(junction_unit_vec.iter())
-                            .fold(acceleration_mms2, |accum, ((x, acceleration_x), junc_unit_vec_axis)| {
-                                let acceleration_x = acceleration_x.to_fixed::<U20F12>();
-                                if *x == I20F12::ZERO
-                                    || acceleration_x >= accum * junc_unit_vec_axis.unsigned_abs()
-                                {
-                                    accum
-                                } else {
-                                    core::cmp::min(accum, acceleration_x / junc_unit_vec_axis.unsigned_abs())
-                                }
-                            })
+                            .fold(
+                                acceleration_mms2,
+                                |accum, ((x, acceleration_x), junc_unit_vec_axis)| {
+                                    let acceleration_x = acceleration_x.to_fixed::<U20F12>();
+                                    if *x == I20F12::ZERO
+                                        || acceleration_x
+                                            >= accum * junc_unit_vec_axis.unsigned_abs()
+                                    {
+                                        accum
+                                    } else {
+                                        core::cmp::min(
+                                            accum,
+                                            acceleration_x / junc_unit_vec_axis.unsigned_abs(),
+                                        )
+                                    }
+                                },
+                            )
                     };
 
                     // skipped over a jacc_mm calculation here, convinced myself that it was dead code
@@ -459,13 +464,25 @@ impl Planner {
     }
 
     fn move_to_move_steps(&self, mov: &Move) -> core::mem::ManuallyDrop<MoveSteps> {
-        let max_axis_proj = mov.unit_vec[mov.max_axis].unsigned_abs();
-        let accelerate_steps = max_axis_proj * mov.accelerate_mm * self.steps_per_mm[mov.max_axis];
-        let decelerate_steps = max_axis_proj * mov.decelerate_mm * self.steps_per_mm[mov.max_axis];
+        let max_stepper = mov.delta_x_steps.iter().enumerate().fold(
+            (0usize, 0u32),
+            |(max_axis, max_steps), (axis, steps)| {
+                if steps.unsigned_abs() > max_steps {
+                    (axis, steps.unsigned_abs())
+                } else {
+                    (max_axis, max_steps)
+                }
+            },
+        ).0;
+        let max_axis_proj = mov.unit_vec[max_stepper].unsigned_abs();
+        let accelerate_steps = max_axis_proj * mov.accelerate_mm * self.steps_per_mm[max_stepper];
+        let decelerate_steps = max_axis_proj * mov.decelerate_mm * self.steps_per_mm[max_stepper];
 
-        let acceleration_stepss2 = (max_axis_proj * mov.acceleration_mms2 * self.steps_per_mm[mov.max_axis]).to_num::<u32>();
+        let acceleration_stepss2 =
+            (max_axis_proj * mov.acceleration_mms2 * self.steps_per_mm[max_stepper])
+                .to_num::<u32>();
 
-        let max_axis_delta_x = mov.delta_x_steps[mov.max_axis]
+        let max_axis_delta_x = mov.delta_x_steps[max_stepper]
             .unsigned_abs()
             .to_fixed::<U20F12>();
         let (accelerate_steps, decelerate_steps) =
@@ -495,23 +512,26 @@ impl Planner {
         let move_steps = MoveSteps {
             delta_x_steps,
             step_dirs,
-            max_axis: mov.max_axis as u32,
+            max_axis: max_stepper as u32,
             accelerate_until: accelerate_steps.to_num::<u32>(),
-            decelerate_after: delta_x_steps[mov.max_axis]
-                - decelerate_steps.to_num::<u32>(),
+            decelerate_after: delta_x_steps[max_stepper] - decelerate_steps.to_num::<u32>(),
             acceleration_stepss2,
 
             entry_steps_s: (mov.entry_speed_mm_sq.sqrt()
                 * max_axis_proj
-                * self.steps_per_mm[mov.max_axis])
+                * self.steps_per_mm[max_stepper])
                 .to_num::<u32>(),
-            cruise_steps_s: (mov.speed_mm_sq.sqrt() * max_axis_proj * self.steps_per_mm[mov.max_axis])
+            cruise_steps_s: (mov.speed_mm_sq.sqrt()
+                * max_axis_proj
+                * self.steps_per_mm[max_stepper])
                 .to_num::<u32>(),
-            exit_steps_s: (mov.exit_speed_mm_sq.sqrt() * max_axis_proj * self.steps_per_mm[mov.max_axis])
+            exit_steps_s: (mov.exit_speed_mm_sq.sqrt()
+                * max_axis_proj
+                * self.steps_per_mm[max_stepper])
                 .to_num::<u32>(),
         };
 
-        info!("{:#?}", move_steps);
+        info!("{:?}", move_steps);
 
         core::mem::ManuallyDrop::new(move_steps)
     }
@@ -553,10 +573,11 @@ impl Planner {
                 },
                 PlannerJob::StepperJobSync(sync) => ExecutorJob {
                     job_type: JobType::StepperJobSync,
-                    data: ExecutorUnion { sync: core::mem::ManuallyDrop::new(sync.clone()) },
+                    data: ExecutorUnion {
+                        sync: core::mem::ManuallyDrop::new(sync.clone()),
+                    },
                 },
             };
-            info!("{:#?}", job);
             Some((executor_job, job))
         } else {
             None
@@ -607,7 +628,7 @@ impl Planner {
         }
 
         new_move.check_invariant();
-        info!("{:#?}", new_move);
+        info!("new_move {:?}", new_move);
 
         let job = match new_move.job_type {
             JobType::StepperJobUndef => panic!(),
@@ -627,6 +648,8 @@ impl Planner {
             | JobType::StepperJobDisableSteppers
             | JobType::StepperJobSync => panic!(),
         };
+
+        info!("enqueue_move {:?}", job);
 
         if let Some(job) = job {
             self.job_queue
