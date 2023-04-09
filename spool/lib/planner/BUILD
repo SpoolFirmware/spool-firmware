@@ -7,6 +7,7 @@ filegroup(
         "platform_no_std.rs",
         "platform_std.rs",
         "planner/mod.rs",
+        "planner/kinematic.rs",
         "planner/fixed_vector.rs",
     ]
 )

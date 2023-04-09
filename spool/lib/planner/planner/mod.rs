@@ -1,4 +1,7 @@
 pub mod fixed_vector;
+pub mod kinematic;
+
+pub use kinematic::KinematicKind;
 
 use itertools::Itertools;
 
@@ -7,7 +10,7 @@ use core::{cell::RefCell, fmt::Display, result::Result};
 use crate::{MAX_AXIS, MAX_STEPPERS};
 use arraydeque::{ArrayDeque, Saturating};
 use fixed::{
-    traits::ToFixed,
+    traits::{ToFixed, FixedEquiv},
     types::{I16F16, I20F12, U20F12},
 };
 use fixed_sqrt::FixedSqrt;
@@ -28,6 +31,7 @@ impl Display for PlannerError {
 
 #[derive(Debug)]
 pub struct Planner {
+    kinematic_kind: KinematicKind,
     num_axis: u8,
     num_stepper: u8,
     pub steps_per_mm: [U20F12; MAX_AXIS],
@@ -224,8 +228,8 @@ impl PlannerJob {
 #[derive(Debug)]
 pub struct PlannerMove {
     pub job_type: JobType,
-    /// Number of steps each motor needs to move.
-    /// Computed by applying kinematics euqation.
+    /// Movement in "steps".
+    /// BEFORE applying kinematics euqation.
     pub motor_steps: [i32; MAX_STEPPERS],
     /// Position change of the *carriage* in *mm*
     pub delta_x: [I16F16; MAX_AXIS],
@@ -246,8 +250,9 @@ impl PlannerMove {
 }
 
 impl Planner {
-    pub fn new(num_axis: u32, num_stepper: u32) -> Self {
+    pub fn new(num_axis: u32, num_stepper: u32, kinematic_kind: KinematicKind) -> Self {
         Planner {
+            kinematic_kind,
             num_axis: num_axis as u8,
             num_stepper: num_stepper as u8,
             steps_per_mm: [U20F12::from_num(0); MAX_AXIS],
@@ -255,7 +260,7 @@ impl Planner {
         }
     }
 
-    fn construct_move(new_move: &PlannerMove, prev_move: Option<&Move>) -> Option<Move> {
+    fn construct_move(&self, new_move: &PlannerMove, prev_move: Option<&Move>) -> Option<Move> {
         // using lazy_static (uses spin) or once_cell (uses critical_section) to
         // read a constant seems brain dead, so here it is, for now, a constant
         let junction_stop_vel_thres: I20F12 = I20F12::from_num(0.99999);
@@ -270,6 +275,10 @@ impl Planner {
             }
             delta_x
         };
+        
+        let mut motor_steps: [i32; MAX_STEPPERS] = [0i32; MAX_STEPPERS];
+        self.kinematic_kind.plan(&new_move.motor_steps, &mut motor_steps);
+
 
         // time taken by the slowest axis, longest axis move magnitude, index
         let (time_est, max_axis) = {
@@ -411,7 +420,7 @@ impl Planner {
         };
 
         let mut mov = Move {
-            delta_x_steps: new_move.motor_steps.clone(),
+            delta_x_steps: motor_steps, 
             max_axis,
             accelerate_mm,
             decelerate_mm: 0.to_fixed::<U20F12>(),
@@ -592,9 +601,9 @@ impl Planner {
             .find(|m| m.borrow().as_move().is_some());
 
         if let Some(prev_move) = prev_move {
-            Self::construct_move(new_move, Some(prev_move.borrow().as_move().unwrap()))
+            self.construct_move(new_move, Some(prev_move.borrow().as_move().unwrap()))
         } else {
-            Self::construct_move(new_move, None)
+            self.construct_move(new_move, None)
         }
     }
 
@@ -655,7 +664,7 @@ impl Planner {
             self.job_queue
                 .push_back(RefCell::new(job))
                 .map_err(|_| PlannerError::CapacityError)
-                .unwrap();
+                .expect("Qnospace");
             self.reverse_pass();
         }
         Ok(())

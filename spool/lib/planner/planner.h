@@ -22,6 +22,13 @@ enum JobType {
     StepperJobSync,
 };
 
+enum KinematicKind {
+    KinematicKindUndef = 0,
+    KinematicKindI3, /* Uses STEPPER_A,B,C for X,Y,Z */
+    KinematicKindCoreXY, /* Uses STEPPER_A,B for corexy, C for Z */
+};
+
+
 struct PlannerMove {
     uint32_t job_type;
     int32_t motor_steps[MAX_STEPPERS];
@@ -63,8 +70,13 @@ struct ExecutorJob {
 
 typedef struct Planner *PlannerHandle;
 
-// Implemented In Rust
-PlannerHandle plannerInit(uint32_t numAxis, uint32_t numStepper, const uint32_t stepsPerMM[MAX_STEPPERS]);
+/* -------------------- Interfaces Implemented In Rust --------------------- */
+
+/*!
+ * @param kinematicKind Uses enum KinematicKind
+ */
+PlannerHandle plannerInit(uint32_t numAxis, uint32_t numStepper, 
+    uint32_t kinematicKind, const uint32_t stepsPerMM[MAX_STEPPERS]);
 
 bool plannerEnqueue(PlannerHandle handle, const struct PlannerMove *plannerMove);
 bool plannerEnqueueSync(PlannerHandle handle, const struct SyncJob *syncJob);

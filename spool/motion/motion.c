@@ -12,7 +12,8 @@ static fix16_t motionMaxVel[NR_STEPPER];
 
 void motionInit(void)
 {
-    StepperExecutionQueue = xQueueCreate(STEPPER_EXECUTION_QUEUE_SIZE, sizeof(struct ExecutorJob));
+    StepperExecutionQueue =
+        xQueueCreate(STEPPER_EXECUTION_QUEUE_SIZE, sizeof(struct ExecutorJob));
     if (StepperExecutionQueue == NULL) {
         panic();
     }
@@ -21,7 +22,8 @@ void motionInit(void)
     }
     platformDisableStepper(0xFF);
     motionPlannerTaskInit();
-	PLANNER = plannerInit(NR_AXIS, NR_STEPPER, (const uint32_t *)platformMotionStepsPerMM);
+    PLANNER = plannerInit(NR_AXIS, NR_STEPPER, platformFeatureKinematic,
+                          (const uint32_t *)platformMotionStepsPerMM);
 }
 
 fix16_t vecUnit(const fix16_t vec[NR_AXIS], fix16_t unit_vec[NR_AXIS])

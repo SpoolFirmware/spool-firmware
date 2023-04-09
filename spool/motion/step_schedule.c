@@ -12,7 +12,6 @@
 #include "compiler.h"
 #include "misc.h"
 #include "core/spool.h"
-#include "motion/kinematic.h"
 #include "motion/motion.h"
 #include "thermal/thermal.h"
 #include "configuration.h"
@@ -145,21 +144,19 @@ static void scheduleMoveTo(const struct PrinterMove state,
         maxVel = moveMaxV;
     }
 
-    int32_t plan[NR_STEPPER];
     const int32_t movementSteps[NR_AXIS] = { dx, dy, dz + dzLeveling, de };
     fix16_t movementMM[NR_AXIS];
     for_each_axis(i) {
         movementMM[i] =
             F16((float)movementSteps[i] / platformMotionStepsPerMMAxis[i]);
     }
-    planMove(movementSteps, plan);
 
     struct PlannerMove move = {
         .job_type = StepperJobRun,
         .min_v = { F16(0.1), F16(0.1), F16(0.1), F16(0.1) },
 		.stop = !currentState.continuousMode,
     };
-    memcpy(move.motor_steps, plan, sizeof(move.motor_steps));
+    memcpy(move.motor_steps, movementSteps, sizeof(move.motor_steps));
     memcpy(move.delta_x, movementMM, sizeof(move.delta_x));
     memcpy(move.acc, moveAccelerationMM, sizeof(move.delta_x));
     memcpy(move.max_v, maxVel, sizeof(move.max_v));
@@ -184,9 +181,7 @@ static void scheduleHomeX(void)
         0,
         0,
     };
-    int32_t plan[NR_STEPPER];
-    planMove(home_x, plan);
-    s_scheduleHomeMove(StepperJobHomeX, plan, homeVelocityMM,
+    s_scheduleHomeMove(StepperJobHomeX, home_x, homeVelocityMM,
                        homeAccelerationMM);
     currentState.x = 0;
     currentState.homedX = true;
@@ -200,9 +195,7 @@ static void scheduleHomeY(void)
             PLATFORM_MOTION_STEPS_PER_MM_AXIS(Y_AXIS),
         0,
     };
-    int32_t plan[NR_STEPPER];
-    planMove(home_y, plan);
-    s_scheduleHomeMove(StepperJobHomeY, plan, homeVelocityMM,
+    s_scheduleHomeMove(StepperJobHomeY, home_y, homeVelocityMM,
                        homeAccelerationMM);
     currentState.y = 0;
     currentState.homedY = true;
@@ -221,9 +214,7 @@ static uint32_t s_scheduleZMeasure(fix16_t velMM)
         rehomeZVelocityMM[i] = motionGetHomingVelocityMM(i);
     rehomeZVelocityMM[Z_AXIS] = velMM;
 
-    int32_t plan[NR_STEPPER];
-    planMove(home_z, plan);
-    return s_scheduleHomeMove(StepperJobHomeZ, plan, rehomeZVelocityMM,
+    return s_scheduleHomeMove(StepperJobHomeZ, home_z, rehomeZVelocityMM,
                               homeAccelerationMM);
 }
 

@@ -1,3 +1,5 @@
+#![allow(unused_imports)]
+
 #![cfg_attr(not(feature = "std"), no_std)]
 #[cfg(not(test))]
 #[cfg(not(feature = "std"))]
@@ -22,11 +24,8 @@ pub mod planner;
 
 use core::{ffi::c_void, mem::MaybeUninit};
 
-use planner::{Planner, PlannerMove, ExecutorJob, SyncJob, JobType};
-use fixed::{
-    traits::ToFixed,
-    types::U20F12,
-};
+use fixed::{traits::ToFixed, types::U20F12};
+use planner::{ExecutorJob, JobType, KinematicKind, Planner, PlannerMove, SyncJob};
 
 pub const MAX_STEPPERS: usize = 4;
 pub const MAX_AXIS: usize = 4;
@@ -43,13 +42,21 @@ unsafe fn alloc_static<T>() -> Option<&'static mut MaybeUninit<T>> {
 #[cfg(all(not(test), not(feature = "std")))]
 #[no_mangle]
 #[allow(non_snake_case)]
-extern "C" fn plannerInit(num_axis: u32, num_stepper: u32, steps_per_mm: *const u32) -> *mut Planner {
+extern "C" fn plannerInit(
+    num_axis: u32,
+    num_stepper: u32,
+    kinematic_kind: KinematicKind,
+    steps_per_mm: *const u32,
+) -> *mut Planner {
     let planner = unsafe {
         let planner = alloc_static::<Planner>().unwrap();
-        *planner = MaybeUninit::new(Planner::new(num_axis, num_stepper));
+        *planner = MaybeUninit::new(Planner::new(num_axis, num_stepper, kinematic_kind));
         let steps_per_mm_slice = core::slice::from_raw_parts(steps_per_mm, num_axis as usize);
         let planner = planner.assume_init_mut();
-        planner.steps_per_mm.iter_mut().zip(steps_per_mm_slice.iter())
+        planner
+            .steps_per_mm
+            .iter_mut()
+            .zip(steps_per_mm_slice.iter())
             .for_each(|(planner, input)| *planner = input.to_fixed::<U20F12>());
         planner
     };
@@ -64,11 +71,10 @@ extern "C" fn plannerEnqueueSync<'a>(planner: *mut Planner, sync_job: *const Syn
     use planner::PlannerError;
 
     match unsafe { (planner.as_mut::<'static>(), sync_job.as_ref::<'a>()) } {
-        (Some(planner), Some(sync_job)) =>
-            match planner.enqueue_sync(sync_job) {
-                Ok(()) => true,
-                Err(PlannerError::CapacityError) => false
-            }
+        (Some(planner), Some(sync_job)) => match planner.enqueue_sync(sync_job) {
+            Ok(()) => true,
+            Err(PlannerError::CapacityError) => false,
+        },
         _ => panic!("planner/sync_job NULL"),
     }
 }
@@ -80,11 +86,10 @@ extern "C" fn plannerEnqueueOther<'a>(planner: *mut Planner, job_type: JobType) 
     use planner::PlannerError;
 
     match unsafe { planner.as_mut::<'static>() } {
-        Some(planner) =>
-            match planner.enqueue_other(job_type) {
-                Ok(()) => true,
-                Err(PlannerError::CapacityError) => false
-            }
+        Some(planner) => match planner.enqueue_other(job_type) {
+            Ok(()) => true,
+            Err(PlannerError::CapacityError) => false,
+        },
         _ => panic!("planner NULL"),
     }
 }
@@ -96,11 +101,10 @@ extern "C" fn plannerEnqueue<'a>(planner: *mut Planner, planner_move: *const Pla
     use planner::PlannerError;
 
     match unsafe { (planner.as_mut::<'static>(), planner_move.as_ref::<'a>()) } {
-        (Some(planner), Some(planner_move)) =>
-            match planner.enqueue_move(planner_move) {
-                Ok(()) => true,
-                Err(PlannerError::CapacityError) => false
-            }
+        (Some(planner), Some(planner_move)) => match planner.enqueue_move(planner_move) {
+            Ok(()) => true,
+            Err(PlannerError::CapacityError) => false,
+        },
         _ => panic!("planner/planner_move NULL"),
     }
 }
@@ -110,14 +114,13 @@ extern "C" fn plannerEnqueue<'a>(planner: *mut Planner, planner_move: *const Pla
 #[allow(non_snake_case)]
 extern "C" fn plannerDequeue<'a>(planner: *mut Planner, executor_job: *mut ExecutorJob) -> bool {
     match unsafe { (planner.as_mut::<'static>(), executor_job.as_mut::<'a>()) } {
-        (Some(planner), Some(executor_job)) =>
-            match planner.dequeue_move() {
-                None => false,
-                Some(job) => {
-                    *executor_job = job;
-                    true
-                }
+        (Some(planner), Some(executor_job)) => match planner.dequeue_move() {
+            None => false,
+            Some(job) => {
+                *executor_job = job;
+                true
             }
+        },
         _ => panic!("planner/planner_move NULL"),
     }
 }
