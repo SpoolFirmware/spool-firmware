@@ -11,7 +11,7 @@ use fixed::{
     types::{I16F16, I20F12, U20F12},
 };
 use fixed_sqrt::FixedSqrt;
-use log::warn;
+use log::{warn, info};
 
 use fixed_vector::FixedVector;
 
@@ -270,7 +270,7 @@ impl Planner {
         };
 
         // time taken by the slowest axis, longest axis move magnitude, index
-        let (time_est, max_axis_len_mm, max_axis) = {
+        let (time_est, max_axis) = {
             let mut time_est = U20F12::ZERO;
             let mut max_axis_len_mm = U20F12::ZERO;
             let mut max_axis = 0;
@@ -286,7 +286,7 @@ impl Planner {
                     max_axis = i;
                 }
             }
-            (time_est, max_axis_len_mm, max_axis)
+            (time_est, max_axis)
         };
 
         // empty block
@@ -294,14 +294,14 @@ impl Planner {
             return None;
         }
 
-        let speed_mm_sq = {
-            let a = max_axis_len_mm / time_est;
-            a * a
-        };
-
         let delta_x_vec = FixedVector::new(delta_x.clone());
         let len_mm = delta_x_vec.mag();
         let unit_vec = delta_x_vec.unit();
+
+        let speed_mm_sq = {
+            let a = len_mm / time_est;
+            a * a
+        };
         // let delta_x = delta_x_vec.inner();
 
         // acceleration of the block, capped by moving axes
@@ -488,7 +488,7 @@ impl Planner {
             .zip(mov.delta_x_steps.iter())
             .for_each(|(unsigned, signed)| *unsigned = signed.unsigned_abs());
 
-        core::mem::ManuallyDrop::new(MoveSteps {
+        let move_steps = MoveSteps {
             delta_x_steps,
             step_dirs,
             max_axis: mov.max_axis as u32,
@@ -505,7 +505,11 @@ impl Planner {
                 .to_num::<u32>(),
             exit_steps_s: (mov.exit_speed_mm_sq.sqrt() * max_axis_proj * self.steps_per_mm[mov.max_axis])
                 .to_num::<u32>(),
-        })
+        };
+
+        info!("{:#?}", move_steps);
+
+        core::mem::ManuallyDrop::new(move_steps)
     }
 
     pub fn dequeue_move_test_only(&mut self) -> Option<(ExecutorJob, PlannerJob)> {
@@ -548,6 +552,7 @@ impl Planner {
                     data: ExecutorUnion { sync: core::mem::ManuallyDrop::new(sync.clone()) },
                 },
             };
+            info!("{:#?}", job);
             Some((executor_job, job))
         } else {
             None
@@ -598,6 +603,7 @@ impl Planner {
         }
 
         new_move.check_invariant();
+        info!("{:#?}", new_move);
 
         let job = match new_move.job_type {
             JobType::StepperJobUndef => panic!(),
