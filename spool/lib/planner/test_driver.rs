@@ -1,4 +1,4 @@
-use clap::{Arg, Command};
+use clap::{Arg, Command, ArgAction};
 use fixed::traits::ToFixed;
 use gcode::Mnemonic;
 use log::{debug, error, info, trace, warn};
@@ -200,15 +200,22 @@ fn assert_kinematic_eq(
 
 fn main() {
     log::set_logger(&YOMAMA);
-    log::set_max_level(log::LevelFilter::Trace);
+    log::set_max_level(log::LevelFilter::Info);
 
     let matches = Command::new("GCodeDriver")
         .version("1.0")
+        .arg(Arg::new("nop").long("nop").action(ArgAction::SetTrue))
+        .arg(Arg::new("trace").long("trace").action(ArgAction::SetTrue))
         .arg(Arg::new("file").required(true))
         .get_matches();
+    let nop_run = matches.get_flag("nop");
     let file_path = matches.get_one::<String>("file").expect("Must have a file");
     let file_path = PathBuf::from(file_path);
     info!("Trying file {:?}", &file_path);
+
+    if matches.get_flag("trace") {
+        log::set_max_level(log::LevelFilter::Trace);
+    }
 
     let mut planner = Planner::new(4, 4, KinematicKind::CoreXY);
     planner.steps_per_mm = [
@@ -230,7 +237,13 @@ fn main() {
     let mut last_move: Option<(MoveSteps, PlannerJob)> = None;
 
     for (i, gcode) in gcodes.iter().enumerate() {
-        info!("Input[{:04}]: {}", i, gcode);
+        if nop_run {
+            if gcode.mnemonic() != Mnemonic::General || gcode.arguments().len() > 0 {
+                println!("{}", gcode);
+            }
+            continue;
+        }
+        trace!("Input[{:04}]: {}", i, gcode);
         if let Some(mut planner_move) = machine_state.process_gcode(&gcode) {
             if i == gcodes.len() - 1 {
                 planner_move.stop = true;
@@ -244,10 +257,11 @@ fn main() {
                         assert_eq!(executor_job.job_type, JobType::StepperJobRun);
                         let res = core::mem::ManuallyDrop::into_inner(unsafe { executor_job.data.move_steps });
 
-                        info!("[EXEC] {:?}", res);
+                        info!("[EXEC] =====\n{:#?}\n{:#?}\n======", res, planner_job);
                         if let Some(last_move_) = last_move {
                             let vel_change_threshold = 10.to_fixed::<U20F12>();
                             // invariant check against last move
+                            assert_eq!(last_move_.0.exit_steps_s, res.entry_steps_s);
                             if !last_move_
                                 .1.as_move().unwrap()
                                 .exit_speed_mm_sq
@@ -268,13 +282,13 @@ fn main() {
                 }
             }
         }
-        info!("New State: {}", &machine_state);
+        debug!("New State: {}", &machine_state);
     }
     while !planner.is_empty() {
         let (executor_job, planner_job) = planner.dequeue_move_test_only().unwrap();
         assert_eq!(executor_job.job_type, JobType::StepperJobRun);
         let res = core::mem::ManuallyDrop::into_inner(unsafe { executor_job.data.move_steps });
-        info!("[FINAL_BLK] {:#?}", res);
-        info!("{:#?}", planner_job)
+        debug!("[FINAL_BLK] {:#?}", res);
+        debug!("{:#?}", planner_job)
     }
 }

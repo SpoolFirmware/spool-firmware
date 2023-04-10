@@ -62,7 +62,7 @@ impl Log for SpoolLogger {
 
 pub fn logger_init() {
     log::set_logger(&LOGGER).unwrap();
-    log::set_max_level(log::LevelFilter::Trace);
+    log::set_max_level(log::LevelFilter::Info);
 }
 
 #[panic_handler]

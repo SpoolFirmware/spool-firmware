@@ -14,7 +14,7 @@ use fixed::{
     types::{I16F16, I20F12, U20F12},
 };
 use fixed_sqrt::FixedSqrt;
-use log::{info, warn};
+use log::{trace, warn};
 
 use fixed_vector::FixedVector;
 
@@ -551,6 +551,9 @@ impl Planner {
             exit_steps_s: (mov.exit_speed_mm_sq.sqrt() * self.steps_per_mm[max_stepper])
                 .to_num::<u32>(),
         };
+
+        trace!("{:?}", move_steps);
+
         core::mem::ManuallyDrop::new(move_steps)
     }
 
@@ -646,6 +649,8 @@ impl Planner {
         }
 
         new_move.check_invariant();
+        trace!("new_move {:?}", new_move);
+
         let job = match new_move.job_type {
             JobType::StepperJobUndef => panic!(),
             JobType::StepperJobRun => self
@@ -664,7 +669,9 @@ impl Planner {
             | JobType::StepperJobDisableSteppers
             | JobType::StepperJobSync => panic!(),
         };
-        
+
+        trace!("enqueue_move {:?}", job);
+
         if let Some(job) = job {
             self.job_queue
                 .push_back(RefCell::new(job))
