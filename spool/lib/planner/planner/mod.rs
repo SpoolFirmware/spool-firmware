@@ -264,7 +264,7 @@ impl Planner {
         // using lazy_static (uses spin) or once_cell (uses critical_section) to
         // read a constant seems brain dead, so here it is, for now, a constant
         let junction_stop_vel_thres: I20F12 = I20F12::from_num(0.99999);
-        let platform_junction_deviation: U20F12 = U20F12::from_num(0.015);
+        let platform_junction_deviation: U20F12 = U20F12::from_num(0.05);
         let junction_smoothing_thres: I20F12 = I20F12::from_num(-0.707);
 
         // move in fixed point mm
@@ -551,9 +551,6 @@ impl Planner {
             exit_steps_s: (mov.exit_speed_mm_sq.sqrt() * self.steps_per_mm[max_stepper])
                 .to_num::<u32>(),
         };
-
-        info!("{:?}", move_steps);
-
         core::mem::ManuallyDrop::new(move_steps)
     }
 
@@ -649,8 +646,6 @@ impl Planner {
         }
 
         new_move.check_invariant();
-        info!("new_move {:?}", new_move);
-
         let job = match new_move.job_type {
             JobType::StepperJobUndef => panic!(),
             JobType::StepperJobRun => self
@@ -669,9 +664,7 @@ impl Planner {
             | JobType::StepperJobDisableSteppers
             | JobType::StepperJobSync => panic!(),
         };
-
-        info!("enqueue_move {:?}", job);
-
+        
         if let Some(job) = job {
             self.job_queue
                 .push_back(RefCell::new(job))
