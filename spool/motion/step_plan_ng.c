@@ -81,16 +81,15 @@ static void populateBlock(const struct PlannerJob *prev, struct PlannerJob *new,
     for_each_stepper(i) {
         if (plan[i] >= 0)
             new->stepDirs |= BIT(i);
-        new->steppers[i].x = (uint32_t)abs(plan[i]);
+        new->steppers[i] = (uint32_t)abs(plan[i]);
     }
 
     for_each_stepper(i) {
-        struct PlannerBlock *s = &new->steppers[i];
         if (max_v[i] != 0) {
-            timeEst = max((float)s->x / (float)max_v[i], timeEst);
+            timeEst = max((float)new->steppers[i] / (float)max_v[i], timeEst);
         }
-        if (s->x > new->x) {
-            new->x = s->x;
+        if (new->steppers[i] > new->x) {
+            new->x = new->steppers[i];
             maxStepper = i;
         }
     }
@@ -100,15 +99,15 @@ static void populateBlock(const struct PlannerJob *prev, struct PlannerJob *new,
         return;
     }
 
-    uint32_t v = (uint32_t)((float)new->steppers[maxStepper].x / timeEst);
+    uint32_t v = (uint32_t)((float)new->steppers[maxStepper] / timeEst);
     new->vSq = v *v;
 
     /* TODO correct for acceleration */
     new->accMM = accMM[maxStepper];
     for_each_stepper(i) {
-        if ((new->steppers[i].x > 0) && (accMM[i] < new->accMM)) {
+        if ((new->steppers[i] > 0) && (accMM[i] < new->accMM)) {
             const int32_t maxPossible =
-                (accMM[i] * new->x / new->steppers[i].x);
+                (accMM[i] * new->x / new->steppers[i]);
             if (new->accMM > maxPossible) {
                 new->accMM = maxPossible;
             }
@@ -141,11 +140,11 @@ static void populateBlock(const struct PlannerJob *prev, struct PlannerJob *new,
         // Limit acceleration by axis??
         int32_t jaccMMs2 = new->accMM;
         for_each_axis(i) {
-            if (new->unit_vec[i]) {
-                if (fix16_mul_int32(fix16_abs(new->unit_vec[i]), jaccMMs2) >
+            if (junctionUnitVec[i]) {
+                if (fix16_mul_int32(fix16_abs(junctionUnitVec[i]), jaccMMs2) >
                     (int32_t)accMM[i]) {
                     jaccMMs2 = fix16_mul_int32(
-                        fix16_div(F16(1.0), fix16_abs(new->unit_vec[i])),
+                        fix16_div(F16(1.0), fix16_abs(junctionUnitVec[i])),
                         (int32_t)accMM[i]);
                 }
             }

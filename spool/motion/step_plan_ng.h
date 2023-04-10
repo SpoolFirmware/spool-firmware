@@ -23,10 +23,6 @@ const static uint32_t VEL_CHANGE_THRESHOLD = 10;
 #define JUNCTION_SMOOTHING_DIST_THRES(STEPPER) F16(1 * platformMotionStepsPerMM[STEPPER])
 #define JUNCTION_SMOOTHING_THRES      F16(-0.707f)
 
-struct PlannerBlock {
-    uint32_t x;
-};
-
 /* suboptimal arrangement, do we really care about the axes */
 /* re comment above: no */
 enum JobType {
@@ -59,7 +55,7 @@ struct PlannerJob {
             uint32_t vfSq;
             fix16_t lenMM;
             fix16_t unit_vec[NR_AXIS];
-            struct PlannerBlock steppers[NR_STEPPER];
+            uint32_t steppers[NR_STEPPER];
             uint8_t stepDirs;
         }; /* StepperJobRun, StepperJobHomeX, StepperJobHomeY, StepperJobHomeZ
             */

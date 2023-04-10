@@ -573,8 +573,7 @@ static void sendStepperJob(const struct PlannerJob *j)
     case StepperJobHomeZ:
         for_each_stepper(i) {
             motion_block_t *mb = &job.blocks[i];
-            const struct PlannerBlock *pb = &j->steppers[i];
-            mb->totalSteps = pb->x;
+            mb->totalSteps = j->steppers[i];
         }
         job.totalStepEvents = j->x;
         job.accelerateUntil = j->accelerationX;
@@ -609,6 +608,9 @@ static bool s_executePlannerJobs(void)
     struct PlannerJob j;
     if (plannerSize() > 0) {
         plannerDequeue(&j);
+        dbgPrintf("x %u accX: %u, decX: %u, viSq: %u, vSq: %u, vfSq: %u\n",
+            j.x, j.accelerationX, j.decelerationX,
+            j.viSq, j.vSq, j.vfSq);
         sendStepperJob(&j);
     }
     return plannerSize() > 0;

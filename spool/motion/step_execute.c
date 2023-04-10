@@ -108,6 +108,7 @@ __attribute__((noinline)) uint16_t executeStep(uint16_t ticksElapsed)
                     finished = false;
                 }
             }
+            WARN_ON(!finished);
             if (finished)
                 sDiscardJob();
         }
