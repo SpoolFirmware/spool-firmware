@@ -122,6 +122,10 @@ __attribute__((noinline)) uint16_t executeStep(uint16_t ticksElapsed)
     // Now we can do other things
     if (job.type == StepperJobUndef) {
         if (xQueueReceiveFromISR(StepperExecutionQueue, &job, NULL) != pdTRUE) {
+            if (job.exit_steps_s != 0) {
+                dbgPrintf("Exec Starved\n");
+                job.exit_steps_s = 0;
+            }
             return platformGetStepperTimerFreq() / 1000; // 1ms
         }
         // Acquired new block
