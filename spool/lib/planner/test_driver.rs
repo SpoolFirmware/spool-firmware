@@ -132,9 +132,9 @@ impl MachineState {
                             0.1.to_fixed(),
                         ],
                         acc: [
-                            500.to_fixed::<I16F16>(),
-                            500.to_fixed::<I16F16>(),
-                            100.to_fixed::<I16F16>(),
+                            1500.to_fixed::<I16F16>(),
+                            1500.to_fixed::<I16F16>(),
+                            300.to_fixed::<I16F16>(),
                             1000.to_fixed::<I16F16>(),
                         ],
                         stop: false,

@@ -267,7 +267,7 @@ impl Planner {
         // using lazy_static (uses spin) or once_cell (uses critical_section) to
         // read a constant seems brain dead, so here it is, for now, a constant
         let junction_stop_vel_thres: I20F12 = I20F12::from_num(0.99999);
-        let platform_junction_deviation: U20F12 = U20F12::from_num(0.05);
+        let platform_junction_deviation: U20F12 = U20F12::from_num(0.015);
         let junction_smoothing_thres: I20F12 = I20F12::from_num(-0.707);
 
         // move in fixed point mm
@@ -293,7 +293,7 @@ impl Planner {
         let delta_x = delta_x.inner();
 
         // time taken by the slowest axis, longest axis move magnitude, index
-        let (time_est, max_axis) = {
+        let (time_est, max_axis, max_axis_len_mm) = {
             let mut time_est = U20F12::ZERO;
             let mut max_axis_len_mm = U20F12::ZERO;
             let mut max_axis = 0;
@@ -309,7 +309,7 @@ impl Planner {
                     max_axis = i;
                 }
             }
-            (time_est, max_axis)
+            (time_est, max_axis, max_axis_len_mm)
         };
 
         // empty block
@@ -318,7 +318,7 @@ impl Planner {
         }
 
         let speed_mm_sq = {
-            let a = len_mm / time_est;
+            let a = max_axis_len_mm / time_est;
             a * a
         };
         // let delta_x = delta_x_vec.inner();
