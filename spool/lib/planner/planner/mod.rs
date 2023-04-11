@@ -154,7 +154,7 @@ impl Move {
         if self.len_mm < speed_change_mm {
             // try going directly from entry to exit speed
             let direct_mm = accelerate_mm.to_fixed::<I20F12>() - decelerate_mm.to_fixed::<I20F12>();
-            log::info!("len: {}, accelerate_mm: {}, decelerate_mm: {}, direct_mm: {}, exit: {}\n{:#?}",
+            log::debug!("len: {}, accelerate_mm: {}, decelerate_mm: {}, direct_mm: {}, exit: {}\n{:#?}",
                 self.len_mm, accelerate_mm, decelerate_mm, direct_mm, self.exit_speed_mm_sq, self);
 
             if self.len_mm < direct_mm.unsigned_abs() {
@@ -493,16 +493,12 @@ impl Planner {
                 if let Some(next) = next_iter.next() {
                     let prev_exit = prev.borrow().as_move().unwrap().exit_speed_mm_sq;
                     let next_entry = next.borrow().as_move().unwrap().entry_speed_mm_sq;
-                    log::info!("before: {}, {}", prev_exit, next_entry);
                     if !Self::reverse_pass_kernel(
                         next.borrow().as_move().unwrap(),
                         prev.borrow_mut().as_move_mut().unwrap(),
                     ) {
                         return;
                     }
-                    let prev_exit = prev.borrow().as_move().unwrap().exit_speed_mm_sq;
-                    let next_entry = next.borrow().as_move().unwrap().entry_speed_mm_sq;
-                    assert!(prev_exit.abs_diff(next_entry) < 10.to_fixed::<U20F12>(), "prev_exit: {}, next_entry: {}", prev_exit, next_entry);
                 }
             }
             break;

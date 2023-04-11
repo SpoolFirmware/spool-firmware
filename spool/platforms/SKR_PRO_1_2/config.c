@@ -44,14 +44,14 @@ const int32_t platformMotionMaxAccAxis[] = {
     1500,
     1500,
     300,
-    1000,
+    500,
 };
 
 const int32_t platformMotionDefaultAcc[] = {
     1500,
     1500,
     300,
-    1000,
+    500,
 };
 const int32_t platformMotionHomingVel[] = {
     50,
