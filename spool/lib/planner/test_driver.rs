@@ -280,10 +280,10 @@ fn main() {
 
                             // Check each motor make sure no speed jump is happening
                             for i in 0..3usize {
-                                let last_block_speed_ratio = last_move_.0.delta_x_steps[i] as f32
+                                let last_block_speed_ratio = if (last_move_.0.step_dirs & 1 << i) != 0 { -1.0 } else { 1.0 } * last_move_.0.delta_x_steps[i] as f32
                                     / last_move_.0.delta_x_steps[last_move_.0.max_axis as usize]
                                         as f32;
-                                let new_block_speed_ratio = res.delta_x_steps[i] as f32
+                                let new_block_speed_ratio = if (res.step_dirs & 1 << i) != 0 { -1.0 } else { 1.0 } * res.delta_x_steps[i] as f32
                                     / res.delta_x_steps[res.max_axis as usize] as f32;
                                 let last_exit_speed = (last_move_.0.exit_steps_s as f32
                                     * last_block_speed_ratio)
@@ -294,7 +294,7 @@ fn main() {
                                 let delta = (last_exit_speed - new_entry_speed).abs();
                                 if delta > 16.0 {
                                     error!(
-                                        "Motor {} has {} >16mm/s jerk: last exit: {}, new entry: {}",
+                                        "Motor {} has {} > 16 mm/s jerk: last exit: {}, new entry: {}",
                                         i, delta, last_exit_speed, new_entry_speed
                                     );
                                     panic!("{:?}", last_move_);

@@ -321,12 +321,14 @@ impl Planner {
                     if *move_steps == 0 {
                         (time, (max_stepper, max_stepper_steps))
                     } else {
+                        let new_move_max_v_stepper = new_move.max_v[move_stepper_idx].to_fixed::<U20F12>();
+                        assert_ne!(new_move_max_v_stepper, U20F12::ZERO);
                         let move_steps_abs = move_steps.unsigned_abs();
                         (
                             core::cmp::max(
                                 time,
                                 move_stepper_mm.unsigned_abs()
-                                    / new_move.max_v[move_stepper_idx].to_fixed::<U20F12>(),
+                                    / new_move_max_v_stepper,
                             ),
                             if move_steps_abs > max_stepper_steps {
                                 (move_stepper_idx, move_steps_abs)
@@ -343,11 +345,13 @@ impl Planner {
             return None;
         }
 
+
         let speed_mm_sq = {
             let a = len_mm / time;
             a * a
         };
 
+        assert_ne!(len_mm, U20F12::ZERO);
         let steps_per_mm = max_stepper_steps.to_fixed::<U20F12>() / len_mm;
         // let delta_x = delta_x_vec.inner();
 
@@ -364,6 +368,7 @@ impl Planner {
                     if *x == I20F12::ZERO || acceleration_x >= y * unit_vec_x.unsigned_abs() {
                         y
                     } else {
+                        assert_ne!(*unit_vec_x, I20F12::ZERO);
                         core::cmp::min(y, acceleration_x / unit_vec_x.unsigned_abs())
                     }
                 })
@@ -398,6 +403,7 @@ impl Planner {
                                     {
                                         accum
                                     } else {
+                                        assert_ne!(*junc_unit_vec_axis, I20F12::ZERO);
                                         core::cmp::min(
                                             accum,
                                             acceleration_x / junc_unit_vec_axis.unsigned_abs(),
@@ -432,6 +438,7 @@ impl Planner {
                         && cos_theta < junction_smoothing_thres
                     {
                         let theta: I20F12 = cordic::acos(cos_theta);
+                        assert_ne!(theta, I20F12::ZERO);
                         let limit_sqr: U20F12 = ((len_mm.to_fixed::<I20F12>() / theta)
                             * acceleration_mms2.to_fixed::<I20F12>())
                         .to_fixed();
