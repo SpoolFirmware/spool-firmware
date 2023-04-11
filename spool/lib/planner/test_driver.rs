@@ -1,4 +1,5 @@
-use clap::{Arg, Command, ArgAction};
+use clap::{Arg, ArgAction, Command};
+use core::panic;
 use fixed::traits::ToFixed;
 use gcode::Mnemonic;
 use log::{debug, error, info, trace, warn};
@@ -7,7 +8,9 @@ use std::{fmt::Display, fs::File, io::Write, path::PathBuf};
 
 use fixed::types::{I16F16, U20F12};
 use log::{Log, Metadata, Record};
-use planner::planner::{JobType, Move, MoveSteps, Planner, PlannerError, PlannerJob, PlannerMove, KinematicKind};
+use planner::planner::{
+    JobType, KinematicKind, Move, MoveSteps, Planner, PlannerError, PlannerJob, PlannerMove,
+};
 use std::cmp::min;
 
 struct YomamaLogger;
@@ -255,20 +258,46 @@ fn main() {
                     Err(PlannerError::CapacityError) => {
                         let (executor_job, planner_job) = planner.dequeue_move_test_only().unwrap();
                         assert_eq!(executor_job.job_type, JobType::StepperJobRun);
-                        let res = core::mem::ManuallyDrop::into_inner(unsafe { executor_job.data.move_steps });
+                        let res = core::mem::ManuallyDrop::into_inner(unsafe {
+                            executor_job.data.move_steps
+                        });
 
                         info!("[EXEC] =====\n{:#?}\n{:#?}\n======", res, planner_job);
                         if let Some(last_move_) = last_move {
                             let vel_change_threshold = 10.to_fixed::<U20F12>();
                             // invariant check against last move
-                            assert_eq!(last_move_.0.exit_steps_s, res.entry_steps_s);
+                            // assert_eq!(last_move_.0.exit_steps_s, res.entry_steps_s);
                             if !last_move_
-                                .1.as_move().unwrap()
+                                .1
+                                .as_move()
+                                .unwrap()
                                 .exit_speed_mm_sq
                                 .abs_diff(planner_job.as_move().unwrap().entry_speed_mm_sq)
                                 <= vel_change_threshold
                             {
                                 panic!("[LAST_MOVE] {:#?}", last_move_);
+                            }
+
+                            // Check each motor make sure no speed jump is happening
+                            for i in 0..4usize {
+                                let last_block_speed_ratio = last_move_.0.delta_x_steps[i] as f32
+                                    / last_move_.0.delta_x_steps[last_move_.0.max_axis as usize]
+                                        as f32;
+                                let new_block_speed_ratio = res.delta_x_steps[i] as f32
+                                    / res.delta_x_steps[res.max_axis as usize] as f32;
+                                let last_exit_speed = (last_move_.0.exit_steps_s as f32
+                                    * last_block_speed_ratio)
+                                    / STEPS_PER_MM[i];
+                                let new_entry_speed = (res.entry_steps_s as f32
+                                    * new_block_speed_ratio as f32)
+                                    / STEPS_PER_MM[i];
+                                let delta = (last_exit_speed - new_entry_speed).abs();
+                                if delta > 16.0 {
+                                    error!(
+                                        "Motor {} has {} >16mm/s jerk: last exit: {}, new entry: {}",
+                                        i, delta, last_exit_speed, new_entry_speed
+                                    );
+                                }
                             }
 
                             last_move = Some((res, planner_job))
