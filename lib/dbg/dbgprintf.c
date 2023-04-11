@@ -20,15 +20,14 @@ void dbgPutc(const char c)
     }
 
     uint32_t basePri = ulPortRaiseBASEPRI();
-    if (head == tail)
-        signalTask = 1;
     if ((tail + 1) % BUFFER_SIZE != head) {
         print_buffer[tail] = c;
         __asm volatile("dsb");
         tail = (tail + 1) % BUFFER_SIZE;
     }
     vPortSetBASEPRI(basePri);
-
+    if ((tail + 1) == head)
+        signalTask = 1;
     if (signalTask && dbgPrintTaskHandle != NULL) {
         if (xPortIsInsideInterrupt() == pdTRUE) {
             vTaskNotifyGiveFromISR(dbgPrintTaskHandle, NULL);
