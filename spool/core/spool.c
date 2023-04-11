@@ -47,7 +47,7 @@ static portTASK_FUNCTION(DebugPrintTask, pvParameters)
                 platformDbgPutc('\r');
             platformDbgPutc((char)c);
         } else {
-            ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
+            ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(100));
         }
     }
 }

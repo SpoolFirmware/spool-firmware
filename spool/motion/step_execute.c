@@ -129,7 +129,7 @@ __attribute__((noinline)) uint16_t executeStep(uint16_t ticksElapsed)
     if (job.type == StepperJobUndef) {
         if (xQueueReceiveFromISR(StepperExecutionQueue, &job, NULL) != pdTRUE) {
             if (job.moveSteps.exit_steps_s != 0) {
-                dbgPrintf("Exec Starved\n");
+                dbgPrintf("Exec Starved empty: %d\n", plannerIsEmpty(PLANNER));
                 job.moveSteps.exit_steps_s = 0;
             }
             return platformGetStepperTimerFreq() / 1000; // 1ms
