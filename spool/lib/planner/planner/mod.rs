@@ -154,6 +154,8 @@ impl Move {
         if self.len_mm < speed_change_mm {
             // try going directly from entry to exit speed
             let direct_mm = accelerate_mm.abs_diff(decelerate_mm);
+            log::info!("len: {}, change_mm: {}, direct_mm: {}, exit: {}\n{:#?}", 
+                self.len_mm, speed_change_mm, direct_mm, self.exit_speed_mm_sq, self);
 
             if self.len_mm < direct_mm {
                 // since exit speed <= cruising speed, and due to the forward pass,
@@ -170,7 +172,7 @@ impl Move {
                 self.entry_speed_mm_sq = new_entry_speed_mm_sq;
                 self.speed_mm_sq = new_entry_speed_mm_sq;
             } else {
-                self.accelerate_mm = (direct_mm + self.len_mm) / 2.to_fixed::<U20F12>();
+                self.accelerate_mm = (direct_mm + self.len_mm) * 0.5.to_fixed::<U20F12>();
                 self.decelerate_mm = self.len_mm - self.accelerate_mm;
 
                 self.speed_mm_sq =
@@ -474,19 +476,36 @@ impl Planner {
     }
 
     fn reverse_pass(&mut self) {
-        for (next, prev) in self
+        let mut next_iter = self
             .job_queue
             .iter()
             .rev()
-            .filter(|x| x.borrow().as_move().is_some())
-            .tuple_windows()
-        {
-            if !Self::reverse_pass_kernel(
-                next.borrow().as_move().unwrap(),
-                prev.borrow_mut().as_move_mut().unwrap(),
-            ) {
-                return;
+            .filter(|x| x.borrow().as_move().is_some());
+        let mut prev_iter = self
+            .job_queue
+            .iter()
+            .rev()
+            .filter(|x| x.borrow().as_move().is_some());
+
+        _ = prev_iter.next();
+        loop {
+            if let Some(prev) = prev_iter.next() {
+                if let Some(next) = next_iter.next() {
+                    let prev_exit = prev.borrow().as_move().unwrap().exit_speed_mm_sq;
+                    let next_entry = next.borrow().as_move().unwrap().entry_speed_mm_sq;
+                    log::info!("before: {}, {}", prev_exit, next_entry);
+                    if !Self::reverse_pass_kernel(
+                        next.borrow().as_move().unwrap(),
+                        prev.borrow_mut().as_move_mut().unwrap(),
+                    ) {
+                        return;
+                    }
+                    let prev_exit = prev.borrow().as_move().unwrap().exit_speed_mm_sq;
+                    let next_entry = next.borrow().as_move().unwrap().entry_speed_mm_sq;
+                    assert!(prev_exit.abs_diff(next_entry) < 10.to_fixed::<U20F12>(), "prev_exit: {}, next_entry: {}", prev_exit, next_entry);
+                }
             }
+            break;
         }
     }
 
