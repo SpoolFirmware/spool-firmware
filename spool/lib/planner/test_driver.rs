@@ -267,19 +267,19 @@ fn main() {
                             let vel_change_threshold = 10.to_fixed::<U20F12>();
                             // invariant check against last move
                             // assert_eq!(last_move_.0.exit_steps_s, res.entry_steps_s);
-                            if !last_move_
+                            if !(last_move_
                                 .1
                                 .as_move()
                                 .unwrap()
                                 .exit_speed_mm_sq
                                 .abs_diff(planner_job.as_move().unwrap().entry_speed_mm_sq)
-                                <= vel_change_threshold
+                                <= vel_change_threshold)
                             {
                                 panic!("[LAST_MOVE] {:#?}", last_move_);
                             }
 
                             // Check each motor make sure no speed jump is happening
-                            for i in 0..4usize {
+                            for i in 0..3usize {
                                 let last_block_speed_ratio = last_move_.0.delta_x_steps[i] as f32
                                     / last_move_.0.delta_x_steps[last_move_.0.max_axis as usize]
                                         as f32;
@@ -297,6 +297,7 @@ fn main() {
                                         "Motor {} has {} >16mm/s jerk: last exit: {}, new entry: {}",
                                         i, delta, last_exit_speed, new_entry_speed
                                     );
+                                    panic!("{:?}", last_move_);
                                 }
                             }
 
