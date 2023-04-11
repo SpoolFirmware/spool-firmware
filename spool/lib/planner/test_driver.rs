@@ -117,7 +117,7 @@ impl MachineState {
                     let fr = self.fr as u32;
                     return Some(PlannerMove {
                         job_type: JobType::StepperJobRun,
-                        motor_steps: *(Box::<[i32; 4]>::try_from(xyze_steps).unwrap()),
+                        motor_cart_steps: *(Box::<[i32; 4]>::try_from(xyze_steps).unwrap()),
                         delta_x: xyze.map(|x| x.to_fixed()),
                         max_v: [
                             min(fr, 200).to_fixed::<I16F16>(),
