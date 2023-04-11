@@ -297,6 +297,7 @@ static void s_performBedLeveling(void)
     static struct PrinterMove move_position = {
         .z = 10 * PLATFORM_MOTION_STEPS_PER_MM_AXIS(Z_AXIS),
     };
+    move_position.e = currentState.e;
     int32_t travels[ARRAY_LENGTH(BedLevelingPositions)];
     for (int i = 0; i < ARRAY_LENGTH(BedLevelingPositions); i++) {
         move_position.x = BedLevelingPositions[i].x;
@@ -467,6 +468,8 @@ static void enqueueAvailableGcode()
                 scheduleHomeX();
                 scheduleHomeY();
                 scheduleHomeZ();
+                // Home E
+                currentState.e = 0;
             } else {
                 if (cmd.xyzef.xSet) {
                     scheduleHomeX();
