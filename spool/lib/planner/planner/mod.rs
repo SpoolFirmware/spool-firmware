@@ -10,7 +10,7 @@ use core::{cell::RefCell, fmt::Display, result::Result};
 use crate::{MAX_AXIS, MAX_STEPPERS};
 use arraydeque::{ArrayDeque, Saturating};
 use fixed::{
-    traits::{FixedEquiv, ToFixed},
+    traits::{FixedEquiv, ToFixed, FixedSigned},
     types::{I16F16, I20F12, U20F12},
 };
 use fixed_sqrt::FixedSqrt;
@@ -153,11 +153,11 @@ impl Move {
         let speed_change_mm = accelerate_mm + decelerate_mm;
         if self.len_mm < speed_change_mm {
             // try going directly from entry to exit speed
-            let direct_mm = accelerate_mm.abs_diff(decelerate_mm);
-            log::info!("len: {}, change_mm: {}, direct_mm: {}, exit: {}\n{:#?}", 
-                self.len_mm, speed_change_mm, direct_mm, self.exit_speed_mm_sq, self);
+            let direct_mm = accelerate_mm.to_fixed::<I20F12>() - decelerate_mm.to_fixed::<I20F12>();
+            log::info!("len: {}, accelerate_mm: {}, decelerate_mm: {}, direct_mm: {}, exit: {}\n{:#?}",
+                self.len_mm, accelerate_mm, decelerate_mm, direct_mm, self.exit_speed_mm_sq, self);
 
-            if self.len_mm < direct_mm {
+            if self.len_mm < direct_mm.unsigned_abs() {
                 // since exit speed <= cruising speed, and due to the forward pass,
                 // this move is able to reach cruising speed,
                 // the move cannot slow down enough
@@ -172,7 +172,7 @@ impl Move {
                 self.entry_speed_mm_sq = new_entry_speed_mm_sq;
                 self.speed_mm_sq = new_entry_speed_mm_sq;
             } else {
-                self.accelerate_mm = (direct_mm + self.len_mm) * 0.5.to_fixed::<U20F12>();
+                self.accelerate_mm = (direct_mm + self.len_mm.to_fixed::<I20F12>()).to_fixed::<U20F12>() * 0.5.to_fixed::<U20F12>();
                 self.decelerate_mm = self.len_mm - self.accelerate_mm;
 
                 self.speed_mm_sq =
