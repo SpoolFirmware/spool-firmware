@@ -4,7 +4,7 @@
 
 ### Timers
 
-- TIM5(GP): WallClock
+- TIM2(GP): WallClock
 - TIM6(B):  Stepper Pulse Timer (Time that x us pulse)
 - TIM7(B):  Stepper Execution Callback
 - TIM8(ADV): PWM

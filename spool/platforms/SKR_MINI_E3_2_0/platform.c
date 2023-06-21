@@ -80,8 +80,8 @@ void platformInit(struct PlatformConfig *config)
     privTestInit();
 
     // Configure Wall clock
-    REG_FLD_SET_DRF(_RCC, _APB1ENR, _TIM5EN, _ENABLED);
-    halTimerConstruct(&wallClockTimer, DRF_BASE(DRF_TIM5));
+    REG_FLD_SET_DRF(_RCC, _APB1ENR, _TIM2EN, _ENABLED);
+    halTimerConstruct(&wallClockTimer, DRF_BASE(DRF_TIM2));
     halTimerStart(
         &wallClockTimer,
         &(struct TimerConfig){ .timerTargetFrequency = 10000000,
@@ -89,9 +89,12 @@ void platformInit(struct PlatformConfig *config)
                                    halClockApb1TimerFreqGet(&halClockConfig),
                                .interruptEnable = true });
     // Start Wallclock (Does not use any RTOS feature, can happen early)
-    halIrqPrioritySet(IRQ_TIM5, configMAX_SYSCALL_INTERRUPT_PRIORITY);
-    halIrqEnable(IRQ_TIM5);
+    halIrqPrioritySet(IRQ_TIM2, configMAX_SYSCALL_INTERRUPT_PRIORITY);
+    halIrqEnable(IRQ_TIM2);
     halTimerStartContinous(&wallClockTimer, 10000);
+
+    // BLTouchPwm
+    
 }
 
 void platformPostInit(void)
@@ -107,7 +110,7 @@ void platformPostInit(void)
 }
 
 static uint64_t wallClockTimeUs = 0;
-IRQ_HANDLER_TIM5(void)
+IRQ_HANDLER_TIM2(void)
 {
     wallClockTimeUs += 10000;
     halTimerIrqClear(&wallClockTimer);
