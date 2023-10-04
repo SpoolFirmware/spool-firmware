@@ -3,15 +3,15 @@ workspace(name = "spool_firmware")
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 
 # RUST
-# local_repository(
-#     name = "rules_rust",
-#     path = "rules_rust",
-# )
-http_archive(
+local_repository(
     name = "rules_rust",
-    sha256 = "b4e622a36904b5dd2d2211e40008fc473421c8b51c9efca746ab2ecf11dca08e",
-    urls = ["https://github.com/bazelbuild/rules_rust/releases/download/0.19.1/rules_rust-v0.19.1.tar.gz"],
+    path = "rules_rust",
 )
+# http_archive(
+#     name = "rules_rust",
+#     sha256 = "b4e622a36904b5dd2d2211e40008fc473421c8b51c9efca746ab2ecf11dca08e",
+#     urls = ["https://github.com/bazelbuild/rules_rust/releases/download/0.19.1/rules_rust-v0.19.1.tar.gz"],
+# )
 load("@rules_rust//rust:repositories.bzl", "rules_rust_dependencies", "rust_analyzer_toolchain_repository", "rust_register_toolchains")
 rules_rust_dependencies()
 rust_register_toolchains()
@@ -57,17 +57,32 @@ crates_repository(
         "gcode": crate.spec(
             version = "0.6.1",
         ),
+        "clap": crate.spec(
+            version = "4.2.1",
+        ),
         "arraydeque": crate.spec(
             version = "0.5",
             default_features = False,
         ),
         "log": crate.spec(
-            version = "0.4.17",
+            version = "0.4",
         ),
+        "cordic": crate.spec(
+            version = "0.1",
+        ),
+	"lazy_static": crate.spec(
+	    version = "1.4",
+	    features = ["spin_no_std"],
+	),
+	"itertools": crate.spec(
+	    version = "0.10.5",
+	    default_features = False,
+	),
     },
     rust_version=rust_version,
-    supported_platform_triples=rust_target_triples,
+    supported_platform_triples=rust_target_triples + host_triples,
 )
+
 
 load("@planner_crate_index//:defs.bzl", "crate_repositories")
 crate_repositories()

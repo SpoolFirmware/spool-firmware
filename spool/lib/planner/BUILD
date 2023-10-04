@@ -4,8 +4,10 @@ filegroup(
     name="planner_srcs",
     srcs=[
         "lib.rs",
-        "platform.rs",
+        "platform_no_std.rs",
+        "platform_std.rs",
         "planner/mod.rs",
+        "planner/kinematic.rs",
         "planner/fixed_vector.rs",
     ]
 )
@@ -21,6 +23,8 @@ rust_library(
         "@planner_crate_index//:fixed",
         "@planner_crate_index//:fixed-sqrt",
         "@planner_crate_index//:arraydeque",
+        "@planner_crate_index//:cordic",
+        "@planner_crate_index//:itertools",
     ],
     crate_features=["std"],
     edition="2021",
@@ -38,6 +42,8 @@ rust_library(
         "@planner_crate_index//:fixed",
         "@planner_crate_index//:fixed-sqrt",
         "@planner_crate_index//:arraydeque",
+        "@planner_crate_index//:cordic",
+        "@planner_crate_index//:itertools",
     ],
     edition="2021",
     visibility=["//visibility:public"],
@@ -55,6 +61,7 @@ rust_binary(
         "@planner_crate_index//:fixed",
         "@planner_crate_index//:fixed-sqrt",
         "@planner_crate_index//:gcode",
+        "@planner_crate_index//:clap",
     ],
     visibility=["//visibility:public"],
 )

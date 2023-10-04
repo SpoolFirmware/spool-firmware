@@ -11,8 +11,10 @@ _Noreturn void __panic(const char *file, int line, const char* err)
     __asm volatile("cpsid i");
     safeShutdown();
     dbgPrintf("PANIC");
-    if (file && err)
-        dbgPrintf(" at %s:%d\n", err, file, line);
+	if (err)
+		dbgPrintf(" %s", err);
+    if (file)
+        dbgPrintf(" at %s:%d\n", file, line);
     dbgEmptyBuffer();
     for (volatile int i = line;; i = line);
 }

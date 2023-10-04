@@ -1,21 +1,64 @@
-use fixed::traits::Fixed;
+use core::ops::Index;
+
+use fixed::traits::{Fixed, ToFixed};
 use fixed_sqrt::FixedSqrt;
+
+use crate::platform;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct FixedVector<T: Fixed + FixedSqrt + PartialEq, const N: usize>([T; N]);
 
-impl <T: Fixed + FixedSqrt, const N: usize> FixedVector<T, N> {
-    pub fn mag(&self) -> T {
+impl <T: Fixed + FixedSqrt, const N: usize> FixedVector<T, N> where T::Unsigned: Fixed + FixedSqrt + ToFixed {
+    pub fn new(s: [T; N]) -> Self {
+        FixedVector(s)
+    }
+
+    pub fn inner(self) -> [T; N] {
+        self.0
+    }
+
+    pub fn mag(&self) -> T::Unsigned {
         let squared_sum = self.0.iter()
-            .fold(T::default(), |elem, acc| (*acc * *acc) + elem);
-        squared_sum / squared_sum.sqrt()
+            .map(|x| x.to_num::<f32>())
+            .fold(0f32, |acc, elem| elem * elem + acc);
+        platform::platform_sqrtf(squared_sum)
+            .to_fixed::<T::Unsigned>()
     }
 
     pub fn unit(&self) -> Self {
         let mag = self.mag();
+        if mag.to_fixed::<T>() == T::ZERO {
+            return self.clone();
+        }
         let mut new_vec = self.clone();
-        new_vec.0.iter_mut().for_each(|f| { *f /= mag; });
+        new_vec.0.iter_mut().for_each(|f| { *f /= mag.to_fixed::<T>(); });
         new_vec
+    }
+
+    pub fn dot(&self, other: &Self) -> T {
+        self.0.iter()
+              .zip(other.0.iter())
+              .fold(T::ZERO, |acc, (a, b)| acc + *a * *b)
+    }
+
+    pub fn sub(&self, other: &Self) -> Self {
+        let mut new_vec = self.clone();
+        new_vec.0.iter_mut()
+                 .zip(other.0.iter())
+                 .for_each(|(s, o)| *s -= *o);
+        new_vec
+    }
+
+    pub fn iter(&self) -> impl Iterator<Item = &T> {
+        self.0.iter()
+    }
+}
+
+impl <T: Fixed + FixedSqrt, const N: usize> Index<usize> for FixedVector<T, N> {
+    type Output = T;
+
+    fn index(&self, index: usize) -> &Self::Output {
+        &self.0[index]
     }
 }
 

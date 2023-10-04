@@ -1,8 +1,17 @@
 use core::{panic::PanicInfo, ptr::null};
 
+use log::{Log, Record, Metadata};
+
 extern "C" {
     fn __panic(file: *const u8, line: i32, msg: *const u8) -> !;
     fn dbgPutc(c: u8);
+    fn sqrtf(f: f32) -> f32;
+}
+
+pub fn platform_sqrtf(f: f32) -> f32 {
+    unsafe {
+        sqrtf(f)
+    }
 }
 
 pub struct Console;
@@ -34,8 +43,31 @@ macro_rules! print {
     });
 }
 
+struct SpoolLogger;
+static LOGGER: SpoolLogger = SpoolLogger;
+
+impl Log for SpoolLogger {
+    fn enabled(&self, _metadata: &Metadata) -> bool {
+        true
+    }
+
+    fn log(&self, record: &Record) {
+        if self.enabled(record.metadata()) {
+            println!("[{:?}][{}]: {}", &record.level(), record.target(), record.args());
+        }
+    }
+
+    fn flush(&self) {}
+}
+
+pub fn logger_init() {
+    log::set_logger(&LOGGER).unwrap();
+    log::set_max_level(log::LevelFilter::Info);
+}
+
 #[panic_handler]
-pub fn panic(_info: &PanicInfo) -> ! {
+pub fn panic(info: &PanicInfo) -> ! {
+    println!("UwU: {}", info);
     unsafe {
         __panic(null(), 0, null());
     }

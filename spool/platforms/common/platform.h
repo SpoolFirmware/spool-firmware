@@ -7,6 +7,7 @@
 #include "FreeRTOS.h"
 #include "queue.h"
 #include "fix16.h"
+#include "spool/lib/planner/planner.h"
 
 struct PlatformConfig {
     uint8_t _rsvd;
@@ -15,12 +16,6 @@ struct PlatformConfig {
 enum Axis;
 enum Stepper;
 /* ----------------- Configuration Types ------------------------------------ */
-enum KinematicKind {
-    KinematicKindUndef = 0,
-    KinematicKindI3, /* Uses STEPPER_A,B,C for X,Y,Z */
-    KinematicKindCoreXY, /* Uses STEPPER_A,B for corexy, C for Z */
-};
-
 struct XYPositionMM {
     int32_t x_mm;
     int32_t y_mm;
@@ -58,7 +53,7 @@ extern const fix16_t platformJunctionDeviation;
 /* Steps, TODO per stepper/per-axis steps, it doesn't make sense */
 extern const int32_t platformMotionStepsPerMM[];
 extern const int32_t platformMotionStepsPerMMAxis[];
-extern const int32_t platformMotionMinVelSteps[];
+extern const fix16_t platformMotionMinVelMM[];
 
 extern const struct IOLine sdCSPin;
 /* ---------------- Functions to be implemented by platform ----------------- */
