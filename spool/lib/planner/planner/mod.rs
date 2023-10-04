@@ -126,6 +126,11 @@ impl Move {
         self.move_steps[self.max_stepper].unsigned_abs()
     }
 
+    /// sanity checks for the move
+    /// the trapezoid sides <= the total length
+    /// cruising speed >= entry speed
+    /// cruising speed >= entry speed
+    /// ||unit vector|| ~= 1
     fn check_invariant(&self) {
         if !(self.accelerate_mm + self.decelerate_mm <= self.len_mm) {
             log::error!("{:#?}", self);
@@ -145,11 +150,10 @@ impl Move {
         if self.speed_mm_sq == U20F12::ZERO {
             panic!("reverse_pass_kernel: speed_mm_sq is zero");
         }
-        // TODO convincing explanation here
-        //
-        //
-        //
-        // (self.speed_mm_sq - self.entry_speed_mm_sq) / (2 * self.acceleration_mms2)
+        // v1 = v0 + at
+        // x = v0t + 1/2at^2
+        // by simple algebra
+        // acceleration_mm = (speed_mm_sq - entry_speed_mm_sq) / (2 * acceleration_mms2)
         let accelerate_mm = self
             .speed_mm_sq
             .checked_sub(self.entry_speed_mm_sq)

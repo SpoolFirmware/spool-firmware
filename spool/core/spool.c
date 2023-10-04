@@ -124,7 +124,7 @@ void hexdump(const void *buffer, size_t size) {
 
 // TODO REMOVE ^
 
-static uint8_t buffer[512];
+/* static uint8_t buffer[512]; */
 void vApplicationDaemonTaskStartupHook(void) {
     // Create Tasks & Setup Queues
     gcodeSerialTaskInit();
