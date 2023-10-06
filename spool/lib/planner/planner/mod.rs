@@ -10,7 +10,7 @@ use core::{cell::RefCell, fmt::Display, result::Result};
 use crate::{MAX_AXIS, MAX_STEPPERS};
 use arraydeque::{ArrayDeque, Saturating};
 use fixed::{
-    traits::{FixedEquiv, FixedSigned, ToFixed, Fixed},
+    traits::{Fixed, FixedEquiv, FixedSigned, ToFixed},
     types::{I16F16, I20F12, U20F12},
 };
 use fixed_sqrt::FixedSqrt;
@@ -36,6 +36,7 @@ pub struct Planner {
     num_stepper: u8,
     pub steps_per_mm: [U20F12; MAX_AXIS],
 
+    last_dequeued: Option<RefCell<PlannerJob>>,
     job_queue: ArrayDeque<RefCell<PlannerJob>, 8, Saturating>,
 }
 
@@ -54,7 +55,7 @@ pub enum JobType {
     StepperJobSync,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Move {
     // move for steppers, after kinematics
     pub move_steps: [i32; MAX_STEPPERS],
@@ -82,6 +83,10 @@ pub struct Move {
     pub speed_mm_sq: U20F12,
     /// (Exit Speed) squared in mm
     pub exit_speed_mm_sq: U20F12,
+
+    /// (Max Entry Speed)^2 in (mm/s)^2
+    pub max_entry_speed_mm_sq: U20F12,
+    pub recalculate: bool,
 }
 
 #[derive(Debug)]
@@ -146,9 +151,9 @@ impl Move {
         assert!(stmt);
     }
 
-    fn reverse_pass_kernel(&mut self) {
+    fn calculate_trapezoid(&mut self) {
         if self.speed_mm_sq == U20F12::ZERO {
-            panic!("reverse_pass_kernel: speed_mm_sq is zero");
+            panic!("speed_mm_sq is zero");
         }
         // v1 = v0 + at
         // x = v0t + 1/2at^2
@@ -169,23 +174,20 @@ impl Move {
         if self.len_mm < speed_change_mm {
             // try going directly from entry to exit speed
             let direct_mm = accelerate_mm.to_fixed::<I20F12>() - decelerate_mm.to_fixed::<I20F12>();
-            log::debug!("len: {}, accelerate_mm: {}, decelerate_mm: {}, direct_mm: {}, exit: {}\n{:#?}",
-                self.len_mm, accelerate_mm, decelerate_mm, direct_mm, self.exit_speed_mm_sq, self);
+            log::debug!(
+                "len: {}, accelerate_mm: {}, decelerate_mm: {}, direct_mm: {}, exit: {}\n{:#?}",
+                self.len_mm,
+                accelerate_mm,
+                decelerate_mm,
+                direct_mm,
+                self.exit_speed_mm_sq,
+                self
+            );
 
             if self.len_mm < direct_mm.unsigned_abs() {
-                // since exit speed <= cruising speed, and due to the forward pass,
-                // this move is able to reach cruising speed,
-                // the move cannot slow down enough
-                //
-                // compute new initial speed to ensure we can slow down
-                let new_entry_speed_mm_sq =
-                    self.len_mm * 2.to_fixed::<U20F12>() * self.acceleration_mms2
-                        + self.exit_speed_mm_sq;
-                assert!(new_entry_speed_mm_sq <= self.entry_speed_mm_sq);
-                self.accelerate_mm = 0.to_fixed();
-                self.decelerate_mm = self.len_mm;
-                self.entry_speed_mm_sq = new_entry_speed_mm_sq;
-                self.speed_mm_sq = new_entry_speed_mm_sq;
+                // impossible!!! because forward pass ensures next move starts at a possible speed
+                // convinced 20231005
+                unreachable!();
             } else {
                 self.accelerate_mm = (direct_mm + self.len_mm.to_fixed::<I20F12>())
                     .to_fixed::<U20F12>()
@@ -195,6 +197,7 @@ impl Move {
                 self.speed_mm_sq =
                     self.accelerate_mm * 2.to_fixed::<U20F12>() * self.acceleration_mms2
                         + self.entry_speed_mm_sq;
+
                 let exit_speed_mm_sq = self
                     .speed_mm_sq
                     .checked_sub(
@@ -213,7 +216,7 @@ impl Move {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum PlannerJob {
     StepperJobRun(Move),
     StepperJobHomeX(Move),
@@ -280,6 +283,7 @@ impl Planner {
             num_stepper: num_stepper as u8,
             steps_per_mm: [U20F12::from_num(0); MAX_AXIS],
             job_queue: ArrayDeque::new(),
+            last_dequeued: None,
         }
     }
 
@@ -325,14 +329,14 @@ impl Planner {
                     if *move_steps == 0 {
                         (time, (max_stepper, max_stepper_steps))
                     } else {
-                        let new_move_max_v_stepper = new_move.max_v[move_stepper_idx].to_fixed::<U20F12>();
+                        let new_move_max_v_stepper =
+                            new_move.max_v[move_stepper_idx].to_fixed::<U20F12>();
                         assert_ne!(new_move_max_v_stepper, U20F12::ZERO);
                         let move_steps_abs = move_steps.unsigned_abs();
                         (
                             core::cmp::max(
                                 time,
-                                move_stepper_mm.unsigned_abs()
-                                    / new_move_max_v_stepper,
+                                move_stepper_mm.unsigned_abs() / new_move_max_v_stepper,
                             ),
                             if move_steps_abs > max_stepper_steps {
                                 (move_stepper_idx, move_steps_abs)
@@ -348,7 +352,6 @@ impl Planner {
         if time == U20F12::ZERO {
             return None;
         }
-
 
         let speed_mm_sq = {
             let a = len_mm / time;
@@ -494,27 +497,29 @@ impl Planner {
             entry_speed_mm_sq,
             speed_mm_sq,
             exit_speed_mm_sq,
+            max_entry_speed_mm_sq: entry_speed_mm_sq,
+            recalculate: true,
         };
-
-        if new_move.stop {
-            mov.reverse_pass_kernel();
-        }
 
         Some(mov)
     }
 
-    fn reverse_pass_kernel(next: &Move, prev: &mut Move) -> bool {
-        let vel_change_threshold = 10.to_fixed::<U20F12>();
+    fn reverse_pass_kernel(prev: &mut Move, next: &Move) {
+        // if prev.entry_speed_mm_sq <= next.entry_speed_mm_sq {
+        //     return false;
+        // }
 
-        if prev.exit_speed_mm_sq.abs_diff(next.entry_speed_mm_sq) >= vel_change_threshold {
-            prev.exit_speed_mm_sq = next.entry_speed_mm_sq;
-            prev.reverse_pass_kernel();
-            true
-        } else {
-            false
+        let prev_max_entry = prev.max_entry_speed_mm_sq.min(
+            next.entry_speed_mm_sq + 2.to_fixed::<U20F12>() * prev.acceleration_mms2 * prev.len_mm,
+        );
+
+        if prev_max_entry != prev.entry_speed_mm_sq {
+            prev.entry_speed_mm_sq = prev_max_entry;
+            prev.recalculate = true;
         }
     }
 
+    /// convinced 20231005
     fn reverse_pass(&mut self) {
         let mut next_iter = self
             .job_queue
@@ -527,21 +532,71 @@ impl Planner {
             .rev()
             .filter(|x| x.borrow().as_move().is_some());
 
-        _ = prev_iter.next();
-        loop {
-            if let Some(prev) = prev_iter.next() {
-                if let Some(next) = next_iter.next() {
-                    let prev_exit = prev.borrow().as_move().unwrap().exit_speed_mm_sq;
-                    let next_entry = next.borrow().as_move().unwrap().entry_speed_mm_sq;
-                    if !Self::reverse_pass_kernel(
-                        next.borrow().as_move().unwrap(),
-                        prev.borrow_mut().as_move_mut().unwrap(),
-                    ) {
-                        return;
-                    }
-                }
+        prev_iter.next();
+
+        while let Some(prev) = prev_iter.next() {
+            if let Some(next) = next_iter.next() {
+                Self::reverse_pass_kernel(
+                    prev.borrow_mut().as_move_mut().unwrap(),
+                    next.borrow().as_move().unwrap(),
+                )
             }
-            break;
+        }
+    }
+
+    fn forward_pass_kernel(prev: &Move, next: &mut Move) {
+        // if next.entry_speed_mm_sq <= prev.entry_speed_mm_sq {
+        //     return false;
+        // }
+
+        // assuming previous move only accelerates, how fast can it get??????
+        let prev_max_exit =
+            prev.entry_speed_mm_sq + 2.to_fixed::<U20F12>() * prev.acceleration_mms2 * prev.len_mm;
+        if prev_max_exit < next.entry_speed_mm_sq {
+            next.entry_speed_mm_sq = prev_max_exit;
+            next.recalculate = true;
+        }
+    }
+
+    fn forward_pass(&mut self) {
+        let mut next_iter = self
+            .job_queue
+            .iter()
+            .filter(|x| x.borrow().as_move().is_some());
+        let mut prev_iter = self
+            .last_dequeued
+            .iter()
+            .chain(self.job_queue.iter())
+            .filter(|x| x.borrow().as_move().is_some());
+
+        while let Some(prev) = prev_iter.next() {
+            if let Some(next) = next_iter.next() {
+                Self::forward_pass_kernel(
+                    prev.borrow().as_move().unwrap(),
+                    next.borrow_mut().as_move_mut().unwrap(),
+                )
+            }
+        }
+    }
+
+    fn recalculate(&mut self) {
+        let mut next_iter = self
+            .job_queue
+            .iter()
+            .filter(|x| x.borrow().as_move().is_some());
+        let mut prev_iter = self
+            .last_dequeued
+            .iter()
+            .chain(self.job_queue.iter())
+            .filter(|x| x.borrow().as_move().is_some());
+
+        while let Some(prev) = prev_iter.next() {
+            if let Some(next) = next_iter.next() {
+                Self::forward_pass_kernel(
+                    prev.borrow().as_move().unwrap(),
+                    next.borrow_mut().as_move_mut().unwrap(),
+                )
+            }
         }
     }
 
@@ -550,6 +605,8 @@ impl Planner {
     }
 
     fn move_to_move_steps(&self, mov: &Move) -> core::mem::ManuallyDrop<MoveSteps> {
+        assert!(!mov.recalculate);
+
         let accelerate_steps = mov.accelerate_mm * mov.steps_per_mm;
         let decelerate_steps = mov.decelerate_mm * mov.steps_per_mm;
         let acceleration_stepss2 = (mov.acceleration_mms2 * mov.steps_per_mm).to_num::<u32>();
@@ -598,15 +655,27 @@ impl Planner {
         core::mem::ManuallyDrop::new(move_steps)
     }
 
+    fn set_last_dequeued(&mut self, mov: &Move) {
+        if self.is_empty() {
+            self.last_dequeued = None;
+        } else {
+            self.last_dequeued
+                .replace(RefCell::new(PlannerJob::StepperJobRun(mov.clone())));
+        }
+    }
+
     pub fn dequeue_move_test_only(&mut self) -> Option<(ExecutorJob, PlannerJob)> {
         if let Some(job) = self.job_queue.pop_front().map(|j| j.into_inner()) {
             let executor_job = match &job {
-                PlannerJob::StepperJobRun(mov) => ExecutorJob {
-                    job_type: JobType::StepperJobRun,
-                    data: ExecutorUnion {
-                        move_steps: self.move_to_move_steps(mov),
-                    },
-                },
+                PlannerJob::StepperJobRun(mov) => {
+                    self.set_last_dequeued(mov);
+                    ExecutorJob {
+                        job_type: JobType::StepperJobRun,
+                        data: ExecutorUnion {
+                            move_steps: self.move_to_move_steps(mov),
+                        },
+                    }
+                }
                 PlannerJob::StepperJobHomeX(mov) => ExecutorJob {
                     job_type: JobType::StepperJobHomeX,
                     data: ExecutorUnion {
