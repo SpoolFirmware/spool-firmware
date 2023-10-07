@@ -457,7 +457,7 @@ impl Planner {
                     (
                         core::cmp::min(
                             limited_speed_mm_sq,
-                            core::cmp::min(entry_speed_mm_sq, prev_move.exit_speed_mm_sq),
+                            entry_speed_mm_sq,
                         ),
                         acceleration_mms2,
                     )
@@ -739,8 +739,9 @@ impl Planner {
 
     fn construct_move_job(&self, new_move: &PlannerMove) -> Option<Move> {
         let prev_move = self
-            .job_queue
+            .last_dequeued
             .iter()
+            .chain(self.job_queue.iter())
             .rev()
             .find(|m| m.borrow().as_move().is_some());
 
