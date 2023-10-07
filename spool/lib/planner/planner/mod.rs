@@ -186,8 +186,23 @@ impl Move {
 
             if self.len_mm < direct_mm.unsigned_abs() {
                 // impossible!!! because forward pass ensures next move starts at a possible speed
-                // convinced 20231005
-                unreachable!();
+                // could it be rounding error?
+                // unconvinced 20231007
+                log::info!("rounding error? len: {}, direct_mm: {}", self.len_mm, direct_mm.unsigned_abs());
+                // since exit speed <= cruising speed, and due to the forward pass,
+                // this move is able to reach cruising speed,
+                // the move cannot slow down enough
+                //
+                // compute new initial speed to ensure we can slow down
+                let new_entry_speed_mm_sq =
+                    self.len_mm * 2.to_fixed::<U20F12>() * self.acceleration_mms2
+                        + self.exit_speed_mm_sq;
+                assert!(new_entry_speed_mm_sq <= self.entry_speed_mm_sq);
+                self.accelerate_mm = 0.to_fixed();
+                self.decelerate_mm = self.len_mm;
+                self.entry_speed_mm_sq = new_entry_speed_mm_sq;
+                self.speed_mm_sq = new_entry_speed_mm_sq;
+                self.max_entry_speed_mm_sq = new_entry_speed_mm_sq;
             } else {
                 self.accelerate_mm = (direct_mm + self.len_mm.to_fixed::<I20F12>())
                     .to_fixed::<U20F12>()
@@ -197,6 +212,8 @@ impl Move {
                 self.speed_mm_sq =
                     self.accelerate_mm * 2.to_fixed::<U20F12>() * self.acceleration_mms2
                         + self.entry_speed_mm_sq;
+
+                assert!(self.speed_mm_sq >= self.entry_speed_mm_sq);
 
                 let exit_speed_mm_sq = self
                     .speed_mm_sq
@@ -457,7 +474,7 @@ impl Planner {
                     (
                         core::cmp::min(
                             limited_speed_mm_sq,
-                            entry_speed_mm_sq,
+                            core::cmp::min(entry_speed_mm_sq, prev_move.speed_mm_sq),
                         ),
                         acceleration_mms2,
                     )
@@ -477,6 +494,8 @@ impl Planner {
         } else {
             (speed_mm_sq, accelerate_mm)
         };
+
+        let entry_speed_mm_sq = core::cmp::min(entry_speed_mm_sq, speed_mm_sq);
 
         let exit_speed_mm_sq = U20F12::ZERO;
 
