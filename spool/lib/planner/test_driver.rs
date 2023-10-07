@@ -178,7 +178,7 @@ impl MachineState {
                     self.e_abs = false;
                 }
                 // NOPs
-                140 | 104 | 109 | 190 | 106 | 107 => {}
+                105 | 140 | 104 | 109 | 190 | 106 | 107 | 84 => {}
                 _ => {
                     panic!("Unsupported M: {}", gcode);
                 }

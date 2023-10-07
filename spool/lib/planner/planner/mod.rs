@@ -478,11 +478,7 @@ impl Planner {
             (speed_mm_sq, accelerate_mm)
         };
 
-        let exit_speed_mm_sq = if new_move.stop {
-            U20F12::ZERO
-        } else {
-            speed_mm_sq
-        };
+        let exit_speed_mm_sq = U20F12::ZERO;
 
         let mut mov = Move {
             move_steps,
@@ -509,9 +505,11 @@ impl Planner {
         //     return false;
         // }
 
-        let prev_max_entry = prev.max_entry_speed_mm_sq.min(
-            next.entry_speed_mm_sq + 2.to_fixed::<U20F12>() * prev.acceleration_mms2 * prev.len_mm,
-        );
+        let prev_max_entry = prev
+            .max_entry_speed_mm_sq
+            .min(next.entry_speed_mm_sq.saturating_add(
+                (2.to_fixed::<U20F12>() * prev.acceleration_mms2).saturating_mul(prev.len_mm),
+            ));
 
         if prev_max_entry != prev.entry_speed_mm_sq {
             prev.entry_speed_mm_sq = prev_max_entry;
@@ -550,8 +548,9 @@ impl Planner {
         // }
 
         // assuming previous move only accelerates, how fast can it get??????
-        let prev_max_exit =
-            prev.entry_speed_mm_sq + 2.to_fixed::<U20F12>() * prev.acceleration_mms2 * prev.len_mm;
+        let prev_max_exit = prev.entry_speed_mm_sq.saturating_add(
+            (2.to_fixed::<U20F12>() * prev.acceleration_mms2).saturating_mul(prev.len_mm),
+        );
         if prev_max_exit < next.entry_speed_mm_sq {
             next.entry_speed_mm_sq = prev_max_exit;
             next.recalculate = true;
@@ -568,6 +567,10 @@ impl Planner {
             .iter()
             .chain(self.job_queue.iter())
             .filter(|x| x.borrow().as_move().is_some());
+
+        if self.last_dequeued.is_none() {
+            next_iter.next();
+        }
 
         while let Some(prev) = prev_iter.next() {
             if let Some(next) = next_iter.next() {
@@ -590,12 +593,31 @@ impl Planner {
             .chain(self.job_queue.iter())
             .filter(|x| x.borrow().as_move().is_some());
 
+        if self.last_dequeued.is_none() {
+            next_iter.next();
+        }
+
         while let Some(prev) = prev_iter.next() {
             if let Some(next) = next_iter.next() {
-                Self::forward_pass_kernel(
-                    prev.borrow().as_move().unwrap(),
-                    next.borrow_mut().as_move_mut().unwrap(),
-                )
+                let mut prev = prev.borrow_mut();
+                let mut prev = prev.as_move_mut().unwrap();
+                let next = next.borrow();
+                let next = next.as_move().unwrap();
+
+                if prev.exit_speed_mm_sq != next.entry_speed_mm_sq {
+                    prev.exit_speed_mm_sq = next.entry_speed_mm_sq;
+                }
+
+                if prev.recalculate || next.recalculate {
+                    prev.calculate_trapezoid();
+                    prev.recalculate = false;
+                }
+            } else {
+                let mut prev = prev.borrow_mut();
+                let mut prev = prev.as_move_mut().unwrap();
+
+                prev.calculate_trapezoid();
+                prev.recalculate = false;
             }
         }
     }
@@ -788,6 +810,8 @@ impl Planner {
                 .map_err(|_| PlannerError::CapacityError)
                 .expect("Qnospace");
             self.reverse_pass();
+            self.forward_pass();
+            self.recalculate();
         }
         Ok(())
     }
