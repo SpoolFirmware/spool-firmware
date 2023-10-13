@@ -331,10 +331,7 @@ impl Planner {
         let len_mm = self
             .kinematic_kind
             .move_len(&delta_x_cart[..3], &delta_x_cart[3..]);
-        let mut move_stepper_mm = [I20F12::ZERO; MAX_AXIS];
-        self.kinematic_kind
-            .plan(&delta_x_cart, &mut move_stepper_mm);
-        let move_stepper_mm = FixedVector::new(move_stepper_mm);
+        let move_stepper_mm = FixedVector::new(delta_x_cart);
         let unit_vec = move_stepper_mm.unit();
         let move_stepper_mm = move_stepper_mm.inner();
 
@@ -640,6 +637,7 @@ impl Planner {
     fn move_to_move_steps(&self, mov: &Move) -> core::mem::ManuallyDrop<MoveSteps> {
         assert!(!mov.recalculate);
 
+        // TODO DOES NOT WORK FOR NON_LINEAR
         let accelerate_steps = mov.accelerate_mm * mov.steps_per_mm;
         let decelerate_steps = mov.decelerate_mm * mov.steps_per_mm;
         let acceleration_stepss2 = (mov.acceleration_mms2 * mov.steps_per_mm).to_num::<u32>();
