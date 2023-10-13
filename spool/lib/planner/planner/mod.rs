@@ -7,7 +7,7 @@ use itertools::Itertools;
 
 use core::{cell::RefCell, fmt::Display, result::Result};
 
-use crate::{MAX_AXIS, MAX_STEPPERS};
+use crate::{platform, MAX_AXIS, MAX_STEPPERS};
 use arraydeque::{ArrayDeque, Saturating};
 use fixed::{
     traits::{Fixed, FixedEquiv, FixedSigned, ToFixed},
@@ -188,7 +188,11 @@ impl Move {
                 // impossible!!! because forward pass ensures next move starts at a possible speed
                 // could it be rounding error?
                 // unconvinced 20231007
-                log::info!("rounding error? len: {}, direct_mm: {}", self.len_mm, direct_mm.unsigned_abs());
+                log::info!(
+                    "rounding error? len: {}, direct_mm: {}",
+                    self.len_mm,
+                    direct_mm.unsigned_abs()
+                );
                 // since exit speed <= cruising speed, and due to the forward pass,
                 // this move is able to reach cruising speed,
                 // the move cannot slow down enough
@@ -307,7 +311,7 @@ impl Planner {
     fn construct_move(&self, new_move: &PlannerMove, prev_move: Option<&Move>) -> Option<Move> {
         // using lazy_static (uses spin) or once_cell (uses critical_section) to
         // read a constant seems brain dead, so here it is, for now, a constant
-        let junction_stop_vel_thres: I20F12 = I20F12::from_num(0.99999);
+        let junction_stop_vel_thres: I20F12 = I20F12::from_num(0.999);
         let platform_junction_deviation: U20F12 = U20F12::from_num(0.01);
         let junction_smoothing_thres: I20F12 = I20F12::from_num(-0.707);
 
@@ -411,31 +415,15 @@ impl Planner {
                     let junction_unit_vec: FixedVector<_, MAX_AXIS> =
                         unit_vec.sub(&prev_move.unit_vec).unit();
 
-                    let acceleration_mms2 = {
-                        // this deviates from the c impl, and opts to not exceed acceleration based on the direction
-                        move_stepper_mm
-                            .iter()
-                            .zip(new_move.acc.iter())
-                            .zip(junction_unit_vec.iter())
-                            .fold(
-                                acceleration_mms2,
-                                |accum, ((x, acceleration_x), junc_unit_vec_axis)| {
-                                    let acceleration_x = acceleration_x.to_fixed::<U20F12>();
-                                    if *x == I20F12::ZERO
-                                        || acceleration_x
-                                            >= accum * junc_unit_vec_axis.unsigned_abs()
-                                    {
-                                        accum
-                                    } else {
-                                        assert_ne!(*junc_unit_vec_axis, I20F12::ZERO);
-                                        core::cmp::min(
-                                            accum,
-                                            acceleration_x / junc_unit_vec_axis.unsigned_abs(),
-                                        )
-                                    }
-                                },
-                            )
-                    };
+                    let mut acceleration_mms2 = acceleration_mms2;
+                    for axis in 0..(self.num_axis as usize) {
+                        if junction_unit_vec[axis].unsigned_abs() > U20F12::ZERO {}
+                        if (acceleration_mms2 * junction_unit_vec[axis].unsigned_abs())
+                            > new_move.acc[axis]
+                        {
+                            acceleration_mms2 = new_move.acc[axis].to_fixed();
+                        }
+                    }
 
                     // skipped over a jacc_mm calculation here, convinced myself that it was dead code
 
@@ -454,8 +442,14 @@ impl Planner {
                     let one_minus_sin_theta_div_2: U20F12 =
                         1.to_fixed::<U20F12>() - sin_theta_div_2;
                     let entry_speed_mm_sq: U20F12 =
-                        platform_junction_deviation * sin_theta_div_2 * acceleration_mms2
+                        (acceleration_mms2 * platform_junction_deviation * sin_theta_div_2)
                             / one_minus_sin_theta_div_2;
+                    log::debug!(
+                        "acc {}, sin_theta/2 {} 1- {}",
+                        acceleration_mms2,
+                        sin_theta_div_2,
+                        one_minus_sin_theta_div_2
+                    );
 
                     // small segments
                     let limited_speed_mm_sq = if len_mm < 1.to_fixed::<I20F12>()
@@ -516,14 +510,12 @@ impl Planner {
             recalculate: true,
         };
 
+        log::debug!("populate_block\n{:#?}", mov);
+
         Some(mov)
     }
 
     fn reverse_pass_kernel(prev: &mut Move, next: &Move) {
-        // if prev.entry_speed_mm_sq <= next.entry_speed_mm_sq {
-        //     return false;
-        // }
-
         let prev_max_entry = prev
             .max_entry_speed_mm_sq
             .min(next.entry_speed_mm_sq.saturating_add(
@@ -801,7 +793,6 @@ impl Planner {
         }
 
         new_move.check_invariant();
-        trace!("new_move {:?}", new_move);
 
         let job = match new_move.job_type {
             JobType::StepperJobUndef => panic!(),
@@ -821,8 +812,6 @@ impl Planner {
             | JobType::StepperJobDisableSteppers
             | JobType::StepperJobSync => panic!(),
         };
-
-        trace!("enqueue_move {:?}", job);
 
         if let Some(job) = job {
             self.job_queue

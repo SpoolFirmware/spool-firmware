@@ -1,3 +1,5 @@
+#[allow(unused_imports)]
+
 use clap::{Arg, ArgAction, Command};
 use core::panic;
 use fixed::traits::ToFixed;
@@ -135,7 +137,7 @@ impl MachineState {
                             1500.to_fixed::<I16F16>(),
                             1500.to_fixed::<I16F16>(),
                             300.to_fixed::<I16F16>(),
-                            1000.to_fixed::<I16F16>(),
+                            500.to_fixed::<I16F16>(),
                         ],
                         stop: false,
                     });
@@ -246,12 +248,10 @@ fn main() {
             }
             continue;
         }
-        trace!("Input[{:04}]: {}", i, gcode);
         if let Some(mut planner_move) = machine_state.process_gcode(&gcode) {
             if i == gcodes.len() - 1 {
                 planner_move.stop = true;
             }
-            trace!("Move: {:#?}", &planner_move);
             loop {
                 match planner.enqueue_move(&planner_move) {
                     Ok(_) => break,
@@ -323,7 +323,6 @@ fn main() {
                 }
             }
         }
-        debug!("New State: {}", &machine_state);
     }
     while !planner.is_empty() {
         let (executor_job, planner_job) = planner.dequeue_move_test_only().unwrap();
