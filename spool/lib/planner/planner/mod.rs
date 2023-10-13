@@ -5,7 +5,7 @@ pub use kinematic::KinematicKind;
 
 use itertools::Itertools;
 
-use core::{cell::RefCell, fmt::Display, result::Result};
+use core::{cell::RefCell, cmp::min, fmt::Display, result::Result};
 
 use crate::{platform, MAX_AXIS, MAX_STEPPERS};
 use arraydeque::{ArrayDeque, Saturating};
@@ -393,7 +393,7 @@ impl Planner {
                         y
                     } else {
                         assert_ne!(*unit_vec_x, I20F12::ZERO);
-                        core::cmp::min(y, acceleration_x / unit_vec_x.unsigned_abs())
+                        min(y, acceleration_x / unit_vec_x.unsigned_abs())
                     }
                 })
         };
@@ -452,10 +452,13 @@ impl Planner {
                     // move_centripetal_v2 = .5 * self.move_d * tan_theta_d2 * self.accel
                     // prev_move_centripetal_v2 = (.5 * prev_move.move_d * tan_theta_d2 * prev_move.accel)
 
-                    let tan_theta_div_2 = sin_theta_div_2
-                        .saturating_div((0.5.to_fixed::<U20F12>() * (1.to_fixed::<I20F12>() + cos_theta).to_fixed::<U20F12>()).sqrt());
+                    let tan_theta_div_2 = sin_theta_div_2.saturating_div(
+                        (0.5.to_fixed::<U20F12>()
+                            * (1.to_fixed::<I20F12>() + cos_theta).to_fixed::<U20F12>())
+                        .sqrt(),
+                    );
 
-                    let tan_theta_div_2 = core::cmp::min(tan_theta_div_2, 1.to_fixed::<U20F12>());
+                    let tan_theta_div_2 = min(tan_theta_div_2, 1.to_fixed::<U20F12>());
                     let move_centripetal_v2 =
                         0.5.to_fixed::<U20F12>() * len_mm * tan_theta_div_2 * acceleration_mms2;
                     let prev_move_centripetal_v2 = 0.5.to_fixed::<U20F12>()
@@ -464,9 +467,12 @@ impl Planner {
                         * prev_move.acceleration_mms2;
 
                     (
-                        core::cmp::min(
-                            core::cmp::min(move_centripetal_v2, prev_move_centripetal_v2),
-                            core::cmp::min(entry_speed_mm_sq, prev_move.speed_mm_sq),
+                        min(
+                            speed_mm_sq,
+                            min(
+                                min(move_centripetal_v2, prev_move_centripetal_v2),
+                                min(entry_speed_mm_sq, prev_move.speed_mm_sq),
+                            ),
                         ),
                         acceleration_mms2,
                     )
@@ -487,7 +493,7 @@ impl Planner {
             (speed_mm_sq, accelerate_mm)
         };
 
-        let entry_speed_mm_sq = core::cmp::min(entry_speed_mm_sq, speed_mm_sq);
+        let entry_speed_mm_sq = min(entry_speed_mm_sq, speed_mm_sq);
 
         let exit_speed_mm_sq = U20F12::ZERO;
 
