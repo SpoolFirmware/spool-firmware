@@ -313,7 +313,6 @@ impl Planner {
         // read a constant seems brain dead, so here it is, for now, a constant
         let junction_stop_vel_thres: I20F12 = I20F12::from_num(0.999);
         let platform_junction_deviation: U20F12 = U20F12::from_num(0.01);
-        let junction_smoothing_thres: I20F12 = I20F12::from_num(-0.707);
 
         // move in fixed point mm
         let delta_x_cart = {
@@ -448,23 +447,25 @@ impl Planner {
                         one_minus_sin_theta_div_2
                     );
 
-                    // small segments
-                    let limited_speed_mm_sq = if len_mm < 1.to_fixed::<I20F12>()
-                        && cos_theta < junction_smoothing_thres
-                    {
-                        let theta: I20F12 = cordic::acos(cos_theta);
-                        assert_ne!(theta, I20F12::ZERO);
-                        let limit_sqr: U20F12 = ((len_mm.to_fixed::<I20F12>() / theta)
-                            * acceleration_mms2.to_fixed::<I20F12>())
-                        .to_fixed();
-                        core::cmp::min(speed_mm_sq, limit_sqr)
-                    } else {
-                        speed_mm_sq
-                    };
+                    // copied from klipper toolhead.py
+                    // tan_theta_d2 = sin_theta_d2 / math.sqrt(0.5*(1.0+junction_cos_theta))
+                    // move_centripetal_v2 = .5 * self.move_d * tan_theta_d2 * self.accel
+                    // prev_move_centripetal_v2 = (.5 * prev_move.move_d * tan_theta_d2 * prev_move.accel)
+
+                    let tan_theta_div_2 = sin_theta_div_2
+                        .saturating_div((0.5.to_fixed::<U20F12>() * (1.to_fixed::<I20F12>() + cos_theta).to_fixed::<U20F12>()).sqrt());
+
+                    let tan_theta_div_2 = core::cmp::min(tan_theta_div_2, 1.to_fixed::<U20F12>());
+                    let move_centripetal_v2 =
+                        0.5.to_fixed::<U20F12>() * len_mm * tan_theta_div_2 * acceleration_mms2;
+                    let prev_move_centripetal_v2 = 0.5.to_fixed::<U20F12>()
+                        * prev_move.len_mm
+                        * tan_theta_div_2
+                        * prev_move.acceleration_mms2;
 
                     (
                         core::cmp::min(
-                            limited_speed_mm_sq,
+                            core::cmp::min(move_centripetal_v2, prev_move_centripetal_v2),
                             core::cmp::min(entry_speed_mm_sq, prev_move.speed_mm_sq),
                         ),
                         acceleration_mms2,
