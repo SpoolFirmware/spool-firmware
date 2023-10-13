@@ -308,7 +308,7 @@ fn main() {
                                         "Motor {} has {} > 8 mm/s jerk: last exit: {}, new entry: {}",
                                         i, delta, last_exit_speed, new_entry_speed
                                     );
-                                    // panic!("last move: {:#?} \n current move {:#?}\n{:#?}", last_move_, res, planner_job);
+                                    panic!("last move: {:#?} \n current move {:#?}\n{:#?}", last_move_, res, planner_job);
                                 }
                             }
 
